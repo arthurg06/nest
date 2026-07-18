@@ -295,6 +295,21 @@ app.get("/api/auth/me", authenticate, (req, res) => {
   }
 });
 
+// Sign out: invalidate the presented session token server-side. Account and
+// data are untouched — this is the non-destructive counterpart of account
+// deletion.
+app.post("/api/auth/logout", authenticate, (req, res) => {
+  try {
+    const token = (req.headers.authorization as string).substring(7);
+    const db = dbManager.readDb();
+    db.sessions = db.sessions.filter(s => s.token !== token);
+    dbManager.writeDb(db);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: "Error signing out" });
+  }
+});
+
 // ----------------------------------------------------
 // PROFILE ENDPOINTS
 // ----------------------------------------------------

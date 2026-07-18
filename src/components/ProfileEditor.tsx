@@ -8,9 +8,10 @@ interface ProfileEditorProps {
   currentUser: UserProfile;
   onSaveProfile: (profile: UserProfile) => void;
   onDeleteRecommendation?: (id: string) => Promise<boolean>;
+  onSignOut: () => void;
 }
 
-export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteRecommendation }: ProfileEditorProps) {
+export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteRecommendation, onSignOut }: ProfileEditorProps) {
   // Personal recommendations/spots management state
   const [myRecs, setMyRecs] = useState<any[]>([]);
   const [isLoadingMyRecs, setIsLoadingMyRecs] = useState(false);
@@ -24,8 +25,9 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
   const [editGoogleMapsUrl, setEditGoogleMapsUrl] = useState("");
   const [editTags, setEditTags] = useState("");
 
-  // Account self-deletion state
+  // Account self-deletion state (requires typing DELETE to confirm)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
 
   const fetchMyRecommendations = async () => {
@@ -996,60 +998,91 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
             )}
           </div>
 
-          {/* Action Row */}
-          <div className="pt-4 border-t border-white/30 flex flex-col sm:flex-row justify-between gap-3 items-center">
-            <button
-              type="button"
-              onClick={() => {
-                if (confirm("Are you sure you want to sign out? This will completely delete your local student profile from this browser, letting you recreate a fresh account from scratch!")) {
-                  localStorage.clear();
-                  window.location.reload();
-                }
-              }}
-              className="w-full sm:w-auto bg-slate-200 hover:bg-slate-300 text-slate-700 font-sans text-xs font-bold px-5 py-2.5 rounded-xl transition cursor-pointer text-center"
-            >
-              Sign Out & Re-Create Profile ✕
-            </button>
-
-            {showDeleteConfirm ? (
-              <div className="bg-red-50 border border-red-200 p-4 rounded-xl space-y-3 w-full">
-                <p className="text-[11px] text-red-700 font-bold leading-normal">
-                  Are you absolutely sure? This will permanently delete your NEST account, your verified credentials, and all your secrets, spots, matches, chats, and personal data. This action cannot be undone.
-                </p>
-                <div className="flex gap-2 justify-end">
-                  <button
-                    type="button"
-                    onClick={() => setShowDeleteConfirm(false)}
-                    className="bg-white border border-slate-200 px-3 py-1.5 rounded-lg text-[10px] font-bold text-slate-700 hover:bg-slate-50 transition cursor-pointer"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleDeleteAccount}
-                    disabled={isDeleting}
-                    className="bg-red-600 text-white px-3 py-1.5 rounded-lg text-[10px] font-black hover:bg-red-700 transition flex items-center gap-1 cursor-pointer"
-                  >
-                    {isDeleting ? "Deleting..." : "Permanently Delete My Data"}
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setShowDeleteConfirm(true)}
-                className="w-full sm:w-auto bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 font-sans text-xs font-bold px-5 py-2.5 rounded-xl transition cursor-pointer text-center"
-              >
-                Delete Account permanently ✕
-              </button>
-            )}
-
+          {/* Save */}
+          <div className="pt-4 border-t border-white/30 flex justify-end">
             <button
               onClick={handleSave}
               className="w-full sm:w-auto bg-rose-500 text-white font-sans text-xs font-black px-6 py-3 rounded-xl shadow-lg shadow-rose-200/50 hover:bg-rose-600 transition active:scale-95 cursor-pointer"
             >
-              Save Profile & Apply Compatibility
+              Save profile
             </button>
+          </div>
+
+          {/* ACCOUNT ACTIONS — sign out is non-destructive; deletion is
+              explicit, typed, and clearly separated */}
+          <div className="mt-6 bg-white/40 backdrop-blur-md rounded-2xl border border-white/60 p-5 space-y-4">
+            <h4 className="font-sans font-bold text-sm text-slate-800">Account</h4>
+
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-bold text-slate-700">Sign out</p>
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  Ends this session on this device. Your profile, matches, and messages stay intact.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={onSignOut}
+                className="w-full sm:w-auto shrink-0 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-sans text-xs font-bold px-5 py-2.5 rounded-xl transition cursor-pointer text-center"
+              >
+                Sign out
+              </button>
+            </div>
+
+            <div className="border-t border-slate-200/60" />
+
+            <div className="space-y-3">
+              <div>
+                <p className="text-xs font-bold text-red-700">Delete account</p>
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  Permanently removes your account, profile, matches, messages, posts, and RSVPs. This cannot be undone.
+                </p>
+              </div>
+
+              {showDeleteConfirm ? (
+                <div className="bg-red-50 border border-red-200 p-4 rounded-xl space-y-3">
+                  <label className="text-[11px] text-red-700 font-semibold leading-normal block">
+                    Type <span className="font-black font-mono">DELETE</span> to confirm permanent deletion.
+                  </label>
+                  <input
+                    type="text"
+                    value={deleteConfirmText}
+                    onChange={(e) => setDeleteConfirmText(e.target.value)}
+                    placeholder="DELETE"
+                    autoComplete="off"
+                    className="w-full bg-white border border-red-200 rounded-lg px-3 py-2 text-xs font-mono text-slate-800 focus:outline-none focus:ring-1 focus:ring-red-400"
+                  />
+                  <div className="flex gap-2 justify-end">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowDeleteConfirm(false);
+                        setDeleteConfirmText("");
+                      }}
+                      className="bg-white border border-slate-200 px-3.5 py-2 rounded-lg text-[11px] font-bold text-slate-700 hover:bg-slate-50 transition cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleDeleteAccount}
+                      disabled={isDeleting || deleteConfirmText !== "DELETE"}
+                      className="bg-red-600 text-white px-3.5 py-2 rounded-lg text-[11px] font-black hover:bg-red-700 transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                    >
+                      {isDeleting ? "Deleting…" : "Delete account"}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 font-sans text-xs font-bold px-5 py-2.5 rounded-xl transition cursor-pointer"
+                >
+                  Delete account
+                </button>
+              )}
+            </div>
           </div>
 
           {/* EDIT SPOT MODAL OVERLAY */}

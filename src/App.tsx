@@ -59,8 +59,19 @@ export default function App() {
     return res;
   };
 
-  // Log out or clear session
+  // Sign out: invalidate the session server-side, then clear local state.
+  // Account data is preserved — deletion is a separate, explicit action in
+  // the profile settings.
   const handleSignOut = () => {
+    const currentToken = token || localStorage.getItem("nest_token");
+    if (currentToken) {
+      // Plain fetch (not fetchWithAuth) to avoid sign-out recursion on 401,
+      // and fire-and-forget so a network failure never blocks local sign-out.
+      fetch("/api/auth/logout", {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${currentToken}` }
+      }).catch(() => {});
+    }
     localStorage.removeItem("nest_token");
     localStorage.removeItem("nest_user");
     setToken(null);
@@ -419,9 +430,9 @@ export default function App() {
             <button 
               onClick={handleSignOut}
               className="font-sans text-[10px] bg-slate-900 text-rose-400 hover:bg-slate-800 font-extrabold px-3 py-1.5 rounded-xl border border-slate-800 tracking-wider shadow-sm transition active:scale-95 flex items-center gap-1 cursor-pointer"
-              title="Sign Out of NEST"
+              title="Sign out of NEST"
             >
-              Sign Out ✕
+              Sign out
             </button>
 
             {/* Profile Avatar Trigger */}
@@ -665,10 +676,11 @@ export default function App() {
           )}
 
           {activeTab === "profile" && (
-            <ProfileEditor 
-              currentUser={currentUser} 
-              onSaveProfile={handleSaveProfile} 
+            <ProfileEditor
+              currentUser={currentUser}
+              onSaveProfile={handleSaveProfile}
               onDeleteRecommendation={handleDeleteRecommendation}
+              onSignOut={handleSignOut}
             />
           )}
 
