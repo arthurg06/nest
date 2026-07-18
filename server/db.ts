@@ -26,6 +26,10 @@ export interface User {
   source: AccountSource;
   isPremium: boolean;
   premiumExpiresAt?: string;
+  /** Stripe linkage — set exclusively by server-side Stripe flows/webhooks. */
+  stripeCustomerId?: string;
+  stripeSubscriptionId?: string;
+  subscriptionStatus?: string;
   lastActiveAt?: string;
   createdAt: string;
 }
@@ -199,6 +203,8 @@ export interface DbSchema {
   notifications: Notification[];
   sessions: Session[];
   adminAudit: AdminAuditEntry[];
+  /** Processed Stripe webhook event IDs (idempotency guard, capped). */
+  processedStripeEvents: string[];
 }
 
 const initialDb: DbSchema = {
@@ -214,6 +220,7 @@ const initialDb: DbSchema = {
   notifications: [],
   sessions: [],
   adminAudit: [],
+  processedStripeEvents: [],
 };
 
 // Fills in fields introduced after the prototype era so records written by
@@ -223,6 +230,11 @@ function migrateDb(db: DbSchema): boolean {
 
   if (!Array.isArray(db.adminAudit)) {
     db.adminAudit = [];
+    changed = true;
+  }
+
+  if (!Array.isArray(db.processedStripeEvents)) {
+    db.processedStripeEvents = [];
     changed = true;
   }
 

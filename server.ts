@@ -10,6 +10,8 @@ import * as dbManager from "./server/db";
 import { calculateCompatibility } from "./shared/compatibility";
 import { hashPassword, verifyPassword, isHashedPassword, generateSessionToken, generateSecureId, sniffImageType } from "./server/security";
 import { RateLimiter } from "./server/rateLimit";
+import { getStripe, isStripeConfigured, isWebhookConfigured, premiumPriceId } from "./server/stripe";
+import { PREMIUM_PLAN, PREMIUM_PRICE_LABEL } from "./shared/subscription";
 
 dotenv.config({ quiet: true });
 
@@ -54,6 +56,32 @@ function sanitizeInterests(raw: unknown) {
   };
 }
 
+// Server-side Premium entitlement — driven by Stripe webhook state (or a
+// still-valid paid period), never by client-side flags.
+function hasActiveSubscription(user: User): boolean {
+  if (user.subscriptionStatus === "active" || user.subscriptionStatus === "trialing") return true;
+  if (user.premiumExpiresAt && new Date(user.premiumExpiresAt).getTime() > Date.now()) return true;
+  return false;
+}
+
+function appBaseUrl(): string {
+  if (process.env.APP_BASE_URL) return process.env.APP_BASE_URL.replace(/\/$/, "");
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+  return `http://localhost:${PORT}`;
+}
+
+// Best-effort cancellation when an account is deleted so no one keeps being
+// billed for a deleted profile. Failures are logged, never block deletion.
+async function cancelStripeSubscriptionSafely(user: User): Promise<void> {
+  const stripe = getStripe();
+  if (!stripe || !user.stripeSubscriptionId) return;
+  try {
+    await stripe.subscriptions.cancel(user.stripeSubscriptionId);
+  } catch (err) {
+    console.error("Could not cancel Stripe subscription during account deletion:", err);
+  }
+}
+
 // Append-only audit trail for admin decisions. Never contains passwords,
 // tokens, or payment data.
 function recordAudit(db: DbSchema, adminId: string, action: string, targetUserId?: string, detail?: string) {
@@ -72,6 +100,155 @@ function recordAudit(db: DbSchema, adminId: string, action: string, targetUserId
 const UPLOAD_DIR =
   process.env.UPLOAD_DIR ||
   (process.env.VERCEL ? "/tmp/uploads" : path.join(process.cwd(), "uploads"));
+
+// ----------------------------------------------------
+// STRIPE WEBHOOK (registered BEFORE the JSON body parser — Stripe signature
+// verification requires the raw request body)
+// ----------------------------------------------------
+app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), (req, res) => {
+  const stripe = getStripe();
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+  if (!stripe || !webhookSecret) {
+    return res.status(503).json({ error: "Stripe webhooks are not configured" });
+  }
+
+  let event;
+  try {
+    const signature = req.headers["stripe-signature"] as string;
+    event = stripe.webhooks.constructEvent(req.body, signature, webhookSecret);
+  } catch (err: any) {
+    console.error("Stripe webhook signature verification failed:", err.message);
+    return res.status(400).json({ error: "Invalid signature" });
+  }
+
+  try {
+    const db = dbManager.readDb();
+
+    // Idempotency: each Stripe event is applied at most once.
+    if (db.processedStripeEvents.includes(event.id)) {
+      return res.json({ received: true, duplicate: true });
+    }
+    db.processedStripeEvents.push(event.id);
+    if (db.processedStripeEvents.length > 1000) {
+      db.processedStripeEvents = db.processedStripeEvents.slice(-1000);
+    }
+
+    // Resolve the affected user from trusted webhook data only (customer ID
+    // stored server-side, or the checkout session's client_reference_id).
+    const findUserForCustomer = (customerId: string | null | undefined, fallbackUserId?: string | null) => {
+      if (customerId) {
+        const byCustomer = db.users.find(u => u.stripeCustomerId === customerId);
+        if (byCustomer) return byCustomer;
+      }
+      if (fallbackUserId) {
+        return db.users.find(u => u.id === fallbackUserId);
+      }
+      return undefined;
+    };
+
+    // Subscriptions in these states grant entitlement
+    const grantsAccess = (status: string) => status === "active" || status === "trialing";
+
+    // Stripe moved current_period_end onto subscription items in newer API
+    // versions; support both shapes.
+    const periodEndOf = (sub: any): string | undefined => {
+      const ts = sub?.current_period_end ?? sub?.items?.data?.[0]?.current_period_end;
+      return typeof ts === "number" ? new Date(ts * 1000).toISOString() : undefined;
+    };
+
+    const pushNotification = (userId: string, text: string) => {
+      db.notifications.push({
+        id: generateId(),
+        userId,
+        text,
+        timestamp: new Date().toISOString(),
+        read: false,
+        createdAt: new Date().toISOString()
+      });
+    };
+
+    switch (event.type) {
+      case "checkout.session.completed": {
+        const session = event.data.object as any;
+        const user = findUserForCustomer(
+          typeof session.customer === "string" ? session.customer : session.customer?.id,
+          session.client_reference_id || session.metadata?.userId
+        );
+        if (user) {
+          if (typeof session.customer === "string") user.stripeCustomerId = session.customer;
+          if (typeof session.subscription === "string") user.stripeSubscriptionId = session.subscription;
+          user.subscriptionStatus = "active";
+          user.isPremium = true;
+          pushNotification(user.id, `Welcome to ${PREMIUM_PLAN.name}! Your membership is active — you can now RSVP to official outings.`);
+        }
+        break;
+      }
+
+      case "customer.subscription.created":
+      case "customer.subscription.updated": {
+        const sub = event.data.object as any;
+        const user = findUserForCustomer(typeof sub.customer === "string" ? sub.customer : sub.customer?.id);
+        if (user) {
+          user.stripeSubscriptionId = sub.id;
+          user.subscriptionStatus = sub.status;
+          const periodEnd = periodEndOf(sub);
+          if (periodEnd) user.premiumExpiresAt = periodEnd;
+          user.isPremium = grantsAccess(sub.status);
+        }
+        break;
+      }
+
+      case "customer.subscription.deleted": {
+        const sub = event.data.object as any;
+        const user = findUserForCustomer(typeof sub.customer === "string" ? sub.customer : sub.customer?.id);
+        if (user) {
+          user.subscriptionStatus = "canceled";
+          user.isPremium = false;
+          const periodEnd = periodEndOf(sub);
+          user.premiumExpiresAt = periodEnd || new Date().toISOString();
+          pushNotification(user.id, "Your NEST Premium membership has ended. You can rejoin anytime from the Events tab.");
+        }
+        break;
+      }
+
+      case "invoice.paid":
+      case "invoice.payment_succeeded": {
+        const invoice = event.data.object as any;
+        const user = findUserForCustomer(typeof invoice.customer === "string" ? invoice.customer : invoice.customer?.id);
+        if (user) {
+          user.subscriptionStatus = "active";
+          user.isPremium = true;
+          const periodEnd = invoice.lines?.data?.[0]?.period?.end;
+          if (typeof periodEnd === "number") {
+            user.premiumExpiresAt = new Date(periodEnd * 1000).toISOString();
+          }
+        }
+        break;
+      }
+
+      case "invoice.payment_failed": {
+        const invoice = event.data.object as any;
+        const user = findUserForCustomer(typeof invoice.customer === "string" ? invoice.customer : invoice.customer?.id);
+        if (user) {
+          user.subscriptionStatus = "past_due";
+          pushNotification(user.id, "Your NEST Premium payment failed. Please update your payment method to keep your membership active.");
+        }
+        break;
+      }
+
+      default:
+        // Unhandled event types are acknowledged without changes.
+        break;
+    }
+
+    dbManager.writeDb(db);
+    res.json({ received: true });
+  } catch (error) {
+    console.error("Stripe webhook processing error:", error);
+    res.status(500).json({ error: "Webhook processing failed" });
+  }
+});
 
 // 12 MB accommodates the 8 MB image cap after base64 encoding (~10.7 MB).
 app.use(express.json({ limit: "12mb" }));
@@ -313,7 +490,7 @@ app.post("/api/auth/login", async (req, res) => {
         id: user.id,
         email: user.email,
         isAdmin: user.isAdmin,
-        isPremium: user.isPremium
+        isPremium: hasActiveSubscription(user)
       },
       profile: profile ? ownProfileView(profile) : profile
     });
@@ -348,7 +525,7 @@ app.get("/api/auth/me", authenticate, (req, res) => {
         id: user.id,
         email: user.email,
         isAdmin: user.isAdmin,
-        isPremium: user.isPremium
+        isPremium: hasActiveSubscription(user)
       },
       profile: profile ? ownProfileView(profile) : profile
     });
@@ -847,10 +1024,8 @@ app.post("/api/recommendations/:id/like", authenticate, (req, res) => {
 // OFFICIAL NEST EVENTS ENDPOINTS
 // ----------------------------------------------------
 
-// Get Events
-// "If there are no published events, show an empty state explaining that no events are currently available.
-// Users may browse events for free.
-// Users cannot RSVP or join any event unless they have an active NEST Premium subscription (€10/month)."
+// Get Events. Everyone may browse; RSVPs require an active NEST Premium
+// subscription (see shared/subscription.ts for the plan definition).
 app.get("/api/events", authenticate, (req, res) => {
   try {
     const userId = (req as any).userId;
@@ -937,7 +1112,7 @@ app.post("/api/events/:id/rsvp", authenticate, (req, res) => {
     }
 
     // RSVPs require an active NEST Premium membership (server-side entitlement)
-    if (!user.isPremium) {
+    if (!hasActiveSubscription(user)) {
       return res.status(403).json({
         error: "Premium membership required",
         requiresPremium: true,
@@ -978,6 +1153,116 @@ app.post("/api/events/:id/rsvp", authenticate, (req, res) => {
 
   } catch (error) {
     res.status(500).json({ error: "Error processing event RSVP" });
+  }
+});
+
+// ----------------------------------------------------
+// PREMIUM SUBSCRIPTION (Stripe)
+// ----------------------------------------------------
+
+// Membership + plan status. Safe to call whether or not Stripe is
+// configured; exposes no secrets.
+app.get("/api/subscription/status", authenticate, (req, res) => {
+  try {
+    const userId = (req as any).userId;
+    const db = dbManager.readDb();
+    const user = db.users.find(u => u.id === userId);
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    res.json({
+      stripeConfigured: isStripeConfigured(),
+      premium: hasActiveSubscription(user),
+      subscriptionStatus: user.subscriptionStatus || null,
+      premiumExpiresAt: user.premiumExpiresAt || null,
+      hasStripeCustomer: Boolean(user.stripeCustomerId),
+      plan: {
+        name: PREMIUM_PLAN.name,
+        priceCents: PREMIUM_PLAN.priceCents,
+        currency: PREMIUM_PLAN.currency,
+        interval: PREMIUM_PLAN.interval,
+        label: PREMIUM_PRICE_LABEL
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: "Error loading subscription status" });
+  }
+});
+
+// Create a Stripe Checkout session for the monthly subscription. The card
+// form is Stripe-hosted — no card data ever touches this server.
+app.post("/api/subscription/checkout", authenticate, async (req, res) => {
+  try {
+    const stripe = getStripe();
+    if (!stripe || !isStripeConfigured()) {
+      return res.status(503).json({
+        error: "Premium payments are not configured yet",
+        stripeConfigured: false
+      });
+    }
+
+    const userId = (req as any).userId;
+    const db = dbManager.readDb();
+    const user = db.users.find(u => u.id === userId);
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    if (hasActiveSubscription(user)) {
+      return res.status(400).json({ error: "Your Premium membership is already active" });
+    }
+
+    // Create or reuse the Stripe customer for this account
+    let customerId = user.stripeCustomerId;
+    if (!customerId) {
+      const customer = await stripe.customers.create({
+        email: user.email,
+        metadata: { nestUserId: user.id }
+      });
+      customerId = customer.id;
+      user.stripeCustomerId = customerId;
+      dbManager.writeDb(db);
+    }
+
+    const session = await stripe.checkout.sessions.create({
+      mode: "subscription",
+      customer: customerId,
+      line_items: [{ price: premiumPriceId()!, quantity: 1 }],
+      client_reference_id: user.id,
+      metadata: { nestUserId: user.id },
+      allow_promotion_codes: true,
+      success_url: `${appBaseUrl()}/?checkout=success`,
+      cancel_url: `${appBaseUrl()}/?checkout=cancelled`
+    });
+
+    res.json({ url: session.url });
+  } catch (error) {
+    console.error("Stripe checkout error:", error);
+    res.status(500).json({ error: "Could not start checkout. Please try again." });
+  }
+});
+
+// Stripe Customer Portal — manage payment method, invoices, cancellation.
+app.post("/api/subscription/portal", authenticate, async (req, res) => {
+  try {
+    const stripe = getStripe();
+    if (!stripe) {
+      return res.status(503).json({ error: "Premium payments are not configured yet" });
+    }
+
+    const userId = (req as any).userId;
+    const db = dbManager.readDb();
+    const user = db.users.find(u => u.id === userId);
+    if (!user?.stripeCustomerId) {
+      return res.status(400).json({ error: "No billing profile found for this account" });
+    }
+
+    const session = await stripe.billingPortal.sessions.create({
+      customer: user.stripeCustomerId,
+      return_url: appBaseUrl()
+    });
+
+    res.json({ url: session.url });
+  } catch (error) {
+    console.error("Stripe portal error:", error);
+    res.status(500).json({ error: "Could not open the billing portal. Please try again." });
   }
 });
 
@@ -1318,7 +1603,7 @@ app.delete("/api/posts/:id", authenticate, (req, res) => {
 // ----------------------------------------------------
 
 // User self-deletion
-app.delete("/api/users/me", authenticate, (req, res) => {
+app.delete("/api/users/me", authenticate, async (req, res) => {
   try {
     const userId = (req as any).userId;
     const db = dbManager.readDb();
@@ -1328,6 +1613,7 @@ app.delete("/api/users/me", authenticate, (req, res) => {
       return res.status(404).json({ error: "User not found" });
     }
 
+    await cancelStripeSubscriptionSafely(user);
     deleteUserData(userId, db);
     dbManager.writeDb(db);
 
@@ -1376,7 +1662,7 @@ app.get("/api/admin/users", authenticateAdmin, (req, res) => {
 });
 
 // Admin delete any user
-app.delete("/api/admin/users/:userId", authenticateAdmin, (req, res) => {
+app.delete("/api/admin/users/:userId", authenticateAdmin, async (req, res) => {
   try {
     const adminId = (req as any).userId;
     const { userId } = req.params;
@@ -1391,6 +1677,7 @@ app.delete("/api/admin/users/:userId", authenticateAdmin, (req, res) => {
       return res.status(400).json({ error: "Cannot delete an administrator account!" });
     }
 
+    await cancelStripeSubscriptionSafely(user);
     deleteUserData(userId, db);
     recordAudit(db, adminId, "user.delete", userId, user.email);
     dbManager.writeDb(db);

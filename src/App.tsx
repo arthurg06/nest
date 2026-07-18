@@ -32,6 +32,8 @@ export default function App() {
   const [events, setEvents] = useState<Event[]>([]);
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
   const [notifications, setNotifications] = useState<any[]>([]);
+  const [subscription, setSubscription] = useState<any | null>(null);
+  const [checkoutBanner, setCheckoutBanner] = useState<string>("");
 
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
@@ -173,6 +175,35 @@ export default function App() {
     }
   };
 
+  const loadSubscription = async () => {
+    try {
+      const res = await fetchWithAuth("/api/subscription/status");
+      const data = await res.json();
+      if (res.ok) {
+        setSubscription(data);
+      }
+    } catch (err) {
+      console.error("Error loading subscription status:", err);
+    }
+  };
+
+  // Returning from Stripe Checkout: refresh entitlement (webhooks are the
+  // source of truth) and show a lightweight, truthful banner.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const checkout = params.get("checkout");
+    if (checkout === "success") {
+      setCheckoutBanner("Thanks! Your payment is being confirmed by Stripe — Premium activates as soon as the confirmation arrives.");
+    } else if (checkout === "cancelled") {
+      setCheckoutBanner("Checkout was cancelled. You have not been charged.");
+    }
+    if (checkout) {
+      params.delete("checkout");
+      const query = params.toString();
+      window.history.replaceState({}, "", `${window.location.pathname}${query ? `?${query}` : ""}`);
+    }
+  }, []);
+
   // Initial trigger. If the stored session can't be restored (expired token
   // or unreachable server), fall back to the sign-in screen instead of an
   // endless splash.
@@ -192,6 +223,7 @@ export default function App() {
       loadEvents();
       loadRecommendations();
       loadNotifications();
+      loadSubscription();
 
       // Setup a periodic poll for matches and messages every 5 seconds
       const timer = setInterval(() => {
@@ -468,6 +500,19 @@ export default function App() {
       {/* 2. MAIN HUB VIEWPORT CONTAINER */}
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 flex flex-col">
         
+        {/* Checkout return banner */}
+        {checkoutBanner && (
+          <div className="bg-stone-50 border border-stone-200 text-stone-700 p-3 rounded-2xl text-[11px] mb-5 font-medium flex items-center justify-between shadow-sm animate-fade-in">
+            <span>{checkoutBanner}</span>
+            <button
+              onClick={() => setCheckoutBanner("")}
+              className="text-stone-500 hover:text-stone-800 font-bold text-[10px] ml-3"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
+
         {/* Notifications Panel */}
         {notifications.length > 0 && (
           <div className="bg-amber-50 border border-amber-200 text-amber-800 p-3 rounded-2xl text-[11px] mb-5 font-medium flex items-center justify-between shadow-sm animate-fade-in">
@@ -695,6 +740,7 @@ export default function App() {
               events={events}
               onToggleRsvp={handleToggleRsvp}
               isSubscribed={isPremiumActive}
+              subscription={subscription}
               isAdmin={isAdmin}
               onAddEvent={handleAddEvent}
               onDeleteEvent={handleDeleteEvent}

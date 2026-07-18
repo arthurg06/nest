@@ -1,20 +1,79 @@
 import React, { useState } from "react";
 import { Event } from "../types";
 import { Calendar, Clock, MapPin, Sparkles, Check, Bookmark, Crown, X, Trash2, Plus } from "lucide-react";
+import { PREMIUM_PRICE_LABEL, PREMIUM_RENEWAL_NOTE } from "../../shared/subscription";
+
+export interface SubscriptionInfo {
+  stripeConfigured: boolean;
+  premium: boolean;
+  subscriptionStatus: string | null;
+  hasStripeCustomer: boolean;
+  plan: { name: string; priceCents: number; currency: string; interval: string; label: string };
+}
 
 interface EventsProps {
   events: Event[];
   onToggleRsvp: (eventId: string) => void;
   isSubscribed: boolean;
+  subscription: SubscriptionInfo | null;
   onSyncOfficialEvents?: () => void;
   isAdmin: boolean;
   onAddEvent: (title: string, description: string, date: string, time: string, location: string, category: string, price: string, maxParticipants?: number) => void;
   onDeleteEvent?: (id: string) => void;
 }
 
-export default function Events({ events, onToggleRsvp, isSubscribed, onSyncOfficialEvents, isAdmin, onAddEvent, onDeleteEvent }: EventsProps) {
+export default function Events({ events, onToggleRsvp, isSubscribed, subscription, onSyncOfficialEvents, isAdmin, onAddEvent, onDeleteEvent }: EventsProps) {
   const [activeTab, setActiveTab] = React.useState<string>("all");
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
+  const [paymentError, setPaymentError] = useState("");
+
+  const stripeReady = subscription?.stripeConfigured === true;
+  const priceLabel = subscription?.plan?.label || PREMIUM_PRICE_LABEL;
+
+  // Stripe-hosted checkout: the browser is redirected to Stripe; no card
+  // data is ever collected in this app.
+  const handleStartCheckout = async () => {
+    setPaymentError("");
+    setIsRedirecting(true);
+    try {
+      const res = await fetch("/api/subscription/checkout", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${localStorage.getItem("nest_token")}`
+        }
+      });
+      const data = await res.json();
+      if (!res.ok || !data.url) {
+        throw new Error(data.error || "Checkout is unavailable right now.");
+      }
+      window.location.href = data.url;
+    } catch (err: any) {
+      setPaymentError(err.message || "Checkout is unavailable right now.");
+      setIsRedirecting(false);
+    }
+  };
+
+  const handleOpenPortal = async () => {
+    setPaymentError("");
+    try {
+      const res = await fetch("/api/subscription/portal", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${localStorage.getItem("nest_token")}`
+        }
+      });
+      const data = await res.json();
+      if (!res.ok || !data.url) {
+        throw new Error(data.error || "The billing portal is unavailable right now.");
+      }
+      window.location.href = data.url;
+    } catch (err: any) {
+      setPaymentError(err.message || "The billing portal is unavailable right now.");
+    }
+  };
 
   // Admin form state
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -102,20 +161,29 @@ export default function Events({ events, onToggleRsvp, isSubscribed, onSyncOffic
               {isSubscribed ? "NEST Premium Membership Active 👑" : "NEST Basic Student Account"}
             </h4>
             <p className="font-sans text-[11px] text-slate-500 leading-tight mt-0.5">
-              {isSubscribed 
-                ? "You have full access to RSVP and join all student gatherings, mixers, and trips! Enjoy Madrid! xx" 
-                : "Browse student gatherings around Madrid. Upgrade to join outings & RSVP."
+              {isSubscribed
+                ? "Full access to every official NEST outing. Enjoy Madrid!"
+                : "Browse outings freely. Membership unlocks RSVPs."
               }
             </p>
           </div>
         </div>
 
-        {!isSubscribed && (
+        {isSubscribed ? (
+          subscription?.hasStripeCustomer && (
+            <button
+              onClick={handleOpenPortal}
+              className="bg-white hover:bg-stone-50 text-slate-700 border border-stone-200 font-sans text-xs font-bold px-4 py-2 rounded-xl transition"
+            >
+              Manage subscription
+            </button>
+          )
+        ) : (
           <button
             onClick={() => setShowSubscriptionModal(true)}
             className="bg-slate-900 hover:bg-slate-800 text-rose-400 border border-slate-700 font-sans text-xs font-bold px-4 py-2 rounded-xl transition"
           >
-            About NEST Premium
+            Join NEST Premium · {priceLabel}
           </button>
         )}
       </div>
@@ -452,35 +520,72 @@ export default function Events({ events, onToggleRsvp, isSubscribed, onSyncOffic
               <X size={18} />
             </button>
 
-            {/* Header */}
-            <div className="bg-slate-950 text-white p-6 pb-8 text-center relative overflow-hidden">
-              <Crown className="w-12 h-12 text-amber-400 mx-auto mb-2" />
-              <h3 className="font-sans font-black text-xl tracking-tight">NEST Premium</h3>
-              <p className="text-[10px] text-slate-400 font-mono tracking-widest uppercase mt-1">Unlock official outings</p>
+            {/* Brand header */}
+            <div className="bg-slate-950 text-white p-6 pb-7 text-center relative overflow-hidden">
+              <img
+                src="/icons/nest-192.png"
+                alt="NEST logo"
+                className="w-14 h-14 rounded-2xl mx-auto mb-3 shadow-lg border border-white/10"
+              />
+              <h3 className="font-sans font-black text-xl tracking-tight">{subscription?.plan?.name || "NEST Premium"}</h3>
+              <div className="text-rose-300 font-sans font-black text-sm mt-1">{priceLabel}</div>
+              <p className="text-[10px] text-slate-400 mt-1">{PREMIUM_RENEWAL_NOTE}</p>
             </div>
 
-            {/* Membership status — payments are not live yet */}
-            <div className="p-6 space-y-5">
-              <div className="bg-rose-50/50 border border-rose-100/50 p-4 rounded-2xl text-slate-600 space-y-1 text-xs">
-                <p className="font-semibold text-slate-800">What Premium includes</p>
-                <p className="text-slate-500 leading-normal">
-                  RSVP access to all official NEST outings — mixers, picnics, study sessions, and wellness meetups curated by the NEST team.
-                </p>
-              </div>
+            <div className="p-6 space-y-4">
+              <ul className="text-xs text-slate-600 space-y-2">
+                <li className="flex items-start gap-2">
+                  <Check size={14} className="text-emerald-600 shrink-0 mt-0.5" />
+                  <span>RSVP to every official NEST outing — mixers, picnics, study sessions, wellness meetups</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <Check size={14} className="text-emerald-600 shrink-0 mt-0.5" />
+                  <span>Curated, women-only gatherings hosted by the NEST team</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <Check size={14} className="text-emerald-600 shrink-0 mt-0.5" />
+                  <span>Cancel anytime from the billing portal</span>
+                </li>
+              </ul>
 
-              <div className="bg-amber-50 border border-amber-200 p-4 rounded-2xl text-xs text-amber-800 leading-normal">
-                <p className="font-bold mb-0.5">Premium payments are being configured</p>
-                <p>
-                  Secure checkout is not available yet. Membership will open soon — no payment details are collected in the meantime.
-                </p>
-              </div>
+              {paymentError && (
+                <div className="bg-rose-50 border border-rose-100 text-rose-700 p-3 rounded-xl text-[11px] leading-normal">
+                  {paymentError}
+                </div>
+              )}
 
-              <button
-                onClick={() => setShowSubscriptionModal(false)}
-                className="w-full bg-slate-900 hover:bg-slate-800 text-white font-sans text-xs font-bold py-3 rounded-2xl transition shadow-md"
-              >
-                Got it
-              </button>
+              {stripeReady ? (
+                <>
+                  <button
+                    onClick={handleStartCheckout}
+                    disabled={isRedirecting}
+                    className="w-full bg-slate-900 hover:bg-slate-800 text-white font-sans text-xs font-bold py-3 rounded-2xl transition shadow-md disabled:opacity-60"
+                  >
+                    {isRedirecting ? "Opening secure checkout…" : "Continue to secure checkout"}
+                  </button>
+                  <p className="text-[10px] text-slate-400 text-center leading-normal">
+                    Payment is handled by Stripe on a secure page — card details never touch NEST. Major cards and Apple Pay are supported where available.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <div className="bg-amber-50 border border-amber-200 p-3.5 rounded-2xl text-[11px] text-amber-800 leading-normal">
+                    <p className="font-bold mb-0.5">Payments are being configured</p>
+                    <p>Secure checkout opens soon. No payment details are collected in the meantime.</p>
+                    {import.meta.env.DEV && (
+                      <p className="mt-1.5 font-mono text-[10px] text-amber-600">
+                        Dev notice: Stripe environment variables are not set.
+                      </p>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => setShowSubscriptionModal(false)}
+                    className="w-full bg-slate-900 hover:bg-slate-800 text-white font-sans text-xs font-bold py-3 rounded-2xl transition shadow-md"
+                  >
+                    Got it
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>
