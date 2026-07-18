@@ -1,123 +1,96 @@
 # NEST — Madrid Student Net
 
-NEST is a women-only social discovery and friendship platform for international university students moving to Madrid. Members create a profile with their interests, languages, and lifestyle, discover other verified students through a swipe deck, match based on compatibility, chat, share city recommendations ("secret spots"), and join curated events.
+NEST is a women-only social discovery and friendship platform for international students in Madrid. Members create a profile, get verified by the NEST team, discover compatible women through a swipe deck, match, chat, share city spots, and join curated outings.
 
-> **Status: prototype.** The codebase originated as a Google AI Studio prototype and is being productionized. Several flows are simulated (see [Current limitations](#current-limitations)) — do not open the app to real users yet.
-
-## Main features
-
-- **Multi-step onboarding** — account creation with profile photo upload, nationalities, languages with fluency levels, interests, and social handles
-- **Swipe-based discovery** — browse verified profiles, like or pass, with a compatibility score computed from shared activities, music, social plans, lifestyle, spending style, languages, and university
-- **Matching & chat** — mutual likes create a match with a compatibility report and a direct-message thread
-- **Outing planner** — propose meetups at curated Madrid venues from an illustrated city map (UI present, persistence not yet implemented)
-- **City Discovery** — student-curated recommendations with categories, tags, photos, likes, and Google Maps links
-- **Official events** — admin-published outings with RSVP and capacity limits, gated behind a Premium subscription (payment is currently simulated)
-- **Admin dashboard** — user management and content moderation for accounts listed in `ADMIN_EMAILS`
-- **Account self-service** — profile editing and full account deletion with data cleanup
+> **Status: pre-launch.** Core flows are real and tested (auth, verification review, matching, chat, admin, moderation). Payments are implemented but dormant until Stripe credentials are added, and the JSON-file database is a development datastore — see [Remaining production blockers](#remaining-production-blockers).
 
 ## Technology stack
 
-| Layer | Technology |
-|---|---|
-| Frontend | React 19, TypeScript, Vite 6 |
-| Styling | Tailwind CSS 4, Motion (animations), Lucide (icons) |
-| Backend | Express 4 (TypeScript, run with tsx in dev) |
-| Persistence | JSON file database (`db.json`) — interim solution, migration to a hosted database planned |
-| Uploads | Local filesystem (`uploads/`), base64 JSON transport |
-| Deployment | Vercel (static frontend + serverless Express function), or any Node host |
+React 19 + TypeScript + Vite 6 · Tailwind CSS 4 (brand theme in `src/index.css`) · Motion · Lucide · Express 4 (`tsx` in dev) · JSON-file database (`db.json`, interim) · Stripe (Checkout + Customer Portal + webhooks, env-gated) · Vitest + Supertest (57 tests).
 
-## Local installation
+## Local development
 
 Prerequisites: Node.js ≥ 20 and npm.
 
 ```bash
-git clone <repository-url> nest
-cd nest
+git clone <repository-url> nest && cd nest
 npm install
-cp .env.example .env   # then edit values (see below)
-npm run dev            # http://localhost:3000
+cp .env.example .env        # fill in values (see below)
+npm run dev                 # http://localhost:3000
 ```
 
-The server auto-creates an empty `db.json` on first run. To get an admin account, put your email in `ADMIN_EMAILS` in `.env` before signing up.
+```bash
+npm run lint    # TypeScript typecheck
+npm test        # vitest run (57 tests)
+npm run build   # frontend → dist/, server bundle → dist/server.cjs
+npm start       # production server (self-hosted)
+```
+
+The server auto-creates an empty `db.json` on first run and migrates older records automatically (verification statuses, roles, legacy country names, legacy plain-text passwords re-hash on first login).
 
 ## Environment variables
 
 | Variable | Required | Purpose |
 |---|---|---|
-| `ADMIN_EMAILS` | recommended | Comma-separated emails granted the admin role at sign-up/login |
-| `PORT` | no | Local server port (default `3000`) |
-| `DB_PATH` | no | Override for the JSON database location |
-| `UPLOAD_DIR` | no | Override for the uploaded-images directory |
+| `ADMIN_EMAILS` | recommended | Bootstrap: emails granted `role: "admin"` at sign-up/login |
+| `PORT` | no | Local server port (default 3000) |
+| `STRIPE_SECRET_KEY` | for payments | Stripe secret key (server only) |
+| `STRIPE_PREMIUM_PRICE_ID` | for payments | Recurring €20/month Price ID |
+| `STRIPE_WEBHOOK_SECRET` | for payments | Webhook signing secret |
+| `APP_BASE_URL` | for payments | Public URL for checkout redirects |
+| `VITE_API_BASE_URL` | packaged builds | API origin for the future iOS shell |
+| `DB_PATH`, `UPLOAD_DIR` | no | Storage path overrides |
 
-No secrets are committed to the repository. `db.json` and `uploads/` contain user data and are gitignored.
+**Admin bootstrap:** put your email in `ADMIN_EMAILS`, then sign up (or log in) — the account becomes an admin and the Admin tab appears. Authorization is enforced server-side on every admin endpoint.
 
-## Development commands
+## Product flows
 
-```bash
-npm run dev     # Express + Vite dev middleware with HMR on :3000
-npm run lint    # TypeScript typecheck (tsc --noEmit)
-```
+- **Verification** (manual, admin-reviewed): members submit university + university email → status `pending` → an admin approves or rejects with a reason from the Admin tab. Only `approved`, active members appear in discovery or can match. Details: [docs/ADMIN_AND_VERIFICATION.md](docs/ADMIN_AND_VERIFICATION.md)
+- **NEST Premium — €20/month**, renews monthly, cancel anytime via the Stripe Customer Portal. RSVP access to official outings is gated server-side by subscription entitlement. Pricing is centralized in `shared/subscription.ts` (integer euro cents). Setup: [docs/STRIPE.md](docs/STRIPE.md) (includes webhook, portal, and Apple Pay domain-verification steps)
+- **Events**: created and deleted by administrators only (enforced in the API); everyone may browse.
+- **Security decisions** (password hashing, sessions, rate limits, upload hardening, residual risks): [docs/SECURITY.md](docs/SECURITY.md)
+- **iOS strategy** (PWA now, Capacitor later, Apple requirements): [docs/IOS.md](docs/IOS.md)
 
-## Production build (self-hosted)
+## Deployment
 
-```bash
-npm run build   # builds frontend to dist/ and bundles server to dist/server.cjs
-npm start       # NODE_ENV=production node dist/server.cjs
-```
+**Vercel** (configured via `vercel.json`): static frontend from `dist/`, `/api/*` + `/uploads/*` through a serverless Express function, SPA fallback for direct URLs. Import the repo in Vercel, set the environment variables, deploy.
 
-## Deployment (Vercel)
+> ⚠️ **Vercel previews are demo environments.** The serverless filesystem is read-only, so the database and uploads live in `/tmp` and **reset between cold starts** — accounts, matches, photos, and Stripe linkage periodically disappear. Request bodies are capped (~4.5 MB), so large photo uploads fail there. Enable Deployment Protection to keep previews private. Real persistence requires the hosted-database migration below.
 
-The repository is pre-configured for Vercel via `vercel.json`:
-
-- The frontend is built with `npm run build:client` and served from `dist/` by the CDN.
-- `/api/*` and `/uploads/*` are rewritten to a serverless function (`api/index.ts`) that wraps the Express app.
-- All other routes fall back to `index.html`, so direct URLs work.
-
-Setup: push this repository to GitHub, then in Vercel choose **Add New Project → Import** the repo. No framework preset is needed (`vercel.json` drives the build). Set `ADMIN_EMAILS` in **Project Settings → Environment Variables**. Every branch/PR then gets a preview URL; `main` deploys to production.
-
-> ⚠️ **Ephemeral data on Vercel:** the serverless filesystem is read-only, so the database and uploads live in `/tmp` and reset between cold starts. Vercel deployments are therefore **demo/preview environments only** — accounts, matches, and photos will periodically disappear. Real persistence requires migrating to a hosted database and blob storage (see next steps). Also note that Vercel caps serverless request bodies at ~4.5 MB, so photo uploads larger than ~3 MB (base64 overhead included) will fail there even though the app's own limit is 8 MB. It is recommended to enable **Deployment Protection** in Vercel so previews are not publicly accessible.
+**Self-hosted** (full persistence): `npm run build && npm start` on any Node 20+ host with a writable disk.
 
 ## Project structure
 
 ```
-├── index.html              # SPA entry
-├── public/                 # Static assets (logo/favicon)
-├── src/
-│   ├── main.tsx            # React bootstrap
-│   ├── App.tsx             # Root component: auth gate, tabs, data loading
-│   ├── types.ts            # Shared frontend types
-│   ├── data.ts             # Interest options, compatibility scoring, Madrid map spots
-│   ├── index.css           # Tailwind theme + global styles
-│   └── components/         # Screens & UI (onboarding, swipe, chat, events, admin…)
-├── server.ts               # Express API + static serving / Vite middleware
-├── server/db.ts            # JSON file database schema and read/write helpers
-├── api/index.ts            # Vercel serverless entrypoint (wraps the Express app)
-├── vercel.json             # Vercel build & routing configuration
-└── .env.example            # Documented environment variables
+├── index.html / public/       # SPA shell, PWA manifest, brand icons
+├── logo/NEST_OFFICIAL_LOGO.png  # Brand master (2000×2000)
+├── src/                       # React app (components, lib, theme)
+├── shared/                    # Code shared client+server: subscription
+│                              #   plan, countries dataset, compatibility
+├── server.ts                  # Express API (auth, verification, matching,
+│                              #   chat, events, admin, Stripe)
+├── server/                    # db schema+migrations, security, rate limit,
+│                              #   stripe client
+├── api/index.ts               # Vercel serverless entrypoint
+├── scripts/                   # Admin utilities (profile photo assignment)
+├── tests/                     # Vitest + Supertest suites (57 tests)
+└── docs/                      # STRIPE, SECURITY, ADMIN_AND_VERIFICATION, IOS
 ```
 
-## Current limitations
+## Remaining production blockers
 
-Known gaps that must be resolved before real users touch the app:
+1. **Hosted database + object storage.** `db.json` and local `uploads/` do not scale, have no concurrent-write safety, and are ephemeral on Vercel. Migrate to Postgres (Neon/Supabase) + blob storage before launch; live Stripe billing must wait for this.
+2. **Stripe activation** requires account credentials and dashboard setup (docs/STRIPE.md). Until then Premium is visibly "being configured" and collects nothing.
+3. **Safety features** — reporting, blocking, community standards, privacy controls — are not yet implemented and are required before real users meet through the app (also an App Store requirement).
+4. **Email verification / password reset** flows do not exist yet.
+5. Communities and the chat outing-planner remain UI shells (no backend), unchanged from the prototype.
 
-1. **Passwords are stored in plain text** in `db.json`. Hashing (bcrypt/scrypt) is the top priority fix.
-2. **The Premium payment flow is simulated.** The modal collects card details in the browser, waits 1.5 s, and reports a successful €10 charge — no payment processor is connected and card data goes nowhere. This must be replaced with Stripe (or removed) before launch.
-3. **Student verification is simulated.** Both "verify" buttons mark the profile verified without any real check.
-4. **Chat auto-replies impersonate the other user.** Sending a message calls a non-existent `/api/chat/respond` endpoint and, on failure, posts a canned "reply" into the conversation. This is a leftover from the AI-persona prototype and must be removed — in a real two-sided chat the other person answers herself.
-5. **Chat message alignment is broken** — the UI checks `senderId === "me"` but the server stores real user IDs, so messages don't align by sender.
-6. **The outing planner and Communities tabs are UI shells** — no backend endpoints or persistence exist for plans or community chats.
-7. **Session tokens use `Math.random()`** — not cryptographically secure; no rate limiting on auth endpoints.
-8. **`/api/upload` does not require authentication** (the signup flow uploads the photo before an account exists). Needs abuse protection.
-9. **JSON file persistence** does not scale and is ephemeral on Vercel.
-10. **No safety features yet** — reporting, blocking, and privacy controls from the product principles are not implemented.
-11. **Single 550 kB JS bundle** — no code splitting yet; the logo PNG is 287 kB.
+## Deployment checklist (production)
 
-## Recommended next steps
-
-1. Hash passwords and issue secure session tokens (crypto-random, httpOnly cookie or signed token).
-2. Remove the fake AI auto-reply and fix message alignment so chat is a genuine two-sided conversation.
-3. Replace the simulated payment modal with Stripe Checkout (or hide Premium behind a feature flag until then).
-4. Migrate persistence to a hosted database (e.g. Neon/Vercel Postgres, Turso, or Supabase) and uploads to blob storage (Vercel Blob or S3) so Vercel deployments are fully functional.
-5. Implement real student verification, then reporting/blocking and privacy controls.
-6. Build the plans/communities backends or remove the shells from navigation.
-7. Performance & polish: code-split, compress the logo, then the visual redesign per the product brief.
+- [ ] Hosted Postgres + blob storage migration
+- [ ] `ADMIN_EMAILS` set; first admin account created and verified
+- [ ] Stripe live keys + webhook + Customer Portal + Apple Pay domain (docs/STRIPE.md)
+- [ ] `APP_BASE_URL` set to the production domain
+- [ ] Deployment Protection on previews; privacy policy page; reporting/blocking shipped
+- [ ] Rate limiting moved to a shared store
+- [ ] `npm test`, `npm run lint`, `npm run build` green
