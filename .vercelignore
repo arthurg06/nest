@@ -1,0 +1,13 @@
+# Never upload local data, credentials, or personal assets to Vercel.
+# (.vercelignore takes precedence over .gitignore for CLI deploys, so the
+# sensitive entries are repeated here explicitly.)
+node_modules
+dist
+.env
+.env.*
+db.json
+db.json.tmp
+uploads
+images
+tests
+.claude
