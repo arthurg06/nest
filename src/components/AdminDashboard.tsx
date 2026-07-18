@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { ShieldCheck, Trash2, Users, MapPin, Search, ExternalLink, Ban, RotateCcw, BadgeCheck, XCircle } from "lucide-react";
+import { ShieldCheck, Trash2, Users, MapPin, Search, ExternalLink, Ban, RotateCcw, BadgeCheck, XCircle, Key } from "lucide-react";
 import { Recommendation } from "../types";
 import { apiUrl } from "../lib/api";
 
@@ -181,6 +181,34 @@ export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboar
       }
     } catch {
       notify("Could not reject — network error.");
+    } finally {
+      setBusyUserId(null);
+    }
+  };
+
+  // Recovery without email delivery: the admin generates a one-time link and
+  // passes it to the member through a channel she already trusts. The admin
+  // never sees or sets the password herself.
+  const handleResetLink = async (user: AdminUser) => {
+    setBusyUserId(user.id);
+    try {
+      const res = await fetch(apiUrl(`/api/admin/users/${user.id}/reset-link`), {
+        method: "POST",
+        headers: authHeaders()
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        notify(data.error || "Could not create a reset link.");
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(data.resetUrl);
+        notify(`Reset link copied — send it to ${user.profile?.name || "her"} directly. It works once, for ${data.expiresInMinutes} minutes.`);
+      } catch {
+        window.prompt("Copy this single-use reset link and send it to her directly:", data.resetUrl);
+      }
+    } catch {
+      notify("Could not create a reset link — network error.");
     } finally {
       setBusyUserId(null);
     }
@@ -589,6 +617,15 @@ export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboar
                           <span className="text-[10px] text-muted-foreground italic font-sans pr-2">Admin</span>
                         ) : (
                           <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              onClick={() => handleResetLink(u)}
+                              disabled={busyUserId !== null}
+                              className="bg-card hover:bg-muted text-foreground border border-border rounded-lg p-2 transition cursor-pointer"
+                              title="Create a single-use password reset link"
+                              aria-label="Create a password reset link"
+                            >
+                              <Key size={13} />
+                            </button>
                             <button
                               onClick={() => handleSuspendToggle(u)}
                               disabled={busyUserId !== null}

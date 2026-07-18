@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { UserProfile, Match, Message, Community, Event, Recommendation, Plan, CommunityMessage } from "./types";
+import { UserProfile, Match, Event, Recommendation } from "./types";
 import { calculateCompatibility } from "./data";
 import SwipeCard from "./components/SwipeCard";
 import ChatWindow from "./components/ChatWindow";
 import type { OutingDraft } from "./components/OutingPlanner";
 import CityDiscovery from "./components/CityDiscovery";
-import Communities from "./components/Communities";
 import Events from "./components/Events";
 import ProfileEditor from "./components/ProfileEditor";
 import OnboardingSignUp from "./components/OnboardingSignUp";
@@ -17,7 +16,7 @@ import {
 import { apiUrl } from "./lib/api";
 
 export default function App() {
-  // Navigation State: "swipe" | "chat" | "city" | "communities" | "events" | "profile"
+  // Navigation State: "swipe" | "chat" | "city" | "events" | "profile" | "admin"
   const [activeTab, setActiveTab] = useState<string>("swipe");
 
   // Auth & Profile state
@@ -135,11 +134,18 @@ export default function App() {
       const data = await res.json();
       if (res.ok) {
         setMatches(data);
-        // Preselect a conversation on wide screens only: on phones the list
-        // is the first thing she should see.
-        if (data.length > 0 && !activeMatchId && window.innerWidth >= 768) {
-          setActiveMatchId(data[0].id);
-        }
+        // The five-second poll re-runs this function from a closure created
+        // when the effect was set up, so reading `activeMatchId` here would
+        // always see its value from that moment (empty) and keep snapping
+        // back to the first conversation. The functional updater always gets
+        // the current value instead.
+        setActiveMatchId(prev => {
+          if (prev && data.some((m: any) => m.id === prev)) return prev; // keep the open chat
+          if (prev) return ""; // it vanished (e.g. the other member left)
+          if (data.length === 0) return "";
+          // Preselect on wide screens only: on phones the list comes first.
+          return window.innerWidth >= 768 ? data[0].id : "";
+        });
       }
     } catch (err) {
       console.error("Error loading matches:", err);
@@ -244,12 +250,20 @@ export default function App() {
       loadNotifications();
       loadSubscription();
 
-      // Setup a periodic poll for matches and messages every 5 seconds
-      const timer = setInterval(() => {
+      // Poll for new messages and notifications. Every poll costs a full
+      // database read server-side, so it pauses while the tab is in the
+      // background and refreshes immediately when she comes back.
+      const poll = () => {
+        if (document.hidden) return;
         loadMatches();
         loadNotifications();
-      }, 5000);
-      return () => clearInterval(timer);
+      };
+      const timer = setInterval(poll, 15000);
+      document.addEventListener("visibilitychange", poll);
+      return () => {
+        clearInterval(timer);
+        document.removeEventListener("visibilitychange", poll);
+      };
     }
   }, [currentUser]);
 
@@ -780,14 +794,6 @@ export default function App() {
               onDeleteRecommendation={handleDeleteRecommendation}
               currentUser={currentUser}
               isAdmin={isAdmin}
-            />
-          )}
-
-          {activeTab === "communities" && (
-            <Communities 
-              communities={[]} 
-              currentUser={currentUser} 
-              onPostToCommunity={() => {}} 
             />
           )}
 

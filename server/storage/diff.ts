@@ -16,6 +16,7 @@ export const COLLECTION_KEYS: Record<keyof DbSchema, string> = {
   posts: "id",
   notifications: "id",
   sessions: "token",
+  passwordResets: "tokenHash",
   adminAudit: "id",
   processedStripeEvents: "",
 };

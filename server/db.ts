@@ -212,6 +212,22 @@ export interface Session {
   expiresAt: string;
 }
 
+/**
+ * A pending password reset. Only the SHA-256 digest of the token is stored —
+ * the raw token exists solely in the link sent to the member.
+ */
+export interface PasswordReset {
+  /** SHA-256 of the token; also the record key. */
+  tokenHash: string;
+  userId: string;
+  expiresAt: string;
+  createdAt: string;
+  /** Set once the token has been spent, so it can never be replayed. */
+  usedAt?: string;
+  /** "self" when the member asked, "admin" when an admin issued the link. */
+  issuedBy: "self" | "admin";
+}
+
 export interface DbSchema {
   users: User[];
   profiles: UserProfile[];
@@ -225,6 +241,7 @@ export interface DbSchema {
   posts: Post[];
   notifications: Notification[];
   sessions: Session[];
+  passwordResets: PasswordReset[];
   adminAudit: AdminAuditEntry[];
   /** Processed Stripe webhook event IDs (idempotency guard, capped). */
   processedStripeEvents: string[];
@@ -243,6 +260,7 @@ const initialDb: DbSchema = {
   posts: [],
   notifications: [],
   sessions: [],
+  passwordResets: [],
   adminAudit: [],
   processedStripeEvents: [],
 };
@@ -264,6 +282,11 @@ function migrateDb(db: DbSchema): boolean {
 
   if (!Array.isArray(db.plans)) {
     db.plans = [];
+    changed = true;
+  }
+
+  if (!Array.isArray(db.passwordResets)) {
+    db.passwordResets = [];
     changed = true;
   }
 
@@ -359,8 +382,11 @@ export async function readDb(): Promise<DbSchema> {
     migrateDb(db);
     await backend.persist(null, db);
   } else {
+    // Clone only when a migration actually rewrites something — this ran on
+    // every single request otherwise.
     const beforeMigration = structuredClone(db);
-    if (migrateDb(db)) {
+    const changed = migrateDb(db);
+    if (changed) {
       await backend.persist(beforeMigration, db);
     }
   }

@@ -6,6 +6,7 @@ import { Sparkles, ShieldCheck, GraduationCap, Globe, MessageCircle, Heart, Film
 import { ImageUploader } from "./ImageUploader";
 import { searchCountries } from "../../shared/countries";
 import { apiUrl } from "../lib/api";
+import { ForgotPassword, ResetPassword } from "./PasswordRecovery";
 
 interface OnboardingSignUpProps {
   onAuthSuccess: (token: string, user: any, profile: UserProfile) => void;
@@ -20,6 +21,20 @@ const PRESET_PHOTOS = [
 
 export default function OnboardingSignUp({ onAuthSuccess }: OnboardingSignUpProps) {
   const [isLoginMode, setIsLoginMode] = useState(false);
+  // A reset link lands on "/?reset=<token>", so recovery is reachable without
+  // a session and without a second app.
+  const resetToken = new URLSearchParams(window.location.search).get("reset");
+  const [recoveryView, setRecoveryView] = useState<"none" | "forgot" | "reset">(resetToken ? "reset" : "none");
+
+  const leaveRecovery = () => {
+    setRecoveryView("none");
+    setIsLoginMode(true);
+    if (resetToken) {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("reset");
+      window.history.replaceState({}, "", url.toString());
+    }
+  };
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -259,7 +274,13 @@ export default function OnboardingSignUp({ onAuthSuccess }: OnboardingSignUpProp
       {/* Card container */}
       <div className="max-w-md w-full mx-auto bg-card/40 backdrop-blur-xl rounded-[32px] border border-border/80 shadow-2xl overflow-hidden p-6 md:p-8 grow flex flex-col justify-between">
         
-        {isLoginMode ? (
+        {recoveryView !== "none" ? (
+          recoveryView === "reset" && resetToken ? (
+            <ResetPassword token={resetToken} onDone={leaveRecovery} />
+          ) : (
+            <ForgotPassword onBack={leaveRecovery} />
+          )
+        ) : isLoginMode ? (
           // LOGIN SCREEN
           <form onSubmit={handleLoginSubmit} className="space-y-6 flex-1 flex flex-col justify-between">
             <div className="space-y-4">
@@ -317,7 +338,17 @@ export default function OnboardingSignUp({ onAuthSuccess }: OnboardingSignUpProp
                 <ArrowRight size={13} />
               </button>
 
-              <div className="text-center">
+              <div className="text-center space-y-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRecoveryView("forgot");
+                    setError("");
+                  }}
+                  className="block w-full text-xs text-muted-foreground hover:text-foreground font-semibold py-2"
+                >
+                  Forgot your password?
+                </button>
                 <button
                   type="button"
                   onClick={() => {

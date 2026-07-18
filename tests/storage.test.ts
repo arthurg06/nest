@@ -17,6 +17,7 @@ function emptyDb(): DbSchema {
     posts: [],
     notifications: [],
     sessions: [],
+    passwordResets: [],
     adminAudit: [],
     processedStripeEvents: [],
   };

@@ -57,6 +57,25 @@ export function generateSessionToken(): string {
 }
 
 // Collision-resistant random entity ID.
+// Password-reset tokens are handled like session credentials: a long random
+// value goes to the member, and only its SHA-256 digest is stored, so a leak
+// of the database cannot be replayed to take over accounts.
+export function generateResetToken(): string {
+  return crypto.randomBytes(32).toString("base64url");
+}
+
+export function hashResetToken(token: string): string {
+  return crypto.createHash("sha256").update(token).digest("hex");
+}
+
+/** Constant-time comparison for equal-length digests. */
+export function safeEqual(a: string, b: string): boolean {
+  const bufA = Buffer.from(a);
+  const bufB = Buffer.from(b);
+  if (bufA.length !== bufB.length) return false;
+  return crypto.timingSafeEqual(bufA, bufB);
+}
+
 export function generateSecureId(): string {
   return crypto.randomBytes(12).toString("base64url");
 }

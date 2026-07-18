@@ -33,9 +33,13 @@ export default function ChatWindow({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const plans = activeMatch.plans || [];
 
+  // Scroll down when the conversation actually changes — not on every poll.
+  // The five-second refresh hands us a new array each time, so depending on
+  // the array itself would yank the view back down while she reads history.
+  const lastMessageId = activeMatch.messages[activeMatch.messages.length - 1]?.id;
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [activeMatch.messages]);
+  }, [activeMatch.id, activeMatch.messages.length, lastMessageId]);
 
   // Messages only ever come from real members — nobody is answered automatically.
   const handleSendText = (e?: React.FormEvent) => {

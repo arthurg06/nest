@@ -67,27 +67,6 @@ export interface Match {
   };
 }
 
-export interface CommunityMessage {
-  id: string;
-  senderName: string;
-  senderAvatarSeed: string;
-  senderAvatarColor: string;
-  senderUni: string;
-  text: string;
-  timestamp: string;
-}
-
-export interface Community {
-  id: string;
-  name: string;
-  description: string;
-  category: "all" | "university" | "interests" | "nationality";
-  membersCount: number;
-  messages: CommunityMessage[];
-  lastMessageText?: string;
-  lastMessageTime?: string;
-}
-
 export interface Event {
   id: string;
   title: string;

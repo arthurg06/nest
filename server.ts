@@ -8,10 +8,11 @@ import { User, UserProfile, Swipe, Match, Message, Recommendation, Event, EventR
 // and typescript handles resolution. In Node, with esbuild bundle, we should import './server/db' without extension or let esbuild resolve it.
 import * as dbManager from "./server/db.js";
 import { calculateCompatibility, PREDEFINED_INTEREST_OPTIONS } from "./shared/compatibility.js";
-import { hashPassword, verifyPassword, isHashedPassword, generateSessionToken, generateSecureId, sniffImageType } from "./server/security.js";
+import { hashPassword, verifyPassword, isHashedPassword, generateSessionToken, generateSecureId, sniffImageType, generateResetToken, hashResetToken, safeEqual } from "./server/security.js";
+import { isEmailConfigured, sendEmail, passwordResetEmail } from "./server/email.js";
 import { RateLimiter } from "./server/rateLimit.js";
 import { getStripe, isStripeConfigured, isWebhookConfigured, premiumPriceId } from "./server/stripe.js";
-import { saveImage, deleteImage } from "./server/images.js";
+import { saveImage, deleteImage, isAppIssuedImage } from "./server/images.js";
 import { PREMIUM_PLAN, PREMIUM_PRICE_LABEL } from "./shared/subscription.js";
 
 dotenv.config({ quiet: true });
@@ -37,10 +38,26 @@ function ownProfileView(profile: UserProfile) {
 }
 
 // A profile as shown to OTHER members: no verification record at all.
+// A profile as shown to OTHER members: no verification record, and no social
+// handles — those are the highest-value scraping target, so they are shared
+// only once two members have matched (see matchedProfileView).
 function publicProfileView(profile: UserProfile) {
+  const { verification, instagram, tiktok, otherSocial, ...rest } = profile;
+  return rest;
+}
+
+// A profile as shown to someone she has matched with: handles included.
+function matchedProfileView(profile: UserProfile) {
   const { verification, ...rest } = profile;
   return rest;
 }
+
+// Free text limits. Without these a single member could store megabytes that
+// every other member then downloads on every request.
+const LIMITS = { name: 80, bio: 1000, message: 4000, shortText: 120, address: 200, description: 2000 };
+
+const boundedText = (value: unknown, max: number): string | null =>
+  typeof value === "string" && value.trim() ? value.trim().slice(0, max) : null;
 
 const asStringArray = (value: unknown): string[] =>
   Array.isArray(value) ? value.filter((v): v is string => typeof v === "string").slice(0, 50) : [];
@@ -65,14 +82,39 @@ function sanitizeInterests(raw: unknown) {
 // (uploads path or Blob) or an https URL, primary first.
 const MAX_PROFILE_PHOTOS = 4;
 
-function sanitizePhotos(raw: unknown, fallback: string[]): string[] {
+// Only URLs this app issued are accepted, plus any the member already has on
+// her profile (older records predate uploads and hold external URLs). Without
+// this, a member could list someone else's photo URLs and — since deleting an
+// account removes its photos — destroy another member's images.
+function sanitizePhotos(raw: unknown, fallback: string[], existing: string[] = []): string[] {
   if (!Array.isArray(raw)) return fallback;
+  const grandfathered = new Set(existing);
   const cleaned = raw
     .filter((v): v is string => typeof v === "string")
     .map(v => v.trim())
-    .filter(v => v.startsWith("/uploads/") || v.startsWith("https://"))
+    .filter(v => isAppIssuedImage(v) || grandfathered.has(v))
     .slice(0, MAX_PROFILE_PHOTOS);
   return cleaned.length > 0 ? cleaned : fallback;
+}
+
+// Belt and braces for deletion: never remove an image another record still
+// points at, whatever route it took to get onto this profile.
+function imagesSafeToDelete(db: DbSchema, candidates: (string | undefined)[], ownerUserId: string): string[] {
+  const referencedElsewhere = new Set<string>();
+  for (const profile of db.profiles) {
+    if (profile.userId === ownerUserId) continue;
+    if (profile.photo) referencedElsewhere.add(profile.photo);
+    for (const url of profile.photos || []) referencedElsewhere.add(url);
+  }
+  for (const rec of db.recommendations) {
+    if (rec.imageUrl) referencedElsewhere.add(rec.imageUrl);
+    for (const url of rec.images || []) referencedElsewhere.add(url);
+  }
+  for (const post of db.posts) {
+    if (post.imageUrl) referencedElsewhere.add(post.imageUrl);
+  }
+
+  return candidates.filter((url): url is string => Boolean(url) && !referencedElsewhere.has(url!));
 }
 
 // Server-side Premium entitlement — driven by Stripe webhook state (or a
@@ -503,8 +545,11 @@ app.post("/api/auth/login", async (req, res) => {
 
     const profile = db.profiles.find(p => p.userId === user.id);
 
-    // Auto-promote configured admin accounts on login
-    if (isAdminEmail(user.email) && !user.isAdmin) {
+    // Auto-promote configured admin accounts on login. `role` is the field
+    // authorization actually checks, and migrateDb derives isAdmin from it —
+    // setting only isAdmin was silently reverted on the next read.
+    if (isAdminEmail(user.email) && user.role !== "admin") {
+      user.role = "admin";
       user.isAdmin = true;
     }
 
@@ -540,6 +585,135 @@ app.post("/api/auth/login", async (req, res) => {
   }
 });
 
+// ----------------------------------------------------
+// PASSWORD RECOVERY
+// ----------------------------------------------------
+
+const RESET_TTL_MINUTES = 60;
+const resetRequestLimiter = new RateLimiter(5, 60 * 60 * 1000); // 5 requests / hour / IP
+
+function resetUrlFor(token: string): string {
+  return `${appBaseUrl()}/?reset=${token}`;
+}
+
+// Issues a reset token for a user and stores only its digest. Any earlier
+// unused token for the same account is invalidated, so at most one link works.
+async function issueResetToken(db: DbSchema, userId: string, issuedBy: "self" | "admin") {
+  const now = Date.now();
+  for (const record of db.passwordResets) {
+    if (record.userId === userId && !record.usedAt) {
+      record.usedAt = new Date(now).toISOString();
+    }
+  }
+
+  const token = generateResetToken();
+  db.passwordResets.push({
+    tokenHash: hashResetToken(token),
+    userId,
+    expiresAt: new Date(now + RESET_TTL_MINUTES * 60 * 1000).toISOString(),
+    createdAt: new Date(now).toISOString(),
+    issuedBy
+  });
+
+  // Keep the table small: drop records that expired over a day ago.
+  const cutoff = now - 24 * 60 * 60 * 1000;
+  db.passwordResets = db.passwordResets.filter(r => new Date(r.expiresAt).getTime() > cutoff);
+
+  return token;
+}
+
+// Request a reset link. The response never reveals whether the address is
+// registered, so it cannot be used to discover who is a member.
+app.post("/api/auth/forgot-password", async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email || typeof email !== "string") {
+      return res.status(400).json({ error: "An email address is required" });
+    }
+
+    if (!isTestEnv && !resetRequestLimiter.check(clientIp(req))) {
+      return res.status(429).json({ error: "Too many attempts. Please try again later." });
+    }
+
+    const db = await dbManager.readDb();
+    const user = db.users.find(u => u.email.toLowerCase() === email.trim().toLowerCase());
+
+    // Same answer either way.
+    const genericResponse = {
+      success: true,
+      message: "If that address belongs to a NEST account, a reset link is on its way.",
+      emailConfigured: isEmailConfigured()
+    };
+
+    if (!user || user.status === "suspended") {
+      return res.json(genericResponse);
+    }
+
+    const token = await issueResetToken(db, user.id, "self");
+    await dbManager.writeDb(db);
+
+    const mail = passwordResetEmail(resetUrlFor(token), RESET_TTL_MINUTES);
+    await sendEmail({ to: user.email, ...mail });
+
+    res.json(genericResponse);
+  } catch (error) {
+    console.error("Forgot-password error:", error);
+    res.status(500).json({ error: "Could not start the reset. Please try again." });
+  }
+});
+
+// Check a token before showing the form, so an expired link says so up front.
+app.get("/api/auth/reset-password/:token", async (req, res) => {
+  try {
+    const db = await dbManager.readDb();
+    const record = db.passwordResets.find(r => safeEqual(r.tokenHash, hashResetToken(req.params.token)));
+    const valid = Boolean(record && !record.usedAt && new Date(record.expiresAt).getTime() > Date.now());
+    res.json({ valid });
+  } catch (error) {
+    res.status(500).json({ error: "Could not check this link" });
+  }
+});
+
+// Spend the token and set the new password. Every existing session is
+// dropped, so anyone holding a stolen token is signed out too.
+app.post("/api/auth/reset-password", async (req, res) => {
+  try {
+    const { token, password } = req.body;
+
+    if (!token || typeof token !== "string") {
+      return res.status(400).json({ error: "This reset link is not valid" });
+    }
+    if (typeof password !== "string" || password.length < 6) {
+      return res.status(400).json({ error: "Password must be at least 6 characters" });
+    }
+
+    const db = await dbManager.readDb();
+    const record = db.passwordResets.find(r => safeEqual(r.tokenHash, hashResetToken(token)));
+
+    if (!record || record.usedAt || new Date(record.expiresAt).getTime() <= Date.now()) {
+      return res.status(400).json({ error: "This reset link has expired or was already used" });
+    }
+
+    const user = db.users.find(u => u.id === record.userId);
+    if (!user) {
+      return res.status(400).json({ error: "This reset link is no longer valid" });
+    }
+    if (user.status === "suspended") {
+      return res.status(403).json({ error: "This account is suspended. Contact the NEST team for help." });
+    }
+
+    user.passwordHash = await hashPassword(password);
+    record.usedAt = new Date().toISOString();
+    db.sessions = db.sessions.filter(s => s.userId !== user.id);
+
+    await dbManager.writeDb(db);
+    res.json({ success: true, message: "Your password has been changed. You can sign in with it now." });
+  } catch (error) {
+    console.error("Reset-password error:", error);
+    res.status(500).json({ error: "Could not reset the password. Please try again." });
+  }
+});
+
 // Get Current User (Me)
 app.get("/api/auth/me", authenticate, async (req, res) => {
   try {
@@ -554,7 +728,8 @@ app.get("/api/auth/me", authenticate, async (req, res) => {
     const profile = db.profiles.find(p => p.userId === userId);
 
     // Auto-promote configured admin accounts when their token is verified
-    if (isAdminEmail(user.email) && !user.isAdmin) {
+    if (isAdminEmail(user.email) && user.role !== "admin") {
+      user.role = "admin";
       user.isAdmin = true;
       await dbManager.writeDb(db);
     }
@@ -607,7 +782,7 @@ app.post("/api/profiles/update", authenticate, async (req, res) => {
 
     db.profiles[profileIdx] = {
       ...db.profiles[profileIdx],
-      name: data.name || db.profiles[profileIdx].name,
+      name: boundedText(data.name, LIMITS.name) ?? db.profiles[profileIdx].name,
       age: Number(data.age) || db.profiles[profileIdx].age,
       nationality: data.nationality || db.profiles[profileIdx].nationality,
       university: data.university || db.profiles[profileIdx].university,
@@ -615,10 +790,11 @@ app.post("/api/profiles/update", authenticate, async (req, res) => {
       languages: data.languages || db.profiles[profileIdx].languages,
       personalityType: data.personalityType || db.profiles[profileIdx].personalityType,
       friendshipType: data.friendshipType || db.profiles[profileIdx].friendshipType,
-      bio: data.bio || db.profiles[profileIdx].bio,
+      bio: boundedText(data.bio, LIMITS.bio) ?? db.profiles[profileIdx].bio,
       ...(() => {
         const current = db.profiles[profileIdx];
-        const photos = sanitizePhotos(data.photos, current.photos?.length ? current.photos : [current.photo]);
+        const currentPhotos = current.photos?.length ? current.photos : [current.photo];
+        const photos = sanitizePhotos(data.photos, currentPhotos, currentPhotos);
         // photo stays the primary so older clients keep working
         return { photos, photo: photos[0] || data.photo || current.photo };
       })(),
@@ -795,6 +971,10 @@ app.post("/api/swipe", authenticate, async (req, res) => {
     if (!actorProfile) {
       return res.status(404).json({ error: "Profile not found" });
     }
+    if (toUserId === userId) {
+      return res.status(400).json({ error: "You cannot swipe on your own profile" });
+    }
+
     const targetProfile = db.profiles.find(p => p.userId === toUserId);
     const targetUser = db.users.find(u => u.id === toUserId);
     if (!targetProfile || !targetUser || targetUser.status !== "active") {
@@ -891,7 +1071,7 @@ app.get("/api/matches", authenticate, async (req, res) => {
       return {
         id: m.id,
         otherUserId,
-        profile: otherProfile ? publicProfileView(otherProfile) : undefined,
+        profile: otherProfile ? matchedProfileView(otherProfile) : undefined,
         messages: messages.sort((a,b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()),
         plans: db.plans.filter(p => p.matchId === m.id),
         compatibilityRating: report.score,
@@ -921,7 +1101,8 @@ app.post("/api/chats/:matchId/messages", authenticate, async (req, res) => {
     const { matchId } = req.params;
     const { text } = req.body;
 
-    if (!text) {
+    const messageText = boundedText(text, LIMITS.message);
+    if (!messageText) {
       return res.status(400).json({ error: "Message text is required" });
     }
 
@@ -936,7 +1117,7 @@ app.post("/api/chats/:matchId/messages", authenticate, async (req, res) => {
       id: generateId(),
       matchId,
       senderId: userId,
-      text,
+      text: messageText,
       timestamp: new Date().toISOString(),
       createdAt: new Date().toISOString()
     };
@@ -1776,7 +1957,11 @@ app.delete("/api/users/me", authenticate, async (req, res) => {
     }
 
     const profileToDelete = db.profiles.find(p => p.userId === userId);
-    const photos = profileToDelete?.photos?.length ? profileToDelete.photos : [profileToDelete?.photo];
+    const photos = imagesSafeToDelete(
+      db,
+      profileToDelete?.photos?.length ? profileToDelete.photos : [profileToDelete?.photo],
+      userId
+    );
 
     await cancelStripeSubscriptionSafely(user);
     deleteUserData(userId, db);
@@ -1844,7 +2029,11 @@ app.delete("/api/admin/users/:userId", authenticateAdmin, async (req, res) => {
     }
 
     const profileToDelete = db.profiles.find(p => p.userId === userId);
-    const photos = profileToDelete?.photos?.length ? profileToDelete.photos : [profileToDelete?.photo];
+    const photos = imagesSafeToDelete(
+      db,
+      profileToDelete?.photos?.length ? profileToDelete.photos : [profileToDelete?.photo],
+      userId
+    );
 
     await cancelStripeSubscriptionSafely(user);
     deleteUserData(userId, db);
@@ -1895,6 +2084,34 @@ app.post("/api/admin/users/:userId/restore", authenticateAdmin, async (req, res)
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: "Error restoring account" });
+  }
+});
+
+// Admin-issued reset link. This is the path that works when email delivery
+// is not configured: the admin generates a one-time link and hands it to the
+// member through a channel she already trusts. The admin never sees or sets
+// the password herself, and the action is recorded in the audit trail.
+app.post("/api/admin/users/:userId/reset-link", authenticateAdmin, async (req, res) => {
+  try {
+    const adminId = (req as any).userId;
+    const { userId } = req.params;
+
+    const db = await dbManager.readDb();
+    const user = db.users.find(u => u.id === userId);
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    const token = await issueResetToken(db, user.id, "admin");
+    recordAudit(db, adminId, "user.reset_link", userId);
+    await dbManager.writeDb(db);
+
+    res.json({
+      resetUrl: resetUrlFor(token),
+      expiresInMinutes: RESET_TTL_MINUTES,
+      note: "Single use. Send it to her directly and never post it anywhere public."
+    });
+  } catch (error) {
+    console.error("Admin reset-link error:", error);
+    res.status(500).json({ error: "Could not create a reset link" });
   }
 });
 

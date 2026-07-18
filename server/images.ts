@@ -49,8 +49,21 @@ export async function saveImage(buffer: Buffer, ext: string): Promise<string> {
 // produced are touched; anything else (external stock photos, seed assets)
 // is ignored. Failures are logged, never thrown — image cleanup must not
 // block account or content deletion.
+// True only for URLs this app itself issued. Anything else — another site's
+// image, or a Blob path we did not create — must never be accepted into a
+// profile nor passed to the delete API.
+export function isAppIssuedImage(url: string | undefined): boolean {
+  if (!url) return false;
+  if (url.startsWith("/uploads/")) return true;
+  return /^https:\/\/[a-z0-9-]+\.public\.blob\.vercel-storage\.com\/uploads\/[\w.-]+$/.test(url);
+}
+
 export async function deleteImage(url: string | undefined): Promise<void> {
   if (!url) return;
+
+  // Deleting is destructive and irreversible: refuse anything we did not
+  // issue, so a crafted URL can never remove another member's photo.
+  if (!isAppIssuedImage(url)) return;
 
   try {
     if (url.startsWith("/uploads/")) {
