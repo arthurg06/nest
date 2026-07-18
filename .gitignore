@@ -17,6 +17,10 @@ uploads/*
 # Supplied personal source assets (applied locally via scripts/, never committed)
 images/
 
+# Personal seed assets deployed to Vercel but never committed
+# (uploaded by CLI deploys because .vercelignore does not list them)
+public/seed/
+
 # Environment variables (secrets)
 .env
 .env.*

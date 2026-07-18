@@ -282,12 +282,38 @@ function migrateDb(db: DbSchema): boolean {
   return changed;
 }
 
+// Optional bootstrap for ephemeral deployments (e.g. Vercel, where /tmp
+// resets between cold starts): DB_SEED holds base64-encoded JSON with a
+// partial DbSchema — typically one admin user (scrypt password hash only,
+// never plain text) plus her profile — used to hydrate a missing database
+// file. Sessions are deliberately never seeded.
+function seedFromEnv(): DbSchema | null {
+  const raw = process.env.DB_SEED;
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(Buffer.from(raw, "base64").toString("utf-8"));
+    const db = structuredClone(initialDb);
+    for (const key of Object.keys(db) as (keyof DbSchema)[]) {
+      if (key === "sessions") continue;
+      if (Array.isArray(parsed[key])) {
+        (db[key] as unknown[]) = parsed[key];
+      }
+    }
+    return db;
+  } catch (error) {
+    console.error("Invalid DB_SEED value — starting with an empty database:", error);
+    return null;
+  }
+}
+
 // Helper to load db
 export function readDb(): DbSchema {
   try {
     if (!fs.existsSync(DB_FILE)) {
-      fs.writeFileSync(DB_FILE, JSON.stringify(initialDb, null, 2), "utf-8");
-      return structuredClone(initialDb);
+      const initial = seedFromEnv() ?? structuredClone(initialDb);
+      migrateDb(initial);
+      fs.writeFileSync(DB_FILE, JSON.stringify(initial, null, 2), "utf-8");
+      return initial;
     }
     const content = fs.readFileSync(DB_FILE, "utf-8");
     const db = JSON.parse(content) as DbSchema;
