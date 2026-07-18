@@ -1,0 +1,79 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900;950&family=JetBrains+Mono:wght@400;700;800&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  
+  --color-coral-50: #FFF1F2;
+  --color-coral-100: #FFE4E6;
+  --color-coral-200: #FECDD3;
+  --color-coral-300: #FDA4AF;
+  --color-coral-400: #FB7185;
+  --color-coral-500: #F43F5E;
+  --color-coral-600: #E11D48;
+  --color-coral-700: #BE123C;
+}
+
+/* Custom CSS Animation Keyframes for High Fidelity UX */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scaleUp {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-scale-up {
+  animation: scaleUp 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: #fdf2f8;
+  background-image: radial-gradient(at 0% 0%, #ffe4e6 0px, transparent 50%), 
+                    radial-gradient(at 100% 0%, #fbcfe8 0px, transparent 50%), 
+                    radial-gradient(at 100% 100%, #fae8ff 0px, transparent 50%), 
+                    radial-gradient(at 0% 100%, #ffe4e6 0px, transparent 50%);
+  color: #0f172a;
+  overflow-x: hidden;
+  min-height: 100vh;
+}
+
+/* Custom scrollbars for elegant UI lists */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #f472b6;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #db2777;
+}
+

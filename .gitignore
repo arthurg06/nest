@@ -1,0 +1,27 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+coverage/
+
+# Local database (contains real user data — never commit)
+db.json
+db.json.tmp
+
+# User-uploaded content (never commit)
+uploads/*
+!uploads/.gitkeep
+
+# Environment variables (secrets)
+.env
+.env.*
+!.env.example
+
+# Vercel
+.vercel/
+
+# Logs & OS files
+*.log
+.DS_Store

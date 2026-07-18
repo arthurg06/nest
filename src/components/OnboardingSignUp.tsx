@@ -1,0 +1,918 @@
+import React, { useState } from "react";
+import { UserProfile, Interests } from "../types";
+import { PREDEFINED_INTEREST_OPTIONS } from "../data";
+import { Sparkles, ShieldCheck, GraduationCap, Globe, MessageCircle, Heart, Film, ArrowRight, User, Check, Lock, Mail, Instagram, Search } from "lucide-react";
+import { ImageUploader } from "./ImageUploader";
+
+interface OnboardingSignUpProps {
+  onAuthSuccess: (token: string, user: any, profile: UserProfile) => void;
+}
+
+const PRESET_PHOTOS = [
+  "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80",
+  "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=300&q=80",
+  "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=300&q=80",
+  "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=300&q=80"
+];
+
+export default function OnboardingSignUp({ onAuthSuccess }: OnboardingSignUpProps) {
+  const [isLoginMode, setIsLoginMode] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  // Login inputs
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+
+  // Signup inputs
+  const [step, setStep] = useState(1);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
+  const [age, setAge] = useState("");
+  const [university, setUniversity] = useState("");
+  const [friendshipType, setFriendshipType] = useState("");
+  const [bio, setBio] = useState("");
+  const [tiktok, setTiktok] = useState("");
+  const [instagram, setInstagram] = useState("");
+  const [otherSocial, setOtherSocial] = useState("");
+  const [photo, setPhoto] = useState("");
+
+  // Interactive Nationalities State (Multiple selection support)
+  const [selectedNationalities, setSelectedNationalities] = useState<string[]>([]);
+  const [nationalitySearch, setNationalitySearch] = useState("");
+  const [showNationalityDropdown, setShowNationalityDropdown] = useState(false);
+
+  // Interactive Languages State with Fluency level
+  const [languagesList, setLanguagesList] = useState<string[]>([]);
+  const [selectedLanguage, setSelectedLanguage] = useState("English");
+  const [selectedFluency, setSelectedFluency] = useState("Native");
+  const [customLanguage, setCustomLanguage] = useState("");
+
+  const ALL_COUNTRIES = [
+    { name: "Afghanistan", flag: "🇦🇫" },
+    { name: "Albania", flag: "🇦🇱" },
+    { name: "Algeria", flag: "🇩🇿" },
+    { name: "Andorra", flag: "🇦🇩" },
+    { name: "Angola", flag: "🇦🇴" },
+    { name: "Argentina", flag: "🇦🇷" },
+    { name: "Armenia", flag: "🇦🇲" },
+    { name: "Australia", flag: "🇦🇺" },
+    { name: "Austria", flag: "🇦🇹" },
+    { name: "Azerbaijan", flag: "🇦🇿" },
+    { name: "Bahamas", flag: "🇧🇸" },
+    { name: "Bahrain", flag: "🇧🇭" },
+    { name: "Bangladesh", flag: "🇧🇩" },
+    { name: "Barbados", flag: "🇧🇧" },
+    { name: "Belarus", flag: "🇧🇾" },
+    { name: "Belgium", flag: "🇧🇪" },
+    { name: "Belize", flag: "🇧🇿" },
+    { name: "Benin", flag: "🇧🇯" },
+    { name: "Bhutan", flag: "🇧🇹" },
+    { name: "Bolivia", flag: "🇧🇴" },
+    { name: "Bosnia and Herzegovina", flag: "🇧🇦" },
+    { name: "Botswana", flag: "🇧🇼" },
+    { name: "Brazil", flag: "🇧🇷" },
+    { name: "Brunei", flag: "🇧🇳" },
+    { name: "Bulgaria", flag: "🇧🇬" },
+    { name: "Burkina Faso", flag: "🇧🇫" },
+    { name: "Burundi", flag: "🇧🇮" },
+    { name: "Cabo Verde", flag: "🇨🇻" },
+    { name: "Cambodia", flag: "🇰🇭" },
+    { name: "Cameroon", flag: "🇨🇲" },
+    { name: "Canada", flag: "🇨🇦" },
+    { name: "Central African Republic", flag: "🇨🇫" },
+    { name: "Chad", flag: "🇹🇩" },
+    { name: "Chile", flag: "🇨🇱" },
+    { name: "China", flag: "🇨🇳" },
+    { name: "Colombia", flag: "🇨🇴" },
+    { name: "Comoros", flag: "🇰🇲" },
+    { name: "Congo", flag: "🇨🇬" },
+    { name: "Costa Rica", flag: "🇨🇷" },
+    { name: "Croatia", flag: "🇭🇷" },
+    { name: "Cuba", flag: "🇨🇺" },
+    { name: "Cyprus", flag: "🇨🇾" },
+    { name: "Czechia", flag: "🇨🇿" },
+    { name: "Denmark", flag: "🇩🇰" },
+    { name: "Djibouti", flag: "🇩🇯" },
+    { name: "Dominica", flag: "🇩🇲" },
+    { name: "Dominican Republic", flag: "🇩🇴" },
+    { name: "Ecuador", flag: "🇪🇨" },
+    { name: "Egypt", flag: "🇪🇬" },
+    { name: "El Salvador", flag: "🇸🇻" },
+    { name: "Equatorial Guinea", flag: "🇬🇶" },
+    { name: "Eritrea", flag: "🇪🇷" },
+    { name: "Estonia", flag: "🇪🇪" },
+    { name: "Eswatini", flag: "🇸🇿" },
+    { name: "Ethiopia", flag: "🇪🇹" },
+    { name: "Fiji", flag: "🇫🇯" },
+    { name: "Finland", flag: "🇫🇮" },
+    { name: "France", flag: "🇫🇷" },
+    { name: "Gabon", flag: "🇬🇦" },
+    { name: "Gambia", flag: "🇬🇲" },
+    { name: "Georgia", flag: "🇬🇪" },
+    { name: "Germany", flag: "🇩🇪" },
+    { name: "Ghana", flag: "🇬🇭" },
+    { name: "Greece", flag: "🇬🇷" },
+    { name: "Grenada", flag: "🇬🇩" },
+    { name: "Guatemala", flag: "🇬🇹" },
+    { name: "Guinea", flag: "🇬🇳" },
+    { name: "Guyana", flag: "🇬🇾" },
+    { name: "Haiti", flag: "🇭🇹" },
+    { name: "Honduras", flag: "🇭🇳" },
+    { name: "Hungary", flag: "🇭🇺" },
+    { name: "Iceland", flag: "🇮🇸" },
+    { name: "India", flag: "🇮🇳" },
+    { name: "Indonesia", flag: "🇮🇩" },
+    { name: "Iran", flag: "🇮🇷" },
+    { name: "Iraq", flag: "🇮🇶" },
+    { name: "Ireland", flag: "🇮🇪" },
+    { name: "Israel", flag: "🇮🇱" },
+    { name: "Italy", flag: "🇮🇹" },
+    { name: "Jamaica", flag: "🇯🇲" },
+    { name: "Japan", flag: "🇯🇵" },
+    { name: "Jordan", flag: "🇯🇴" },
+    { name: "Kazakhstan", flag: "🇰🇿" },
+    { name: "Kenya", flag: "🇰🇪" },
+    { name: "Korea, South", flag: "🇰🇷" },
+    { name: "Kuwait", flag: "🇰🇼" },
+    { name: "Latvia", flag: "🇱🇻" },
+    { name: "Lebanon", flag: "🇱🇧" },
+    { name: "Liberia", flag: "🇱🇷" },
+    { name: "Libya", flag: "🇱🇾" },
+    { name: "Liechtenstein", flag: "🇱🇮" },
+    { name: "Lithuania", flag: "🇱🇹" },
+    { name: "Luxembourg", flag: "🇱🇺" },
+    { name: "Madagascar", flag: "🇲🇬" },
+    { name: "Malawi", flag: "🇲🇼" },
+    { name: "Malaysia", flag: "🇲🇾" },
+    { name: "Maldives", flag: "🇲🇻" },
+    { name: "Mali", flag: "🇲🇱" },
+    { name: "Malta", flag: "🇲🇹" },
+    { name: "Mauritania", flag: "🇲🇷" },
+    { name: "Mauritius", flag: "🇲🇺" },
+    { name: "Mexico", flag: "🇲🇽" },
+    { name: "Moldova", flag: "🇲🇩" },
+    { name: "Monaco", flag: "🇲🇨" },
+    { name: "Mongolia", flag: "🇲🇳" },
+    { name: "Montenegro", flag: "🇲🇪" },
+    { name: "Morocco", flag: "🇲🇦" },
+    { name: "Mozambique", flag: "🇲🇿" },
+    { name: "Myanmar", flag: "🇲🇲" },
+    { name: "Namibia", flag: "🇳🇦" },
+    { name: "Nepal", flag: "🇳🇵" },
+    { name: "Netherlands", flag: "🇳🇱" },
+    { name: "New Zealand", flag: "🇳🇿" },
+    { name: "Nicaragua", flag: "🇳🇮" },
+    { name: "Niger", flag: "🇳🇪" },
+    { name: "Nigeria", flag: "🇳🇬" },
+    { name: "Norway", flag: "🇳🇴" },
+    { name: "Oman", flag: "🇴🇲" },
+    { name: "Pakistan", flag: "🇵🇰" },
+    { name: "Panama", flag: "🇵🇦" },
+    { name: "Paraguay", flag: "🇵🇾" },
+    { name: "Peru", flag: "🇵🇪" },
+    { name: "Philippines", flag: "🇵🇭" },
+    { name: "Poland", flag: "🇵🇱" },
+    { name: "Portugal", flag: "🇵🇹" },
+    { name: "Qatar", flag: "🇶🇦" },
+    { name: "Romania", flag: "🇷🇴" },
+    { name: "Russia", flag: "🇷🇺" },
+    { name: "Rwanda", flag: "🇷🇼" },
+    { name: "Saudi Arabia", flag: "🇸🇦" },
+    { name: "Senegal", flag: "🇸🇳" },
+    { name: "Serbia", flag: "🇷🇸" },
+    { name: "Singapore", flag: "🇸🇬" },
+    { name: "Slovakia", flag: "🇸🇰" },
+    { name: "Slovenia", flag: "🇸🇮" },
+    { name: "Somalia", flag: "🇸🇴" },
+    { name: "South Africa", flag: "🇿🇦" },
+    { name: "Spain", flag: "🇪🇸" },
+    { name: "Sri Lanka", flag: "🇱🇰" },
+    { name: "Sudan", flag: "🇸🇩" },
+    { name: "Sweden", flag: "🇸🇪" },
+    { name: "Switzerland", flag: "🇨🇭" },
+    { name: "Syria", flag: "🇸🇾" },
+    { name: "Tajikistan", flag: "🇹🇯" },
+    { name: "Tanzania", flag: "🇹🇿" },
+    { name: "Thailand", flag: "🇹🇭" },
+    { name: "Tunisia", flag: "🇹🇳" },
+    { name: "Turkey", flag: "🇹🇷" },
+    { name: "Uganda", flag: "🇺🇬" },
+    { name: "Ukraine", flag: "🇺🇦" },
+    { name: "United Arab Emirates", flag: "🇦🇪" },
+    { name: "United Kingdom", flag: "🇬🇧" },
+    { name: "United States", flag: "🇺🇸" },
+    { name: "Uruguay", flag: "🇺🇾" },
+    { name: "Uzbekistan", flag: "🇺🇿" },
+    { name: "Venezuela", flag: "🇻🇪" },
+    { name: "Vietnam", flag: "🇻🇳" },
+    { name: "Yemen", flag: "🇾🇪" },
+    { name: "Zambia", flag: "🇿🇲" },
+    { name: "Zimbabwe", flag: "🇿🇼" }
+  ];
+
+  const COMMON_LANGUAGES = ["English", "Spanish", "French", "Italian", "German", "Japanese", "Korean", "Portuguese", "Chinese", "Arabic", "Russian"];
+  const FLUENCY_LEVELS = ["Native", "Fluent", "Conversational", "Learning / Beginner"];
+
+  const handleTogglePresetNationality = (countryName: string, flag: string) => {
+    const formatted = `${countryName} ${flag}`;
+    setSelectedNationalities(prev => {
+      if (prev.includes(formatted)) {
+        return prev.filter(c => c !== formatted);
+      } else {
+        return [...prev, formatted];
+      }
+    });
+  };
+
+  const handleAddLanguage = () => {
+    const lang = customLanguage.trim() || selectedLanguage;
+    if (!lang) return;
+    const formatted = `${lang} (${selectedFluency})`;
+    if (!languagesList.includes(formatted)) {
+      setLanguagesList(prev => [...prev, formatted]);
+    }
+    setCustomLanguage("");
+  };
+
+  const handleRemoveLanguage = (formattedLang: string) => {
+    setLanguagesList(prev => prev.filter(l => l !== formattedLang));
+  };
+
+  const handleRemoveNationality = (formattedNat: string) => {
+    setSelectedNationalities(prev => prev.filter(n => n !== formattedNat));
+  };
+
+  // Interests state
+  const [selectedActivities, setSelectedActivities] = useState<string[]>([]);
+  const [selectedMusic, setSelectedMusic] = useState<string[]>([]);
+  const [selectedSocial, setSelectedSocial] = useState<string[]>([]);
+  const [selectedLifestyle, setSelectedLifestyle] = useState<string[]>([]);
+  const [spendingStyle, setSpendingStyle] = useState("middle range baddie");
+
+  const handleToggleActivity = (act: string) => {
+    setSelectedActivities(prev =>
+      prev.includes(act) ? prev.filter(x => x !== act) : [...prev, act]
+    );
+  };
+
+  const handleToggleMusic = (mus: string) => {
+    setSelectedMusic(prev =>
+      prev.includes(mus) ? prev.filter(x => x !== mus) : [...prev, mus]
+    );
+  };
+
+  const handleToggleSocial = (soc: string) => {
+    setSelectedSocial(prev =>
+      prev.includes(soc) ? prev.filter(x => x !== soc) : [...prev, soc]
+    );
+  };
+
+  const handleToggleLifestyle = (life: string) => {
+    setSelectedLifestyle(prev =>
+      prev.includes(life) ? prev.filter(x => x !== life) : [...prev, life]
+    );
+  };
+
+  // Login handler
+  const handleLoginSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    if (!loginEmail || !loginPassword) {
+      setError("Email and password are required.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: loginEmail, password: loginPassword })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Login failed");
+      }
+
+      onAuthSuccess(data.token, data.user, data.profile);
+    } catch (err: any) {
+      setError(err.message || "Something went wrong.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleNextStep = () => {
+    setError("");
+    if (step === 1) {
+      if (!email.trim() || !password.trim() || !name.trim() || !age.trim() || selectedNationalities.length === 0 || !university.trim()) {
+        setError("Please fill out Email, Password, Name, Age, University and select at least one Nationality.");
+        return;
+      }
+      if (password.length < 6) {
+        setError("Password must be at least 6 characters.");
+        return;
+      }
+      if (Number(age) < 18 || Number(age) > 35) {
+        setError("NEST is designed for university-aged students (18-35).");
+        return;
+      }
+      if (languagesList.length === 0) {
+        setError("Please add at least one language you speak with its fluency level.");
+        return;
+      }
+      setStep(2);
+    } else if (step === 2) {
+      if (!photo) {
+        setError("A profile photo is mandatory! Please upload an image from your device.");
+        return;
+      }
+      setStep(3);
+    }
+  };
+
+  // Sign up submission
+  const handleSubmitSignUp = async () => {
+    setError("");
+    if (!bio.trim()) {
+      setError("Please write a short bio to introduce yourself to other students!");
+      return;
+    }
+
+    const finalPhoto = photo;
+    const finalNationality = selectedNationalities.join(", ");
+
+    setLoading(true);
+    try {
+      const res = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: email.trim(),
+          password,
+          name: name.trim(),
+          age: Number(age) || 20,
+          nationality: finalNationality,
+          university: university.trim(),
+          currentCity: "Madrid",
+          languages: languagesList,
+          personalityType: "",
+          friendshipType: friendshipType.trim() || "Cafe & shopping companion",
+          bio: bio.trim(),
+          photo: finalPhoto,
+          tiktok: tiktok.trim() || undefined,
+          instagram: instagram.trim() || undefined,
+          otherSocial: otherSocial.trim() || undefined,
+          interests: {
+            activities: selectedActivities.length > 0 ? selectedActivities : ["yoga", "art"],
+            music: selectedMusic.length > 0 ? selectedMusic : ["pop", "indie"],
+            social: selectedSocial.length > 0 ? selectedSocial : ["cafes", "brunch"],
+            lifestyle: selectedLifestyle.length > 0 ? selectedLifestyle : ["wellness"],
+            spendingStyle: spendingStyle
+          }
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Sign Up failed");
+      }
+
+      onAuthSuccess(data.token, data.user, data.profile);
+    } catch (err: any) {
+      setError(err.message || "Error creating your student account.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-900/5 flex flex-col justify-between select-text px-4 py-8 relative">
+      
+      {/* Decorative ambient background dots/circles */}
+      <div className="absolute top-1/4 left-1/3 w-80 h-80 rounded-full bg-rose-200/40 blur-3xl -z-10 pointer-events-none" />
+      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 rounded-full bg-orange-100/40 blur-3xl -z-10 pointer-events-none" />
+
+      {/* Header logo */}
+      <div className="text-center max-w-md mx-auto mb-6 shrink-0 flex flex-col items-center">
+        <div className="inline-flex items-center gap-2.5 mb-1.5">
+          <img src="/nest-logo.png" alt="NEST Logo" className="w-12 h-12 rounded-2xl object-cover shadow-lg border border-white/25" />
+          <div className="text-left">
+            <span className="font-sans font-black tracking-tight text-slate-900 text-2xl uppercase">Nest</span>
+            <span className="font-mono text-[9px] font-bold text-rose-500 tracking-widest block -mt-1 uppercase">Madrid Student Net</span>
+          </div>
+        </div>
+        <p className="text-xs text-slate-500 font-sans mt-1">
+          A private, women-only social network for international students moving to Madrid 🇪🇸
+        </p>
+      </div>
+
+      {/* Card container */}
+      <div className="max-w-md w-full mx-auto bg-white/40 backdrop-blur-xl rounded-[32px] border border-white/80 shadow-2xl overflow-hidden p-6 md:p-8 grow flex flex-col justify-between">
+        
+        {isLoginMode ? (
+          // LOGIN SCREEN
+          <form onSubmit={handleLoginSubmit} className="space-y-6 flex-1 flex flex-col justify-between">
+            <div className="space-y-4">
+              <div>
+                <h3 className="font-sans font-black text-slate-900 text-lg tracking-tight">Log In to Your NEST Account</h3>
+                <p className="text-xs text-slate-500 font-sans mt-0.5">Welcome back! Access your private student profile.</p>
+              </div>
+
+              {error && (
+                <div className="bg-rose-50 border border-rose-100 text-rose-600 p-3.5 rounded-2xl text-xs font-medium animate-fade-in">
+                  ⚠️ {error}
+                </div>
+              )}
+
+              {/* Email */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-mono font-bold text-slate-500 uppercase block">Student Email</label>
+                <div className="relative">
+                  <Mail size={14} className="absolute left-3.5 top-3.5 text-slate-400" />
+                  <input
+                    type="email"
+                    required
+                    value={loginEmail}
+                    onChange={(e) => setLoginEmail(e.target.value)}
+                    placeholder="email@example.com"
+                    className="w-full bg-white/60 border border-slate-200 rounded-xl pl-10 pr-3.5 py-2.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-rose-400 focus:bg-white"
+                  />
+                </div>
+              </div>
+
+              {/* Password */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-mono font-bold text-slate-500 uppercase block">Password</label>
+                <div className="relative">
+                  <Lock size={14} className="absolute left-3.5 top-3.5 text-slate-400" />
+                  <input
+                    type="password"
+                    required
+                    value={loginPassword}
+                    onChange={(e) => setLoginPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full bg-white/60 border border-slate-200 rounded-xl pl-10 pr-3.5 py-2.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-rose-400 focus:bg-white"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-6 space-y-4">
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-rose-500 hover:bg-rose-600 disabled:bg-rose-300 text-white font-sans text-xs font-black py-3 rounded-xl transition shadow-lg shadow-rose-200/50 flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                {loading ? "Authenticating..." : "Log In to NEST"}
+                <ArrowRight size={13} />
+              </button>
+
+              <div className="text-center">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsLoginMode(false);
+                    setError("");
+                  }}
+                  className="text-xs text-rose-500 hover:text-rose-600 font-semibold"
+                >
+                  New to NEST? Create a student account
+                </button>
+              </div>
+            </div>
+          </form>
+        ) : (
+          // SIGN UP MULTI-STEP FLOW
+          <div className="flex-1 flex flex-col justify-between">
+            {/* Step indicator */}
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100 shrink-0 select-none">
+              <span className="font-mono text-[10px] font-black tracking-widest text-rose-500 uppercase">
+                Step {step} of 3
+              </span>
+              <div className="flex gap-1.5">
+                {[1, 2, 3].map(s => (
+                  <span
+                    key={s}
+                    className={`w-6 h-1.5 rounded-full transition-all duration-300 ${
+                      s === step ? "bg-rose-500 w-10" : "bg-slate-200"
+                    }`}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* Content body */}
+            <div className="py-6 grow overflow-y-auto max-h-[420px] md:max-h-[480px] pr-1">
+              {error && (
+                <div className="bg-rose-50 border border-rose-100 text-rose-600 p-3.5 rounded-2xl text-xs font-medium mb-5 animate-fade-in">
+                  ⚠️ {error}
+                </div>
+              )}
+
+              {step === 1 && (
+                <div className="space-y-4 animate-fade-in">
+                  <div>
+                    <h3 className="font-sans font-black text-slate-900 text-lg tracking-tight">Create Your NEST Account</h3>
+                    <p className="text-xs text-slate-500 font-sans mt-0.5">Enter your student details to set up your private account.</p>
+                  </div>
+
+                  {/* Credentials */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-mono font-bold text-slate-400 uppercase block">Email Address</label>
+                      <input
+                        type="email"
+                        required
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="yourname@domain.com"
+                        className="w-full bg-white/60 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-rose-400 focus:bg-white"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-mono font-bold text-slate-400 uppercase block">Password (Min 6 chars)</label>
+                      <input
+                        type="password"
+                        required
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="••••••••"
+                        className="w-full bg-white/60 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-rose-400 focus:bg-white"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Name */}
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-mono font-bold text-slate-400 uppercase block">First & Last Name</label>
+                    <input
+                      type="text"
+                      required
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder="e.g. Maya Sterling"
+                      className="w-full bg-white/60 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-rose-400 focus:bg-white"
+                    />
+                  </div>
+
+                  {/* Age & University */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-mono font-bold text-slate-400 uppercase block">Age</label>
+                      <input
+                        type="number"
+                        required
+                        min={18}
+                        max={35}
+                        value={age}
+                        onChange={(e) => setAge(e.target.value)}
+                        placeholder="20"
+                        className="w-full bg-white/60 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-rose-400 focus:bg-white"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-mono font-bold text-slate-400 uppercase block">Madrid University</label>
+                      <input
+                        type="text"
+                        required
+                        value={university}
+                        onChange={(e) => setUniversity(e.target.value)}
+                        placeholder="e.g. IE University"
+                        className="w-full bg-white/60 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-rose-400 focus:bg-white"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Nationalities Picker */}
+                  <div className="space-y-1.5 relative">
+                    <label className="text-[10px] font-mono font-bold text-slate-400 uppercase block">
+                      Nationalities 🗺️
+                    </label>
+
+                    {/* Single Trigger Button */}
+                    <button
+                      type="button"
+                      onClick={() => setShowNationalityDropdown(!showNationalityDropdown)}
+                      className="w-full bg-white/60 border border-slate-200 hover:border-slate-300 rounded-xl px-3.5 py-2.5 text-xs text-slate-700 font-medium flex items-center justify-between transition"
+                    >
+                      <span>Select Nationalities</span>
+                      <Globe size={14} className="text-slate-400" />
+                    </button>
+
+                    {/* Selected Nationalities Tags */}
+                    {selectedNationalities.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 mt-2">
+                        {selectedNationalities.map(nat => (
+                          <span key={nat} className="bg-slate-900 text-rose-400 font-sans text-[11px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1 shadow-sm">
+                            <span>{nat}</span>
+                            <button type="button" onClick={(e) => { e.stopPropagation(); handleRemoveNationality(nat); }} className="text-white hover:text-rose-300 font-extrabold text-[10px] ml-1">✕</button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Searchable Pop-up / Modal / Dropdown */}
+                    {showNationalityDropdown && (
+                      <div className="absolute z-50 left-0 right-0 mt-1 bg-white border border-slate-100 rounded-2xl shadow-xl p-3.5 space-y-2 animate-fade-in">
+                        <div className="flex items-center justify-between pb-1.5 border-b border-slate-100">
+                          <span className="text-[10px] font-mono font-bold text-slate-400 uppercase">Search Countries</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowNationalityDropdown(false);
+                              setNationalitySearch("");
+                            }}
+                            className="text-[10px] font-extrabold text-rose-500 hover:text-rose-600 uppercase"
+                          >
+                            Close
+                          </button>
+                        </div>
+
+                        {/* Search Input inside the pop-up only */}
+                        <div className="relative">
+                          <input
+                            type="text"
+                            placeholder="Type to search country..."
+                            value={nationalitySearch}
+                            onChange={(e) => setNationalitySearch(e.target.value)}
+                            className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-2.5 py-1.5 text-xs focus:outline-none"
+                          />
+                          <Search size={12} className="text-slate-400 absolute left-2.5 top-2.5" />
+                        </div>
+
+                        {/* Complete list of countries with flag emojis inside pop-up */}
+                        <div className="max-h-40 overflow-y-auto space-y-0.5 pr-1">
+                          {ALL_COUNTRIES.filter(country =>
+                            country.name.toLowerCase().includes(nationalitySearch.toLowerCase())
+                          ).map(opt => {
+                            const formatted = `${opt.name} ${opt.flag}`;
+                            const isSelected = selectedNationalities.includes(formatted);
+                            return (
+                              <button
+                                key={opt.name}
+                                type="button"
+                                onClick={() => handleTogglePresetNationality(opt.name, opt.flag)}
+                                className={`w-full text-left py-1.5 px-2.5 rounded-lg text-xs font-medium flex items-center justify-between transition ${
+                                  isSelected 
+                                    ? "bg-rose-50 text-rose-600 font-bold" 
+                                    : "hover:bg-slate-50 text-slate-700"
+                                }`}
+                              >
+                                <span className="flex items-center gap-1.5">
+                                  <span>{opt.flag}</span>
+                                  <span>{opt.name}</span>
+                                </span>
+                                {isSelected && <Check size={12} className="text-rose-500" />}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Languages Picker */}
+                  <div className="space-y-1.5 bg-rose-50/20 p-3 rounded-2xl border border-rose-100/30">
+                    <label className="text-[10px] font-mono font-bold text-slate-400 uppercase block">
+                      Languages & Fluency Levels 🗣️
+                    </label>
+
+                    {languagesList.length > 0 ? (
+                      <div className="flex flex-wrap gap-1.5 mb-2">
+                        {languagesList.map(item => (
+                          <span key={item} className="bg-rose-500 text-white font-sans text-[10px] font-black px-2 py-0.5 rounded-full flex items-center gap-1">
+                            <span>{item}</span>
+                            <button type="button" onClick={() => handleRemoveLanguage(item)} className="text-white font-extrabold text-[8px] ml-1">✕</button>
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="text-[10px] text-slate-400 italic block mb-1">Add languages below:</span>
+                    )}
+
+                    <div className="grid grid-cols-3 gap-1.5">
+                      <select
+                        value={selectedLanguage}
+                        onChange={(e) => {
+                          setSelectedLanguage(e.target.value);
+                          setCustomLanguage("");
+                        }}
+                        className="bg-white border border-slate-200 rounded-lg px-1.5 py-1 text-[10px] text-slate-800 focus:outline-none"
+                      >
+                        {COMMON_LANGUAGES.map(lang => (
+                          <option key={lang} value={lang}>{lang}</option>
+                        ))}
+                      </select>
+
+                      <select
+                        value={selectedFluency}
+                        onChange={(e) => setSelectedFluency(e.target.value)}
+                        className="bg-white border border-slate-200 rounded-lg px-1.5 py-1 text-[10px] text-slate-800 focus:outline-none"
+                      >
+                        {FLUENCY_LEVELS.map(f => (
+                          <option key={f} value={f}>{f}</option>
+                        ))}
+                      </select>
+
+                      <button
+                        type="button"
+                        onClick={handleAddLanguage}
+                        className="bg-rose-500 text-white font-sans text-[10px] font-black py-1 rounded-lg hover:bg-rose-600 transition"
+                      >
+                        ＋ Add
+                      </button>
+                    </div>
+
+                    <input
+                      type="text"
+                      placeholder="Or other language (e.g. Swedish)..."
+                      value={customLanguage}
+                      onChange={(e) => setCustomLanguage(e.target.value)}
+                      className="w-full bg-white border border-slate-200 rounded-lg px-2 py-1 text-[9px] mt-1.5 focus:outline-none"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {step === 2 && (
+                <div className="space-y-5 animate-fade-in text-center">
+                  <div>
+                    <h3 className="font-sans font-black text-slate-900 text-lg tracking-tight">Upload Your Portrait</h3>
+                    <p className="text-xs text-slate-500 font-sans mt-0.5">Please upload a real portrait photo from your device. Placeholders are not allowed.</p>
+                  </div>
+
+                  <div className="max-w-xs mx-auto">
+                    <ImageUploader
+                      value={photo}
+                      onChange={(url) => setPhoto(url)}
+                      onRemove={() => setPhoto("")}
+                      label="Your Profile Photo"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {step === 3 && (
+                <div className="space-y-4 animate-fade-in">
+                  <div>
+                    <h3 className="font-sans font-black text-slate-900 text-lg tracking-tight">Introduce Yourself!</h3>
+                    <p className="text-xs text-slate-500 font-sans mt-0.5">Let your future friends know who you are.</p>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-mono font-bold text-slate-400 uppercase block">Short Student Bio (Mandatory)</label>
+                    <textarea
+                      value={bio}
+                      onChange={(e) => setBio(e.target.value)}
+                      rows={3}
+                      placeholder="e.g. Dual degree student at IE. Obsessed with art galleries, cute coffee shops, and looking for brunch buddies! xx"
+                      className="w-full bg-white/60 border border-slate-200 rounded-xl p-3 text-xs text-slate-800 focus:outline-none resize-none"
+                    />
+                  </div>
+
+                  {/* Social handles */}
+                  <div className="bg-slate-50/50 p-3 rounded-2xl border border-slate-100 space-y-3.5">
+                    <span className="text-[10px] font-mono font-extrabold text-slate-500 uppercase tracking-wider block">
+                      Social Media Handles (Optional)
+                    </span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <label className="text-[9px] font-sans font-extrabold text-slate-400 block">Instagram Handle</label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-2 text-[10px] text-slate-400 font-bold">@</span>
+                          <input
+                            type="text"
+                            placeholder="username"
+                            value={instagram}
+                            onChange={(e) => setInstagram(e.target.value)}
+                            className="w-full bg-white border border-slate-200 rounded-lg pl-7 pr-2.5 py-1.5 text-xs text-slate-800 focus:outline-none"
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[9px] font-sans font-extrabold text-slate-400 block">TikTok Handle</label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-2 text-[10px] text-slate-400 font-bold">@</span>
+                          <input
+                            type="text"
+                            placeholder="username"
+                            value={tiktok}
+                            onChange={(e) => setTiktok(e.target.value)}
+                            className="w-full bg-white border border-slate-200 rounded-lg pl-7 pr-2.5 py-1.5 text-xs text-slate-800 focus:outline-none"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-sans font-extrabold text-slate-400 block">Other Social (Snapchat, Twitter, etc)</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Snapchat: maya_madrid"
+                        value={otherSocial}
+                        onChange={(e) => setOtherSocial(e.target.value)}
+                        className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-sans font-extrabold text-slate-500 block">Friendship style you seek</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Brunch & pilates buddy"
+                      value={friendshipType}
+                      onChange={(e) => setFriendshipType(e.target.value)}
+                      className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 focus:outline-none"
+                    />
+                  </div>
+
+                  {/* Interests pickers */}
+                  <div className="space-y-3 pt-2 border-t border-slate-100">
+                    <span className="text-[10px] font-mono font-bold text-slate-400 uppercase block">Select some interests & hobbies</span>
+                    <div className="space-y-2">
+                      <div className="flex flex-wrap gap-1">
+                        {PREDEFINED_INTEREST_OPTIONS.activities.slice(0, 10).map(act => {
+                          const sel = selectedActivities.includes(act);
+                          return (
+                            <button
+                              key={act}
+                              type="button"
+                              onClick={() => handleToggleActivity(act)}
+                              className={`px-2.5 py-1 rounded-full text-[10px] font-bold transition ${
+                                sel ? "bg-rose-500 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                              }`}
+                            >
+                              {act}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Footer controls */}
+            <div className="pt-4 border-t border-slate-100 flex items-center justify-between shrink-0 select-none">
+              {step > 1 ? (
+                <button
+                  type="button"
+                  onClick={() => setStep(prev => prev - 1)}
+                  className="px-4 py-2 text-xs font-bold text-slate-500 hover:text-slate-800 transition"
+                >
+                  Back
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsLoginMode(true);
+                    setError("");
+                  }}
+                  className="text-xs font-bold text-rose-500 hover:text-rose-600 transition"
+                >
+                  Have an account? Log In
+                </button>
+              )}
+
+              {step < 3 ? (
+                <button
+                  type="button"
+                  onClick={handleNextStep}
+                  className="bg-slate-900 hover:bg-slate-800 text-rose-400 font-sans text-xs font-black px-5 py-2.5 rounded-xl transition shadow flex items-center gap-1.5 cursor-pointer"
+                >
+                  <span>Continue</span>
+                  <ArrowRight size={13} />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleSubmitSignUp}
+                  disabled={loading}
+                  className="bg-rose-500 hover:bg-rose-600 disabled:bg-rose-300 text-white font-sans text-xs font-black px-6 py-2.5 rounded-xl transition shadow-lg shadow-rose-200/50 flex items-center gap-1.5 cursor-pointer"
+                >
+                  <ShieldCheck size={14} />
+                  <span>{loading ? "Registering account..." : "Complete Student Sign Up"}</span>
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+      </div>
+
+      {/* Safety Badge */}
+      <div className="max-w-md mx-auto text-center mt-6 select-none shrink-0">
+        <div className="inline-flex items-center gap-1.5 text-rose-600 bg-rose-50 border border-rose-100/50 px-3.5 py-1.5 rounded-full text-[10px] font-bold shadow-sm">
+          <ShieldCheck size={12} className="fill-rose-100" />
+          <span>Women-Only University Verification Active • Madrid NEST Trust 🛡️</span>
+        </div>
+      </div>
+    </div>
+  );
+}
