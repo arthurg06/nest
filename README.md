@@ -48,7 +48,9 @@ The server auto-creates an empty `db.json` on first run and migrates older recor
 
 ## Product flows
 
-- **Verification** (manual, admin-reviewed): members submit university + university email → status `pending` → an admin approves or rejects with a reason from the Admin tab. Only `approved`, active members appear in discovery or can match. Details: [docs/ADMIN_AND_VERIFICATION.md](docs/ADMIN_AND_VERIFICATION.md)
+- **Discovery visibility** (changed 2026-07-19): every **active** member appears in discovery and can match, whether or not her verification is approved. Verification governs the Verified Student badge, not visibility; suspended accounts are excluded from both. To require approval again, restore the `verificationStatus === "approved"` filter in `/api/profiles` and the matching guard in `/api/swipe`.
+- **Verification** (manual, admin-reviewed): members submit university + university email → status `pending` → an admin approves or rejects with a reason from the Admin tab. Details: [docs/ADMIN_AND_VERIFICATION.md](docs/ADMIN_AND_VERIFICATION.md)
+- **Outings**: inside a chat, either member proposes what / where / when; places come from `shared/places.ts` (real Madrid venues by neighbourhood, campus options derived from each member's university, plus City Guide spots) ranked by university area, optional device proximity (browser-only, never stored), and shared interests. The other member accepts or declines; both are notified.
 - **NEST Premium — €20/month**, renews monthly, cancel anytime via the Stripe Customer Portal. RSVP access to official outings is gated server-side by subscription entitlement. Pricing is centralized in `shared/subscription.ts` (integer euro cents). Setup: [docs/STRIPE.md](docs/STRIPE.md) (includes webhook, portal, and Apple Pay domain-verification steps)
 - **Events**: created and deleted by administrators only (enforced in the API); everyone may browse.
 - **Security decisions** (password hashing, sessions, rate limits, upload hardening, residual risks): [docs/SECURITY.md](docs/SECURITY.md)
