@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
 import { UserProfile, Interests } from "../types";
 import { PREDEFINED_INTEREST_OPTIONS } from "../data";
+import { ANIMAL_EMOJI } from "../../shared/compatibility";
 import { ShieldCheck, User, Sparkles, Languages, Check, Mail, Upload, FileText, Globe, Search, Trash2, Edit, MapPin, ExternalLink, ShieldAlert } from "lucide-react";
-import { ImageUploader } from "./ImageUploader";
+import { PhotoGalleryEditor } from "./PhotoGalleryEditor";
 import { ThemeToggle } from "./ThemeToggle";
 import { searchCountries } from "../../shared/countries";
 import { apiUrl } from "../lib/api";
@@ -236,6 +237,9 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
   
   // Photo State
   const [photo, setPhoto] = useState<string>(currentUser.photo || "");
+  const [photos, setPhotos] = useState<string[]>(
+    currentUser.photos?.length ? currentUser.photos : currentUser.photo ? [currentUser.photo] : []
+  );
 
   // Interests state
   const [selectedActivities, setSelectedActivities] = useState<string[]>(currentUser.interests.activities);
@@ -243,6 +247,7 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
   const [selectedSocial, setSelectedSocial] = useState<string[]>(currentUser.interests.social);
   const [selectedLifestyle, setSelectedLifestyle] = useState<string[]>(currentUser.interests.lifestyle);
   const [spendingStyle, setSpendingStyle] = useState<string>(currentUser.interests.spendingStyle);
+  const [animals, setAnimals] = useState<string>(currentUser.interests.animals || "");
 
   // Verification state
   // Verification submission state. Status itself lives on the server —
@@ -311,7 +316,8 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
       friendshipType: friendshipType.trim() || "Outing planner",
       bio: bio.trim() || "Moving to Madrid!",
       isVerified: currentUser.isVerified,
-      photo: photo,
+      photo: photos[0] || photo,
+      photos,
       tiktok: tiktok.trim() || undefined,
       instagram: instagram.trim() || undefined,
       otherSocial: otherSocial.trim() || undefined,
@@ -320,7 +326,8 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
         music: selectedMusic,
         social: selectedSocial,
         lifestyle: selectedLifestyle,
-        spendingStyle: spendingStyle
+        spendingStyle: spendingStyle,
+        animals: animals || undefined
       }
     };
 
@@ -402,19 +409,18 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
             <h3 className="font-sans font-bold text-sm">Primary Information</h3>
           </div>
 
-          {/* Profile Photo selector */}
+          {/* Photos — up to four, the first one is the profile picture */}
           <div className="space-y-3 bg-accent/50 p-4 rounded-2xl border border-border/50">
             <span className="text-[10px] font-sans font-extrabold text-muted-foreground uppercase tracking-wider block">
-              Profile Portrait Photo (Mandatory) 📸
+              Your photos 📸
             </span>
-            <div className="max-w-md">
-              <ImageUploader
-                value={photo}
-                onChange={(url) => setPhoto(url)}
-                onRemove={() => setPhoto("")}
-                label="Your Profile Photo"
-              />
-            </div>
+            <PhotoGalleryEditor
+              photos={photos}
+              onChange={next => {
+                setPhotos(next);
+                setPhoto(next[0] || "");
+              }}
+            />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -814,6 +820,33 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
                       }`}
                     >
                       👑 {style}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Animals — single choice, easy conversation starter */}
+            <div className="space-y-2 pt-1 border-t border-border/30">
+              <span className="text-[10px] font-mono font-extrabold uppercase text-muted-foreground tracking-widest block">
+                Animals
+              </span>
+              <div className="flex flex-wrap gap-2 select-none pt-1">
+                {PREDEFINED_INTEREST_OPTIONS.animals.map(option => {
+                  const selected = animals === option;
+                  return (
+                    <button
+                      key={option}
+                      type="button"
+                      onClick={() => setAnimals(selected ? "" : option)}
+                      aria-pressed={selected}
+                      className={`px-4 py-1.5 rounded-xl text-xs font-sans border font-black transition ${
+                        selected
+                          ? "bg-primary text-primary-foreground border-rose-500 shadow-md"
+                          : "bg-card/40 text-muted-foreground border-border/40 hover:bg-card/60"
+                      }`}
+                    >
+                      {ANIMAL_EMOJI[option]} {option}
                     </button>
                   );
                 })}

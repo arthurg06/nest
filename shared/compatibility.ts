@@ -25,7 +25,18 @@ export const PREDEFINED_INTEREST_OPTIONS = {
   ],
   spendingStyle: [
     "budget queen", "middle range baddie", "high spender", "luxury lover"
+  ],
+  // Single choice, like spendingStyle. Empty means "not said".
+  animals: [
+    "dog lover", "cat lover", "loves all animals", "plants over pets"
   ]
+};
+
+export const ANIMAL_EMOJI: Record<string, string> = {
+  "dog lover": "🐶",
+  "cat lover": "🐱",
+  "loves all animals": "🐾",
+  "plants over pets": "🪴"
 };
 
 export interface CompatibilityInterests {
@@ -34,6 +45,7 @@ export interface CompatibilityInterests {
   social: string[];
   lifestyle: string[];
   spendingStyle: string;
+  animals?: string;
 }
 
 export interface CompatibilityProfile {
@@ -72,6 +84,11 @@ export function calculateCompatibility(user: CompatibilityProfile, match: Compat
     }
   }
 
+  // Sharing an animal preference is a small, concrete thing to talk about.
+  if (user.interests.animals && user.interests.animals === match.interests.animals) {
+    score += 5;
+  }
+
   const sharedLanguages = user.languages.filter(l => match.languages.includes(l));
   score += sharedLanguages.length * 2;
 
@@ -85,6 +102,9 @@ export function calculateCompatibility(user: CompatibilityProfile, match: Compat
   const matchingVibes = [...sharedLifestyle];
   if (user.interests.spendingStyle === match.interests.spendingStyle) {
     matchingVibes.push(user.interests.spendingStyle);
+  }
+  if (user.interests.animals && user.interests.animals === match.interests.animals) {
+    matchingVibes.push(user.interests.animals);
   }
 
   let explanation = "";

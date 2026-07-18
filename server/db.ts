@@ -32,6 +32,8 @@ export interface Interests {
   social: string[];
   lifestyle: string[];
   spendingStyle: string; // "budget queen" | "middle range baddie" | "high spender" | "luxury lover"
+  /** "dog lover" | "cat lover" | "loves all animals" | "plants over pets" */
+  animals?: string;
 }
 
 export type VerificationStatus = "unsubmitted" | "pending" | "approved" | "rejected";
@@ -70,7 +72,10 @@ export interface UserProfile {
   verification?: VerificationInfo;
   avatarSeed: string;
   avatarColor: string;
+  /** Primary photo — always mirrors photos[0]. */
   photo: string;
+  /** Up to 4 photos, primary first. */
+  photos?: string[];
   tiktok?: string;
   instagram?: string;
   otherSocial?: string;
@@ -289,6 +294,13 @@ function migrateDb(db: DbSchema): boolean {
     const shouldBeVerified = profile.verificationStatus === "approved";
     if (profile.isVerified !== shouldBeVerified) {
       profile.isVerified = shouldBeVerified;
+      changed = true;
+    }
+
+    // Profiles created before multi-photo support carry a single photo;
+    // seed the gallery from it so both fields always agree.
+    if (!Array.isArray(profile.photos)) {
+      profile.photos = profile.photo ? [profile.photo] : [];
       changed = true;
     }
 

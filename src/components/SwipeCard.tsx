@@ -1,6 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { UserProfile } from "../types";
 import { calculateCompatibility } from "../data";
+import { ANIMAL_EMOJI } from "../../shared/compatibility";
 import { X, Heart, MapPin, Languages, Sparkles, GraduationCap, ChevronDown, ChevronUp } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import VerifiedBadge from "./VerifiedBadge";
@@ -14,6 +15,30 @@ interface SwipeCardProps {
 
 export default function SwipeCard({ profile, currentUser, onSwipeLeft, onSwipeRight }: SwipeCardProps) {
   const [showFullProfile, setShowFullProfile] = useState(false);
+  const [photoIndex, setPhotoIndex] = useState(0);
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  // Expanding makes the card taller than a phone screen, so bring it to the
+  // top of the scroll area afterwards. scrollIntoView misreads the position
+  // while the card still carries an animation transform, so the owning
+  // scroller is moved explicitly once the height transition has settled.
+  const openFullProfile = () => {
+    setShowFullProfile(true);
+    window.setTimeout(() => {
+      const card = cardRef.current;
+      if (!card) return;
+      let scroller = card.parentElement;
+      while (scroller && scroller.scrollHeight <= scroller.clientHeight + 1) {
+        scroller = scroller.parentElement;
+      }
+      if (!scroller) return;
+      const delta = card.getBoundingClientRect().top - scroller.getBoundingClientRect().top;
+      scroller.scrollTo({ top: scroller.scrollTop + delta - 8, behavior: "smooth" });
+    }, 340);
+  };
+
+  // Older profiles only have the single `photo` field.
+  const gallery = profile.photos?.length ? profile.photos : [profile.photo];
   const [swipeDirection, setSwipeDirection] = useState<"left" | "right" | null>(null);
 
   // Calculate compatibility using the core function
@@ -30,10 +55,9 @@ export default function SwipeCard({ profile, currentUser, onSwipeLeft, onSwipeRi
 
   const handleLike = () => {
     setSwipeDirection("right");
-    // 60% chance to simulate a match immediately on swipe-right for a rewarding social experience!
-    const isMatch = Math.random() < 0.6;
+    // Whether this is a match is decided by the server, never here.
     setTimeout(() => {
-      onSwipeRight(isMatch);
+      onSwipeRight(false);
       setSwipeDirection(null);
     }, 250);
   };
@@ -50,6 +74,7 @@ export default function SwipeCard({ profile, currentUser, onSwipeLeft, onSwipeRi
         <motion.div
           key={profile.id}
           id={`swipe-card-${profile.id}`}
+          ref={cardRef}
           initial={{ scale: 0.95, opacity: 0, y: 10 }}
           animate={{
             scale: 1,
@@ -60,16 +85,48 @@ export default function SwipeCard({ profile, currentUser, onSwipeLeft, onSwipeRi
           }}
           exit={{ opacity: 0, scale: 0.9 }}
           transition={{ duration: 0.25, ease: "easeInOut" }}
-          className="bg-card/40 backdrop-blur-xl rounded-[32px] border border-border/60 shadow-2xl overflow-hidden flex flex-col h-[520px] md:h-[580px]"
+          className={`bg-card/40 backdrop-blur-xl rounded-[32px] border border-border/60 shadow-2xl overflow-hidden flex flex-col transition-[height] duration-300 ${
+            showFullProfile ? "h-[640px] md:h-[720px]" : "h-[520px] md:h-[580px]"
+          }`}
         >
           {/* Real Portrait Photo Background */}
-          <div className="relative h-60 md:h-68 bg-muted overflow-hidden shrink-0">
+          <div className={`relative bg-muted overflow-hidden shrink-0 transition-[height] duration-300 ${
+            showFullProfile ? "h-44 md:h-52" : "h-60 md:h-68"
+          }`}>
             <img
-              src={profile.photo}
-              alt={profile.name}
+              src={gallery[photoIndex]}
+              alt={gallery.length > 1 ? `${profile.name}, photo ${photoIndex + 1} of ${gallery.length}` : profile.name}
               referrerPolicy="no-referrer"
               className="w-full h-full object-cover"
             />
+
+            {/* Photo gallery: tap either half to move through her photos */}
+            {gallery.length > 1 && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setPhotoIndex(i => (i - 1 + gallery.length) % gallery.length)}
+                  aria-label="Previous photo"
+                  className="absolute inset-y-0 left-0 w-1/3 z-20 cursor-pointer focus-visible:bg-foreground/5"
+                />
+                <button
+                  type="button"
+                  onClick={() => setPhotoIndex(i => (i + 1) % gallery.length)}
+                  aria-label="Next photo"
+                  className="absolute inset-y-0 right-0 w-1/3 z-20 cursor-pointer focus-visible:bg-foreground/5"
+                />
+                <div className="absolute top-2.5 left-0 w-full px-4 flex gap-1.5 z-20" aria-hidden="true">
+                  {gallery.map((_, i) => (
+                    <span
+                      key={i}
+                      className={`h-1 flex-1 rounded-full transition-colors ${
+                        i === photoIndex ? "bg-white" : "bg-white/35"
+                      }`}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
             {/* Dark gradient overlay for text readability on top and bottom */}
             <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-transparent to-slate-950/30" />
 
@@ -172,10 +229,10 @@ export default function SwipeCard({ profile, currentUser, onSwipeLeft, onSwipeRi
             {/* Expandable full profile details */}
             {!showFullProfile ? (
               <button
-                onClick={() => setShowFullProfile(true)}
-                className="w-full py-1.5 border border-border/50 rounded-xl text-muted-foreground bg-card/40 backdrop-blur-sm font-sans text-xs font-bold flex items-center justify-center gap-1 hover:bg-card/60 transition shadow-sm"
+                onClick={openFullProfile}
+                className="w-full py-3 border border-border/60 rounded-2xl text-foreground bg-card/60 backdrop-blur-sm font-sans text-sm font-bold flex items-center justify-center gap-1.5 hover:bg-card transition shadow-sm"
               >
-                <span>View Full Interests Profile</span>
+                <span>See her full profile</span>
                 <ChevronDown size={14} />
               </button>
             ) : (
@@ -194,7 +251,7 @@ export default function SwipeCard({ profile, currentUser, onSwipeLeft, onSwipeRi
                 <div className="space-y-3.5">
                   {/* Activities */}
                   <div>
-                    <span className="text-[9px] font-mono font-extrabold uppercase text-muted-foreground tracking-widest block mb-1.5">
+                    <span className="text-[10px] font-mono font-extrabold uppercase text-muted-foreground tracking-widest block mb-2">
                       Activities
                     </span>
                     <div className="flex flex-wrap gap-1.5">
@@ -203,7 +260,7 @@ export default function SwipeCard({ profile, currentUser, onSwipeLeft, onSwipeRi
                         return (
                           <span
                             key={act}
-                            className={`text-[10px] px-3 py-1 rounded-full font-sans transition-colors ${
+                            className={`text-[11px] px-3 py-1.5 rounded-full font-sans transition-colors ${
                               shared
                                 ? "bg-accent/60 text-primary border border-border/40 font-semibold shadow-sm"
                                 : "bg-card/40 text-muted-foreground border border-border/40"
@@ -218,7 +275,7 @@ export default function SwipeCard({ profile, currentUser, onSwipeLeft, onSwipeRi
 
                   {/* Social */}
                   <div>
-                    <span className="text-[9px] font-mono font-extrabold uppercase text-muted-foreground tracking-widest block mb-1.5">
+                    <span className="text-[10px] font-mono font-extrabold uppercase text-muted-foreground tracking-widest block mb-2">
                       Social Plans
                     </span>
                     <div className="flex flex-wrap gap-1.5">
@@ -227,7 +284,7 @@ export default function SwipeCard({ profile, currentUser, onSwipeLeft, onSwipeRi
                         return (
                           <span
                             key={soc}
-                            className={`text-[10px] px-3 py-1 rounded-full font-sans transition-colors ${
+                            className={`text-[11px] px-3 py-1.5 rounded-full font-sans transition-colors ${
                               shared
                                 ? "bg-amber-100 text-amber-700 border border-amber-200/40 font-semibold shadow-sm"
                                 : "bg-card/40 text-muted-foreground border border-border/40"
@@ -242,7 +299,7 @@ export default function SwipeCard({ profile, currentUser, onSwipeLeft, onSwipeRi
 
                   {/* Music */}
                   <div>
-                    <span className="text-[9px] font-mono font-extrabold uppercase text-muted-foreground tracking-widest block mb-1.5">
+                    <span className="text-[10px] font-mono font-extrabold uppercase text-muted-foreground tracking-widest block mb-2">
                       Music Taste
                     </span>
                     <div className="flex flex-wrap gap-1.5">
@@ -251,7 +308,7 @@ export default function SwipeCard({ profile, currentUser, onSwipeLeft, onSwipeRi
                         return (
                           <span
                             key={mus}
-                            className={`text-[10px] px-3 py-1 rounded-full font-sans transition-colors ${
+                            className={`text-[11px] px-3 py-1.5 rounded-full font-sans transition-colors ${
                               shared
                                 ? "bg-indigo-100 text-indigo-700 border border-indigo-200/40 font-semibold shadow-sm"
                                 : "bg-card/40 text-muted-foreground border border-border/40"
@@ -266,7 +323,7 @@ export default function SwipeCard({ profile, currentUser, onSwipeLeft, onSwipeRi
 
                   {/* Lifestyle */}
                   <div>
-                    <span className="text-[9px] font-mono font-extrabold uppercase text-muted-foreground tracking-widest block mb-1.5">
+                    <span className="text-[10px] font-mono font-extrabold uppercase text-muted-foreground tracking-widest block mb-2">
                       Lifestyle Vibe
                     </span>
                     <div className="flex flex-wrap gap-1.5">
@@ -275,7 +332,7 @@ export default function SwipeCard({ profile, currentUser, onSwipeLeft, onSwipeRi
                         return (
                           <span
                             key={life}
-                            className={`text-[10px] px-3 py-1 rounded-full font-sans transition-colors ${
+                            className={`text-[11px] px-3 py-1.5 rounded-full font-sans transition-colors ${
                               shared
                                 ? "bg-emerald-100 text-emerald-700 border border-emerald-200/40 font-semibold shadow-sm"
                                 : "bg-card/40 text-muted-foreground border border-border/40"
@@ -302,13 +359,30 @@ export default function SwipeCard({ profile, currentUser, onSwipeLeft, onSwipeRi
                       {currentUser.interests.spendingStyle === profile.interests.spendingStyle && " (Match!)"}
                     </span>
                   </div>
+
+                  {/* Animals */}
+                  {profile.interests.animals && (
+                    <div className="pt-2 border-t border-border/20">
+                      <span className="text-[10px] font-mono font-extrabold uppercase text-muted-foreground tracking-widest block">
+                        Animals
+                      </span>
+                      <span className={`text-xs font-sans font-bold inline-block px-3 py-1 rounded-xl mt-1 ${
+                        currentUser.interests.animals === profile.interests.animals
+                          ? "bg-accent/60 text-primary border border-border/50"
+                          : "bg-card/40 text-muted-foreground border border-border/40"
+                      }`}>
+                        {ANIMAL_EMOJI[profile.interests.animals] || "🐾"} {profile.interests.animals}
+                        {currentUser.interests.animals === profile.interests.animals && " (Match!)"}
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 <button
                   onClick={() => setShowFullProfile(false)}
-                  className="w-full py-1.5 border border-border/50 rounded-xl text-muted-foreground bg-card/40 backdrop-blur-sm font-sans text-xs font-bold flex items-center justify-center gap-1 hover:bg-card/60 transition mt-4 shadow-sm"
+                  className="w-full py-3 border border-border/60 rounded-2xl text-foreground bg-card/60 backdrop-blur-sm font-sans text-sm font-bold flex items-center justify-center gap-1.5 hover:bg-card transition mt-4 shadow-sm"
                 >
-                  <span>Hide Full Interests Profile</span>
+                  <span>Show less</span>
                   <ChevronUp size={14} />
                 </button>
               </div>

@@ -607,84 +607,34 @@ export default function App() {
                 </div>
               )}
 
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-start">
-                {/* LEFT — your circle: everyone you already matched with */}
-                <aside className="md:col-span-4 order-2 md:order-1 bg-card/40 backdrop-blur-xl rounded-2xl border border-border/60 p-4 shadow-sm">
-                  <h3 className="font-sans font-black text-foreground text-sm flex items-center gap-2">
-                    <Heart size={15} className="text-primary" />
-                    <span>Your circle</span>
-                    {matches.length > 0 && (
-                      <span className="text-[10px] font-mono text-muted-foreground">({matches.length})</span>
-                    )}
-                  </h3>
-
-                  {matches.length === 0 ? (
-                    <p className="text-[11px] text-muted-foreground leading-normal mt-3">
-                      Nobody yet. When you and someone else both say yes, she shows up here.
+              {swipeQueue.length > 0 ? (
+                <SwipeCard
+                  profile={swipeQueue[0]}
+                  currentUser={currentUser}
+                  onSwipeLeft={handleSwipeLeft}
+                  onSwipeRight={handleSwipeRight}
+                />
+              ) : (
+                <div className="bg-card/40 backdrop-blur-xl rounded-[32px] border border-border/60 p-6 md:p-8 shadow-xl text-center max-w-md mx-auto space-y-5 py-10 animate-fade-in select-text">
+                  <span className="text-5xl select-none block">✨🌸</span>
+                  <div className="space-y-1">
+                    <h3 className="font-sans font-black text-foreground text-base leading-snug">
+                      You're all caught up
+                    </h3>
+                    <p className="font-sans text-xs text-muted-foreground leading-relaxed max-w-xs mx-auto">
+                      You've seen everyone for now. New members show up here as they join.
                     </p>
-                  ) : (
-                    <div className="mt-3 flex md:flex-col gap-2 overflow-x-auto md:overflow-x-visible md:max-h-[420px] md:overflow-y-auto -mx-2 px-2 pb-1">
-                      {matches.map(m => (
-                        <button
-                          key={m.id}
-                          onClick={() => {
-                            setActiveMatchId(m.id);
-                            setActiveTab("chat");
-                          }}
-                          className="shrink-0 md:shrink w-20 md:w-auto flex flex-col md:flex-row md:items-center gap-2 p-2 rounded-xl border border-border/40 bg-card/60 hover:bg-card transition text-center md:text-left"
-                        >
-                          <img
-                            src={m.profile.photo}
-                            alt={m.profile.name}
-                            referrerPolicy="no-referrer"
-                            className="w-14 h-14 md:w-10 md:h-10 rounded-xl object-cover mx-auto md:mx-0 shrink-0"
-                          />
-                          <span className="min-w-0 md:flex-1">
-                            <span className="block text-[11px] font-bold text-foreground truncate">
-                              {m.profile.name.split(" ")[0]}
-                            </span>
-                            <span className="hidden md:block text-[10px] text-muted-foreground truncate">
-                              {m.messages.length > 0 ? m.messages[m.messages.length - 1].text : "Say hi"}
-                            </span>
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </aside>
-
-                {/* RIGHT — new people to meet */}
-                <div className="md:col-span-8 order-1 md:order-2">
-                  {swipeQueue.length > 0 ? (
-                    <SwipeCard
-                      profile={swipeQueue[0]}
-                      currentUser={currentUser}
-                      onSwipeLeft={handleSwipeLeft}
-                      onSwipeRight={handleSwipeRight}
-                    />
-                  ) : (
-                    <div className="bg-card/40 backdrop-blur-xl rounded-[32px] border border-border/60 p-6 md:p-8 shadow-xl text-center space-y-5 py-10 animate-fade-in select-text">
-                      <span className="text-5xl select-none block">✨🌸</span>
-                      <div className="space-y-1">
-                        <h3 className="font-sans font-black text-foreground text-base leading-snug">
-                          You're all caught up
-                        </h3>
-                        <p className="font-sans text-xs text-muted-foreground leading-relaxed max-w-xs mx-auto">
-                          You've seen everyone for now. New members show up here as they join.
-                        </p>
-                      </div>
-                      {events.length > 0 && (
-                        <button
-                          onClick={() => setActiveTab("events")}
-                          className="bg-card border border-border text-foreground font-sans text-[11px] font-bold px-4 py-2.5 rounded-xl hover:bg-muted transition"
-                        >
-                          See what's coming up
-                        </button>
-                      )}
-                    </div>
+                  </div>
+                  {matches.length > 0 && (
+                    <button
+                      onClick={() => setActiveTab("chat")}
+                      className="bg-card border border-border text-foreground font-sans text-[11px] font-bold px-4 py-2.5 rounded-xl hover:bg-muted transition"
+                    >
+                      Go to your chats
+                    </button>
                   )}
                 </div>
-              </div>
+              )}
             </div>
           )}
 
@@ -696,9 +646,12 @@ export default function App() {
               <div className={`md:col-span-4 bg-card/40 backdrop-blur-xl rounded-2xl border border-border/60 p-4 flex-col overflow-hidden shadow-xl min-h-0 ${
                 activeMatch ? "hidden md:flex" : "flex"
               }`}>
-                <h3 className="font-sans font-black text-foreground text-base border-b border-border/70 pb-2.5 flex items-center gap-2">
+                <h3 className="font-sans font-black text-foreground text-base border-b border-border/70 pb-2.5 flex items-center gap-2 shrink-0">
                   <MessageSquare size={18} className="text-primary" />
                   <span>Your matches</span>
+                  {matches.length > 0 && (
+                    <span className="text-[11px] font-mono text-muted-foreground">({matches.length})</span>
+                  )}
                 </h3>
 
                 {/* Search Bar for matches */}
@@ -756,9 +709,13 @@ export default function App() {
                               <p className="text-[10px] text-muted-foreground truncate leading-tight font-mono">
                                 {m.profile.university}
                               </p>
-                              {lastMsg && (
+                              {lastMsg ? (
                                 <p className="text-[10px] text-muted-foreground truncate mt-1.5 leading-snug font-sans">
                                   {lastMsg.senderId === accountUser?.id ? "You: " : ""}{lastMsg.text}
+                                </p>
+                              ) : (
+                                <p className="text-[10px] text-primary font-bold mt-1.5 leading-snug font-sans">
+                                  Start the conversation →
                                 </p>
                               )}
                             </div>
@@ -767,8 +724,16 @@ export default function App() {
                       });
                     })()
                   ) : (
-                    <div className="text-center py-8 text-muted-foreground font-sans text-xs">
-                      No matches yet.
+                    <div className="text-center py-8 px-3 space-y-3">
+                      <p className="text-muted-foreground font-sans text-xs leading-relaxed">
+                        No matches yet. Everyone you match with lands here, ready to chat.
+                      </p>
+                      <button
+                        onClick={() => setActiveTab("swipe")}
+                        className="bg-primary text-primary-foreground font-sans text-[11px] font-black px-4 py-2.5 rounded-xl hover:bg-primary/90 transition"
+                      >
+                        Meet new people
+                      </button>
                     </div>
                   )}
                 </div>

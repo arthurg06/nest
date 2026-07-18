@@ -7,7 +7,7 @@ import { User, UserProfile, Swipe, Match, Message, Recommendation, Event, EventR
 // Note: we can import from "./server/db.ts" but since esbuild bundles it, we can write import with relative path
 // and typescript handles resolution. In Node, with esbuild bundle, we should import './server/db' without extension or let esbuild resolve it.
 import * as dbManager from "./server/db.js";
-import { calculateCompatibility } from "./shared/compatibility.js";
+import { calculateCompatibility, PREDEFINED_INTEREST_OPTIONS } from "./shared/compatibility.js";
 import { hashPassword, verifyPassword, isHashedPassword, generateSessionToken, generateSecureId, sniffImageType } from "./server/security.js";
 import { RateLimiter } from "./server/rateLimit.js";
 import { getStripe, isStripeConfigured, isWebhookConfigured, premiumPriceId } from "./server/stripe.js";
@@ -53,8 +53,26 @@ function sanitizeInterests(raw: unknown) {
     music: asStringArray(value.music),
     social: asStringArray(value.social),
     lifestyle: asStringArray(value.lifestyle),
-    spendingStyle: typeof value.spendingStyle === "string" ? value.spendingStyle : "middle range baddie"
+    spendingStyle: typeof value.spendingStyle === "string" ? value.spendingStyle : "middle range baddie",
+    animals:
+      typeof value.animals === "string" && PREDEFINED_INTEREST_OPTIONS.animals.includes(value.animals)
+        ? value.animals
+        : undefined
   };
+}
+
+// Profile photos: at most MAX_PROFILE_PHOTOS, each an app-issued URL
+// (uploads path or Blob) or an https URL, primary first.
+const MAX_PROFILE_PHOTOS = 4;
+
+function sanitizePhotos(raw: unknown, fallback: string[]): string[] {
+  if (!Array.isArray(raw)) return fallback;
+  const cleaned = raw
+    .filter((v): v is string => typeof v === "string")
+    .map(v => v.trim())
+    .filter(v => v.startsWith("/uploads/") || v.startsWith("https://"))
+    .slice(0, MAX_PROFILE_PHOTOS);
+  return cleaned.length > 0 ? cleaned : fallback;
 }
 
 // Server-side Premium entitlement — driven by Stripe webhook state (or a
@@ -410,12 +428,15 @@ app.post("/api/auth/signup", async (req, res) => {
       personalityType: personalityType || "",
       friendshipType: friendshipType || "",
       bio: bio || "",
-      interests: interests || defaultInterests,
+      // Sign-up input is client-supplied like any other request: sanitize it
+      // rather than storing whatever arrives.
+      interests: sanitizeInterests(interests) || defaultInterests,
       isVerified: false,
       verificationStatus: "unsubmitted",
       avatarSeed: name,
       avatarColor: "#" + Math.floor(Math.random() * 16777215).toString(16),
       photo: photo || "https://images.unsplash.com/photo-1512413919939-b40067ca849d?auto=format&fit=crop&w=600&q=80",
+      photos: sanitizePhotos(req.body.photos, photo ? [photo] : []),
       tiktok: tiktok || undefined,
       instagram: instagram || undefined,
       otherSocial: otherSocial || undefined,
@@ -595,7 +616,12 @@ app.post("/api/profiles/update", authenticate, async (req, res) => {
       personalityType: data.personalityType || db.profiles[profileIdx].personalityType,
       friendshipType: data.friendshipType || db.profiles[profileIdx].friendshipType,
       bio: data.bio || db.profiles[profileIdx].bio,
-      photo: data.photo || db.profiles[profileIdx].photo,
+      ...(() => {
+        const current = db.profiles[profileIdx];
+        const photos = sanitizePhotos(data.photos, current.photos?.length ? current.photos : [current.photo]);
+        // photo stays the primary so older clients keep working
+        return { photos, photo: photos[0] || data.photo || current.photo };
+      })(),
       tiktok: data.tiktok || undefined,
       instagram: data.instagram || undefined,
       otherSocial: data.otherSocial || undefined,
@@ -1749,12 +1775,13 @@ app.delete("/api/users/me", authenticate, async (req, res) => {
       return res.status(404).json({ error: "User not found" });
     }
 
-    const photo = db.profiles.find(p => p.userId === userId)?.photo;
+    const profileToDelete = db.profiles.find(p => p.userId === userId);
+    const photos = profileToDelete?.photos?.length ? profileToDelete.photos : [profileToDelete?.photo];
 
     await cancelStripeSubscriptionSafely(user);
     deleteUserData(userId, db);
     await dbManager.writeDb(db);
-    await deleteImage(photo);
+    for (const image of photos) await deleteImage(image);
 
     res.json({ success: true, message: "Your account and all associated data have been permanently deleted." });
   } catch (error) {
@@ -1816,13 +1843,14 @@ app.delete("/api/admin/users/:userId", authenticateAdmin, async (req, res) => {
       return res.status(400).json({ error: "Cannot delete an administrator account!" });
     }
 
-    const photo = db.profiles.find(p => p.userId === userId)?.photo;
+    const profileToDelete = db.profiles.find(p => p.userId === userId);
+    const photos = profileToDelete?.photos?.length ? profileToDelete.photos : [profileToDelete?.photo];
 
     await cancelStripeSubscriptionSafely(user);
     deleteUserData(userId, db);
     recordAudit(db, adminId, "user.delete", userId, user.email);
     await dbManager.writeDb(db);
-    await deleteImage(photo);
+    for (const image of photos) await deleteImage(image);
 
     res.json({ success: true, message: `User account ${user.email} and all associated data have been deleted.` });
   } catch (error) {

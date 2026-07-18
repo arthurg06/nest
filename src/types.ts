@@ -4,6 +4,7 @@ export interface Interests {
   social: string[];
   lifestyle: string[];
   spendingStyle: string; // "budget queen" | "middle range baddie" | "high spender" | "luxury lover"
+  animals?: string; // "dog lover" | "cat lover" | "loves all animals" | "plants over pets"
 }
 
 export type VerificationStatus = "unsubmitted" | "pending" | "approved" | "rejected";
@@ -35,7 +36,8 @@ export interface UserProfile {
   verification?: VerificationInfo;
   avatarSeed: string; // Seed to generate or load a beautiful avatar
   avatarColor: string; // Color palette for avatar
-  photo: string; // Required profile photo URL
+  photo: string; // Primary profile photo URL (mirrors photos[0])
+  photos?: string[]; // Up to 4 photos, primary first
   tiktok?: string; // Optional TikTok handle
   instagram?: string; // Optional Instagram handle
   otherSocial?: string; // Optional other social handles

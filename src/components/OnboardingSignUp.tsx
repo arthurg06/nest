@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { UserProfile, Interests } from "../types";
 import { PREDEFINED_INTEREST_OPTIONS } from "../data";
+import { ANIMAL_EMOJI } from "../../shared/compatibility";
 import { Sparkles, ShieldCheck, GraduationCap, Globe, MessageCircle, Heart, Film, ArrowRight, User, Check, Lock, Mail, Instagram, Search } from "lucide-react";
 import { ImageUploader } from "./ImageUploader";
 import { searchCountries } from "../../shared/countries";
@@ -39,6 +40,7 @@ export default function OnboardingSignUp({ onAuthSuccess }: OnboardingSignUpProp
   const [instagram, setInstagram] = useState("");
   const [otherSocial, setOtherSocial] = useState("");
   const [photo, setPhoto] = useState("");
+  const [animals, setAnimals] = useState("");
 
   // Interactive Nationalities State (Multiple selection support)
   const [selectedNationalities, setSelectedNationalities] = useState<string[]>([]);
@@ -211,7 +213,8 @@ export default function OnboardingSignUp({ onAuthSuccess }: OnboardingSignUpProp
             music: selectedMusic.length > 0 ? selectedMusic : ["pop", "indie"],
             social: selectedSocial.length > 0 ? selectedSocial : ["cafes", "brunch"],
             lifestyle: selectedLifestyle.length > 0 ? selectedLifestyle : ["wellness"],
-            spendingStyle: spendingStyle
+            spendingStyle: spendingStyle,
+            animals: animals || undefined
           }
         })
       });
@@ -700,6 +703,31 @@ export default function OnboardingSignUp({ onAuthSuccess }: OnboardingSignUpProp
                               }`}
                             >
                               {act}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Animals — one pick, easy to answer */}
+                    <div className="space-y-2 pt-2">
+                      <span className="text-[10px] font-mono font-bold text-muted-foreground uppercase block">
+                        Animals
+                      </span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {PREDEFINED_INTEREST_OPTIONS.animals.map(option => {
+                          const sel = animals === option;
+                          return (
+                            <button
+                              key={option}
+                              type="button"
+                              onClick={() => setAnimals(sel ? "" : option)}
+                              aria-pressed={sel}
+                              className={`px-2.5 py-2 rounded-full text-[10px] font-bold transition ${
+                                sel ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted"
+                              }`}
+                            >
+                              {ANIMAL_EMOJI[option]} {option}
                             </button>
                           );
                         })}
