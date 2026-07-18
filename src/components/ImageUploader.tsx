@@ -1,5 +1,6 @@
 import React, { useState, useRef } from "react";
 import { Upload, X, AlertCircle, Image as ImageIcon, Loader2 } from "lucide-react";
+import { apiUrl } from "../lib/api";
 
 interface ImageUploaderProps {
   value: string;
@@ -52,7 +53,7 @@ export function ImageUploader({ value, onChange, onRemove, label, className = ""
         headers["Authorization"] = `Bearer ${token}`;
       }
 
-      const response = await fetch("/api/upload", {
+      const response = await fetch(apiUrl("/api/upload"), {
         method: "POST",
         headers,
         body: JSON.stringify({
@@ -225,7 +226,7 @@ export function MultiImageUploader({ values = [], onChange, maxImages = 5, label
       const headers: HeadersInit = { "Content-Type": "application/json" };
       if (token) headers["Authorization"] = `Bearer ${token}`;
 
-      const response = await fetch("/api/upload", {
+      const response = await fetch(apiUrl("/api/upload"), {
         method: "POST",
         headers,
         body: JSON.stringify({ fileData, fileName: file.name })

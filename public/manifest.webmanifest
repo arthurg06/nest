@@ -1,0 +1,15 @@
+{
+  "name": "NEST — Madrid Student Net",
+  "short_name": "NEST",
+  "description": "A private club for international women studying in Madrid.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#FAF7F5",
+  "theme_color": "#FAF7F5",
+  "icons": [
+    { "src": "/icons/nest-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/nest-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}

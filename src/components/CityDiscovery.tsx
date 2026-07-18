@@ -5,6 +5,7 @@ import {
   Heart, MapPin, Search, Image as ImageIcon, Camera, ExternalLink, Trash2
 } from "lucide-react";
 import { ImageUploader } from "./ImageUploader";
+import { apiUrl } from "../lib/api";
 
 interface CityDiscoveryProps {
   recommendations: Recommendation[];
@@ -51,7 +52,7 @@ export default function CityDiscovery({
 
   const handleToggleLike = async (id: string) => {
     try {
-      const res = await fetch(`/api/recommendations/${id}/like`, {
+      const res = await fetch(apiUrl(`/api/recommendations/${id}/like`), {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${localStorage.getItem("nest_token")}`

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { ShieldCheck, Trash2, Users, MapPin, Search, ExternalLink, Ban, RotateCcw, BadgeCheck, XCircle } from "lucide-react";
 import { Recommendation } from "../types";
+import { apiUrl } from "../lib/api";
 
 interface AdminUser {
   id: string;
@@ -87,7 +88,7 @@ export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboar
   const fetchUsers = async () => {
     setIsLoadingUsers(true);
     try {
-      const res = await fetch("/api/admin/users", { headers: authHeaders() });
+      const res = await fetch(apiUrl("/api/admin/users"), { headers: authHeaders() });
       if (res.ok) setUsers(await res.json());
     } catch (err) {
       console.error("Error fetching users for admin:", err);
@@ -99,7 +100,7 @@ export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboar
   const fetchRecs = async () => {
     setIsLoadingRecs(true);
     try {
-      const res = await fetch("/api/recommendations", { headers: authHeaders() });
+      const res = await fetch(apiUrl("/api/recommendations"), { headers: authHeaders() });
       if (res.ok) setRecs(await res.json());
     } catch (err) {
       console.error("Error fetching spots for admin:", err);
@@ -111,7 +112,7 @@ export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboar
   const fetchVerifications = async (status = verificationFilter) => {
     setIsLoadingVerifications(true);
     try {
-      const res = await fetch(`/api/admin/verifications?status=${encodeURIComponent(status)}`, { headers: authHeaders() });
+      const res = await fetch(apiUrl(`/api/admin/verifications?status=${encodeURIComponent(status)}`), { headers: authHeaders() });
       if (res.ok) setVerifications(await res.json());
     } catch (err) {
       console.error("Error fetching verifications:", err);
@@ -140,7 +141,7 @@ export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboar
   const handleApprove = async (userId: string, name: string) => {
     setBusyUserId(userId);
     try {
-      const res = await fetch(`/api/admin/verifications/${userId}/approve`, {
+      const res = await fetch(apiUrl(`/api/admin/verifications/${userId}/approve`), {
         method: "POST",
         headers: { ...authHeaders(), "Content-Type": "application/json" },
         body: JSON.stringify({})
@@ -165,7 +166,7 @@ export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboar
     }
     setBusyUserId(userId);
     try {
-      const res = await fetch(`/api/admin/verifications/${userId}/reject`, {
+      const res = await fetch(apiUrl(`/api/admin/verifications/${userId}/reject`), {
         method: "POST",
         headers: { ...authHeaders(), "Content-Type": "application/json" },
         body: JSON.stringify({ reason: rejectReason.trim() })
@@ -192,7 +193,7 @@ export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboar
     }
     setBusyUserId(user.id);
     try {
-      const res = await fetch(`/api/admin/users/${user.id}/${action}`, { method: "POST", headers: authHeaders() });
+      const res = await fetch(apiUrl(`/api/admin/users/${user.id}/${action}`), { method: "POST", headers: authHeaders() });
       if (res.ok) {
         notify(action === "suspend" ? "Account suspended." : "Account restored.");
         fetchUsers();
@@ -212,7 +213,7 @@ export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboar
     }
     setBusyUserId(userId);
     try {
-      const res = await fetch(`/api/admin/users/${userId}`, { method: "DELETE", headers: authHeaders() });
+      const res = await fetch(apiUrl(`/api/admin/users/${userId}`), { method: "DELETE", headers: authHeaders() });
       if (res.ok) {
         notify("Account deleted.");
         fetchUsers();
@@ -240,7 +241,7 @@ export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboar
           fetchRecs();
         }
       } else {
-        const res = await fetch(`/api/recommendations/${recId}`, { method: "DELETE", headers: authHeaders() });
+        const res = await fetch(apiUrl(`/api/recommendations/${recId}`), { method: "DELETE", headers: authHeaders() });
         if (res.ok) {
           notify("Recommendation deleted.");
           fetchRecs();

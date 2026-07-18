@@ -13,6 +13,7 @@ import {
   Sparkles, MessageSquare, MapPin, Users, Calendar, User,
   ShieldAlert, Bell, Heart, Check, X, ShieldCheck, HelpCircle, RefreshCw, Key
 } from "lucide-react";
+import { apiUrl } from "./lib/api";
 
 export default function App() {
   // Navigation State: "swipe" | "chat" | "city" | "communities" | "events" | "profile"
@@ -69,7 +70,7 @@ export default function App() {
     if (currentToken) {
       // Plain fetch (not fetchWithAuth) to avoid sign-out recursion on 401,
       // and fire-and-forget so a network failure never blocks local sign-out.
-      fetch("/api/auth/logout", {
+      fetch(apiUrl("/api/auth/logout"), {
         method: "POST",
         headers: { "Authorization": `Bearer ${currentToken}` }
       }).catch(() => {});

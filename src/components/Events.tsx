@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Event } from "../types";
 import { Calendar, Clock, MapPin, Sparkles, Check, Bookmark, Crown, X, Trash2, Plus } from "lucide-react";
 import { PREMIUM_PRICE_LABEL, PREMIUM_RENEWAL_NOTE } from "../../shared/subscription";
+import { apiUrl } from "../lib/api";
 
 export interface SubscriptionInfo {
   stripeConfigured: boolean;
@@ -37,7 +38,7 @@ export default function Events({ events, onToggleRsvp, isSubscribed, subscriptio
     setPaymentError("");
     setIsRedirecting(true);
     try {
-      const res = await fetch("/api/subscription/checkout", {
+      const res = await fetch(apiUrl("/api/subscription/checkout"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -58,7 +59,7 @@ export default function Events({ events, onToggleRsvp, isSubscribed, subscriptio
   const handleOpenPortal = async () => {
     setPaymentError("");
     try {
-      const res = await fetch("/api/subscription/portal", {
+      const res = await fetch(apiUrl("/api/subscription/portal"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

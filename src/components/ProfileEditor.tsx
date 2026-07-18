@@ -4,6 +4,7 @@ import { PREDEFINED_INTEREST_OPTIONS } from "../data";
 import { ShieldCheck, User, Sparkles, Languages, Check, Mail, Upload, FileText, Globe, Search, Trash2, Edit, MapPin, ExternalLink, ShieldAlert } from "lucide-react";
 import { ImageUploader } from "./ImageUploader";
 import { searchCountries } from "../../shared/countries";
+import { apiUrl } from "../lib/api";
 
 interface ProfileEditorProps {
   currentUser: UserProfile;
@@ -35,7 +36,7 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
   const fetchMyRecommendations = async () => {
     setIsLoadingMyRecs(true);
     try {
-      const res = await fetch("/api/recommendations", {
+      const res = await fetch(apiUrl("/api/recommendations"), {
         headers: {
           "Authorization": `Bearer ${localStorage.getItem("nest_token")}`
         }
@@ -68,7 +69,7 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
       }
     } else {
       try {
-        const res = await fetch(`/api/recommendations/${id}`, {
+        const res = await fetch(apiUrl(`/api/recommendations/${id}`), {
           method: "DELETE",
           headers: {
             "Authorization": `Bearer ${localStorage.getItem("nest_token")}`
@@ -102,7 +103,7 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
       return;
     }
     try {
-      const res = await fetch(`/api/recommendations/${editingRec.id}`, {
+      const res = await fetch(apiUrl(`/api/recommendations/${editingRec.id}`), {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -132,7 +133,7 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
   const handleDeleteAccount = async () => {
     setIsDeleting(true);
     try {
-      const res = await fetch("/api/users/me", {
+      const res = await fetch(apiUrl("/api/users/me"), {
         method: "DELETE",
         headers: {
           "Authorization": `Bearer ${localStorage.getItem("nest_token")}`
@@ -316,7 +317,7 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
 
     setIsSubmittingVerification(true);
     try {
-      const res = await fetch("/api/verification/submit", {
+      const res = await fetch(apiUrl("/api/verification/submit"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

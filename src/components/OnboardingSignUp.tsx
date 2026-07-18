@@ -4,6 +4,7 @@ import { PREDEFINED_INTEREST_OPTIONS } from "../data";
 import { Sparkles, ShieldCheck, GraduationCap, Globe, MessageCircle, Heart, Film, ArrowRight, User, Check, Lock, Mail, Instagram, Search } from "lucide-react";
 import { ImageUploader } from "./ImageUploader";
 import { searchCountries } from "../../shared/countries";
+import { apiUrl } from "../lib/api";
 
 interface OnboardingSignUpProps {
   onAuthSuccess: (token: string, user: any, profile: UserProfile) => void;
@@ -125,7 +126,7 @@ export default function OnboardingSignUp({ onAuthSuccess }: OnboardingSignUpProp
 
     setLoading(true);
     try {
-      const res = await fetch("/api/auth/login", {
+      const res = await fetch(apiUrl("/api/auth/login"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: loginEmail, password: loginPassword })
@@ -186,7 +187,7 @@ export default function OnboardingSignUp({ onAuthSuccess }: OnboardingSignUpProp
 
     setLoading(true);
     try {
-      const res = await fetch("/api/auth/signup", {
+      const res = await fetch(apiUrl("/api/auth/signup"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
