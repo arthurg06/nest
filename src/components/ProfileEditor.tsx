@@ -9,9 +9,10 @@ interface ProfileEditorProps {
   onSaveProfile: (profile: UserProfile) => void;
   onDeleteRecommendation?: (id: string) => Promise<boolean>;
   onSignOut: () => void;
+  onRefreshProfile: () => void;
 }
 
-export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteRecommendation, onSignOut }: ProfileEditorProps) {
+export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteRecommendation, onSignOut, onRefreshProfile }: ProfileEditorProps) {
   // Personal recommendations/spots management state
   const [myRecs, setMyRecs] = useState<any[]>([]);
   const [isLoadingMyRecs, setIsLoadingMyRecs] = useState(false);
@@ -382,11 +383,14 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
   const [spendingStyle, setSpendingStyle] = useState<string>(currentUser.interests.spendingStyle);
 
   // Verification state
-  const [studentEmail, setStudentEmail] = useState("");
-  const [docUploaded, setDocUploaded] = useState(false);
-  const [isVerifying, setIsVerifying] = useState(false);
-  const [isVerified, setIsVerified] = useState(currentUser.isVerified);
-  const [verificationSuccess, setVerificationSuccess] = useState(false);
+  // Verification submission state. Status itself lives on the server —
+  // submitting places the account in review; only an admin approves it.
+  const verificationStatus = currentUser.verificationStatus || (currentUser.isVerified ? "approved" : "unsubmitted");
+  const isVerified = verificationStatus === "approved";
+  const [verUniversity, setVerUniversity] = useState(currentUser.verification?.university || currentUser.university || "");
+  const [verEmail, setVerEmail] = useState(currentUser.verification?.universityEmail || "");
+  const [verNote, setVerNote] = useState("");
+  const [isSubmittingVerification, setIsSubmittingVerification] = useState(false);
 
   // Toggle helpers
   const handleToggleActivity = (act: string) => {
@@ -444,7 +448,7 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
       personalityType: "",
       friendshipType: friendshipType.trim() || "Outing planner",
       bio: bio.trim() || "Moving to Madrid!",
-      isVerified: isVerified,
+      isVerified: currentUser.isVerified,
       photo: photo,
       tiktok: tiktok.trim() || undefined,
       instagram: instagram.trim() || undefined,
@@ -462,27 +466,40 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
     showFeedback("Profile saved successfully! 🎉 Your bestie matches are recalculated.", "success");
   };
 
-  const handleVerify = (e: React.FormEvent) => {
+  // Submit details for manual admin review — this never verifies the
+  // account by itself.
+  const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!studentEmail && !docUploaded) {
-      showFeedback("Please provide either a student email or upload a student ID card!", "error");
+    if (!verUniversity.trim() || !verEmail.trim()) {
+      showFeedback("Please provide your university and your university email address.", "error");
       return;
     }
 
-    setIsVerifying(true);
-    setTimeout(() => {
-      setIsVerifying(false);
-      setIsVerified(true);
-      setVerificationSuccess(true);
-      showFeedback("University credentials authenticated successfully! 🎓", "success");
-      
-      // Auto-save the verification immediately
-      const updatedProfile: UserProfile = {
-        ...currentUser,
-        isVerified: true
-      };
-      onSaveProfile(updatedProfile);
-    }, 1200);
+    setIsSubmittingVerification(true);
+    try {
+      const res = await fetch("/api/verification/submit", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${localStorage.getItem("nest_token")}`
+        },
+        body: JSON.stringify({
+          university: verUniversity.trim(),
+          universityEmail: verEmail.trim(),
+          note: verNote.trim() || undefined
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Could not submit verification");
+      }
+      showFeedback("Verification submitted — an admin will review it shortly.", "success");
+      onRefreshProfile();
+    } catch (err: any) {
+      showFeedback(err.message || "Could not submit verification.", "error");
+    } finally {
+      setIsSubmittingVerification(false);
+    }
   };
 
   return (
@@ -1199,82 +1216,89 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
             </div>
 
             <p className="font-sans text-[11px] text-slate-500 leading-relaxed">
-              NEST is a secure, girls-only student circle. Verify your university to receive a gold verified shield badge on your card!
+              Every member is reviewed by the NEST team before she can match. Submit your university details below.
             </p>
 
             {isVerified ? (
               <div className="bg-amber-50/75 backdrop-blur-sm text-amber-800 p-3.5 rounded-xl border border-amber-200/50 text-center space-y-1.5 select-none shadow-sm">
-                <ShieldCheck size={26} className="text-amber-600 fill-amber-200 mx-auto animate-pulse" />
-                <h4 className="font-sans font-bold text-xs">University Verified!</h4>
+                <ShieldCheck size={26} className="text-amber-600 fill-amber-200 mx-auto" />
+                <h4 className="font-sans font-bold text-xs">Verified member</h4>
                 <p className="font-sans text-[10px] text-slate-600 leading-normal">
-                  Your student credentials have been successfully authenticated. Enjoy full access.
+                  Your student status has been approved. You have full access to matching.
+                </p>
+              </div>
+            ) : verificationStatus === "pending" ? (
+              <div className="bg-stone-50 text-stone-700 p-3.5 rounded-xl border border-stone-200 text-center space-y-1.5 select-none">
+                <span className="text-2xl block">⏳</span>
+                <h4 className="font-sans font-bold text-xs">Under review</h4>
+                <p className="font-sans text-[10px] text-stone-500 leading-normal">
+                  Submitted {currentUser.verification?.submittedAt ? new Date(currentUser.verification.submittedAt).toLocaleDateString() : "recently"}. We'll notify you once an admin has reviewed it.
                 </p>
               </div>
             ) : (
               <form onSubmit={handleVerify} className="space-y-3">
-                {/* 1. Email input */}
+                {verificationStatus === "rejected" && (
+                  <div className="bg-rose-50 border border-rose-100 text-rose-700 p-3 rounded-xl text-[11px] leading-normal">
+                    <span className="font-bold block mb-0.5">Not approved</span>
+                    {currentUser.verification?.rejectionReason || "Please review your details and resubmit."}
+                  </div>
+                )}
+
                 <div className="space-y-1">
-                  <span className="text-[10px] font-sans font-bold text-slate-600 flex items-center gap-1">
-                    <Mail size={12} />
-                    <span>Academic Email</span>
-                  </span>
+                  <span className="text-[10px] font-sans font-bold text-slate-600 block">University</span>
                   <input
-                    type="email"
-                    placeholder="e.g. name@student.ie.edu"
-                    value={studentEmail}
-                    onChange={(e) => setStudentEmail(e.target.value)}
+                    type="text"
+                    placeholder="e.g. IE University"
+                    value={verUniversity}
+                    onChange={(e) => setVerUniversity(e.target.value)}
                     className="w-full bg-white/40 border border-white/50 rounded-lg p-2 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-rose-300"
                   />
                 </div>
 
-                <div className="text-center font-mono text-[9px] text-slate-400 uppercase tracking-widest py-0.5">
-                  - OR -
+                <div className="space-y-1">
+                  <span className="text-[10px] font-sans font-bold text-slate-600 flex items-center gap-1">
+                    <Mail size={12} />
+                    <span>University email</span>
+                  </span>
+                  <input
+                    type="email"
+                    placeholder="e.g. name@student.ie.edu"
+                    value={verEmail}
+                    onChange={(e) => setVerEmail(e.target.value)}
+                    className="w-full bg-white/40 border border-white/50 rounded-lg p-2 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-rose-300"
+                  />
                 </div>
 
-                {/* 2. File Upload simulator */}
-                <div className="space-y-1.5">
-                  <span className="text-[10px] font-sans font-bold text-slate-600 flex items-center gap-1">
-                    <Upload size={12} />
-                    <span>Upload Student ID / Letter</span>
-                  </span>
-                  
-                  <button
-                    type="button"
-                    onClick={() => setDocUploaded(true)}
-                    className={`w-full py-4 border-2 border-dashed rounded-xl flex flex-col items-center justify-center gap-1.5 transition ${
-                      docUploaded 
-                        ? "bg-emerald-50/55 border-emerald-300 text-emerald-700" 
-                        : "bg-white/30 border-white/40 text-slate-400 hover:bg-white/40"
-                    }`}
-                  >
-                    <FileText size={20} />
-                    <span className="text-[10px] font-sans font-bold">
-                      {docUploaded ? "student_id_madrid.jpg uploaded ✓" : "Drop files or browse here"}
-                    </span>
-                  </button>
+                <div className="space-y-1">
+                  <span className="text-[10px] font-sans font-bold text-slate-600 block">Anything else we should know? (optional)</span>
+                  <textarea
+                    rows={2}
+                    placeholder="e.g. Exchange student, arriving in September"
+                    value={verNote}
+                    onChange={(e) => setVerNote(e.target.value)}
+                    className="w-full bg-white/40 border border-white/50 rounded-lg p-2 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-rose-300 resize-none"
+                  />
                 </div>
 
                 <button
                   type="submit"
-                  disabled={isVerifying}
-                  className="w-full py-2 bg-amber-500 text-slate-950 font-sans text-xs font-extrabold rounded-lg shadow-md shadow-amber-200/30 hover:bg-amber-600 transition flex items-center justify-center gap-1 cursor-pointer"
+                  disabled={isSubmittingVerification}
+                  className="w-full py-2 bg-amber-500 text-slate-950 font-sans text-xs font-extrabold rounded-lg shadow-md shadow-amber-200/30 hover:bg-amber-600 transition flex items-center justify-center gap-1 cursor-pointer disabled:opacity-50"
                 >
-                  {isVerifying ? (
-                    <span>Verifying details...</span>
+                  {isSubmittingVerification ? (
+                    <span>Submitting…</span>
                   ) : (
                     <>
                       <ShieldCheck size={14} />
-                      <span>Authenticate Student</span>
+                      <span>{verificationStatus === "rejected" ? "Resubmit for review" : "Submit for review"}</span>
                     </>
                   )}
                 </button>
-              </form>
-            )}
 
-            {verificationSuccess && (
-              <div className="p-2.5 bg-emerald-500/10 text-emerald-800 rounded-lg text-[10px] font-sans border border-emerald-200/50 leading-normal">
-                🏆 Welcome to the NEST inner circle! The student-verified badge is now visible next to your name on matching swipe-decks.
-              </div>
+                <p className="text-[10px] text-slate-400 leading-normal">
+                  Reviews are manual and usually quick. Your email is used for verification only.
+                </p>
+              </form>
             )}
           </div>
 

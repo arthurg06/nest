@@ -48,19 +48,34 @@ export async function signup(overrides: Record<string, unknown> = {}): Promise<T
 }
 
 // The email below matches ADMIN_EMAILS in tests/setup.ts, so this account
-// is bootstrapped with the admin role. One admin per test file.
-export async function signupAdmin(): Promise<TestUser> {
-  return signup({ email: "admin@nest.test" });
+// is bootstrapped with the admin role. One admin per test file (cached).
+let cachedAdmin: TestUser | null = null;
+export async function getAdmin(): Promise<TestUser> {
+  if (!cachedAdmin) {
+    cachedAdmin = await signup({ email: "admin@nest.test" });
+  }
+  return cachedAdmin;
 }
 
 export function auth(token: string) {
   return { Authorization: `Bearer ${token}` };
 }
 
-// Creates two users who have liked each other, producing a match.
+// Admin-approves a member so she can appear in discovery and match.
+export async function approveUser(userId: string): Promise<void> {
+  const admin = await getAdmin();
+  await request(app)
+    .post(`/api/admin/verifications/${userId}/approve`)
+    .set(auth(admin.token))
+    .expect(200);
+}
+
+// Creates two admin-approved users who have liked each other → a match.
 export async function createMatchedPair(): Promise<{ a: TestUser; b: TestUser; matchId: string }> {
   const a = await signup();
   const b = await signup();
+  await approveUser(a.userId);
+  await approveUser(b.userId);
 
   await request(app).post("/api/swipe").set(auth(a.token)).send({ toUserId: b.userId, action: "like" });
   const res = await request(app).post("/api/swipe").set(auth(b.token)).send({ toUserId: a.userId, action: "like" });

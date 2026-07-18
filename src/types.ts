@@ -6,6 +6,17 @@ export interface Interests {
   spendingStyle: string; // "budget queen" | "middle range baddie" | "high spender" | "luxury lover"
 }
 
+export type VerificationStatus = "unsubmitted" | "pending" | "approved" | "rejected";
+
+export interface VerificationInfo {
+  university?: string;
+  universityEmail?: string;
+  userNote?: string;
+  submittedAt?: string;
+  reviewedAt?: string;
+  rejectionReason?: string;
+}
+
 export interface UserProfile {
   id: string;
   userId?: string;
@@ -20,6 +31,8 @@ export interface UserProfile {
   bio: string;
   interests: Interests;
   isVerified: boolean;
+  verificationStatus?: VerificationStatus;
+  verification?: VerificationInfo;
   avatarSeed: string; // Seed to generate or load a beautiful avatar
   avatarColor: string; // Color palette for avatar
   photo: string; // Required profile photo URL

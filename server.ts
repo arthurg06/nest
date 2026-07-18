@@ -2,7 +2,7 @@ import express from "express";
 import path from "path";
 import fs from "fs";
 import dotenv from "dotenv";
-import { User, UserProfile, Swipe, Match, Message, Recommendation, Event, EventRsvp, Post, Notification, Session } from "./server/db.js";
+import { User, UserProfile, Swipe, Match, Message, Recommendation, Event, EventRsvp, Post, Notification, Session, DbSchema } from "./server/db.js";
 
 // Note: we can import from "./server/db.ts" but since esbuild bundles it, we can write import with relative path
 // and typescript handles resolution. In Node, with esbuild bundle, we should import './server/db' without extension or let esbuild resolve it.
@@ -24,6 +24,48 @@ const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || "")
   .map(e => e.trim().toLowerCase())
   .filter(Boolean);
 const isAdminEmail = (email: string) => ADMIN_EMAILS.includes(email.toLowerCase());
+
+// A member's own profile: verification info visible minus internal-only
+// fields (admin notes, reviewer identity).
+function ownProfileView(profile: UserProfile) {
+  if (!profile.verification) return profile;
+  const { adminNote, reviewedById, ...visible } = profile.verification;
+  return { ...profile, verification: visible };
+}
+
+// A profile as shown to OTHER members: no verification record at all.
+function publicProfileView(profile: UserProfile) {
+  const { verification, ...rest } = profile;
+  return rest;
+}
+
+const asStringArray = (value: unknown): string[] =>
+  Array.isArray(value) ? value.filter((v): v is string => typeof v === "string").slice(0, 50) : [];
+
+function sanitizeInterests(raw: unknown) {
+  if (!raw || typeof raw !== "object") return null;
+  const value = raw as Record<string, unknown>;
+  return {
+    activities: asStringArray(value.activities),
+    music: asStringArray(value.music),
+    social: asStringArray(value.social),
+    lifestyle: asStringArray(value.lifestyle),
+    spendingStyle: typeof value.spendingStyle === "string" ? value.spendingStyle : "middle range baddie"
+  };
+}
+
+// Append-only audit trail for admin decisions. Never contains passwords,
+// tokens, or payment data.
+function recordAudit(db: DbSchema, adminId: string, action: string, targetUserId?: string, detail?: string) {
+  db.adminAudit.push({
+    id: generateId(),
+    adminId,
+    action,
+    targetUserId,
+    detail,
+    createdAt: new Date().toISOString()
+  });
+}
 
 // Vercel's deployment filesystem is read-only; /tmp is the only writable
 // location there (ephemeral — files reset between cold starts).
@@ -75,6 +117,21 @@ function authenticate(req: express.Request, res: express.Response, next: express
     return res.status(401).json({ error: "Unauthorized: Session expired" });
   }
 
+  const user = db.users.find(u => u.id === session.userId);
+  if (!user) {
+    return res.status(401).json({ error: "Unauthorized: Invalid token" });
+  }
+  if (user.status === "suspended") {
+    return res.status(403).json({ error: "This account is suspended. Contact the NEST team for help." });
+  }
+
+  // Throttled activity timestamp for the admin dashboard (max one write/hour)
+  const now = Date.now();
+  if (!user.lastActiveAt || now - new Date(user.lastActiveAt).getTime() > 60 * 60 * 1000) {
+    user.lastActiveAt = new Date(now).toISOString();
+    dbManager.writeDb(db);
+  }
+
   (req as any).userId = session.userId;
   next();
 }
@@ -85,7 +142,8 @@ function authenticateAdmin(req: express.Request, res: express.Response, next: ex
     const userId = (req as any).userId;
     const db = dbManager.readDb();
     const user = db.users.find(u => u.id === userId);
-    if (!user || !user.isAdmin) {
+    // Persistent server-side role — never a client-supplied flag
+    if (!user || user.role !== "admin") {
       return res.status(403).json({ error: "Forbidden: Administrator access required" });
     }
     next();
@@ -130,6 +188,9 @@ app.post("/api/auth/signup", async (req, res) => {
       email: email.toLowerCase(),
       passwordHash: await hashPassword(password),
       isAdmin: isAdmin,
+      role: isAdmin ? "admin" : "member",
+      status: "active",
+      source: "web",
       isPremium: false,
       createdAt: new Date().toISOString()
     };
@@ -156,6 +217,7 @@ app.post("/api/auth/signup", async (req, res) => {
       bio: bio || "",
       interests: interests || defaultInterests,
       isVerified: false,
+      verificationStatus: "unsubmitted",
       avatarSeed: name,
       avatarColor: "#" + Math.floor(Math.random() * 16777215).toString(16),
       photo: photo || "https://images.unsplash.com/photo-1512413919939-b40067ca849d?auto=format&fit=crop&w=600&q=80",
@@ -188,7 +250,7 @@ app.post("/api/auth/signup", async (req, res) => {
         isAdmin: newUser.isAdmin,
         isPremium: newUser.isPremium
       },
-      profile: newProfile
+      profile: ownProfileView(newProfile)
     });
 
   } catch (error: any) {
@@ -253,7 +315,7 @@ app.post("/api/auth/login", async (req, res) => {
         isAdmin: user.isAdmin,
         isPremium: user.isPremium
       },
-      profile
+      profile: profile ? ownProfileView(profile) : profile
     });
 
   } catch (error: any) {
@@ -288,7 +350,7 @@ app.get("/api/auth/me", authenticate, (req, res) => {
         isAdmin: user.isAdmin,
         isPremium: user.isPremium
       },
-      profile
+      profile: profile ? ownProfileView(profile) : profile
     });
   } catch (error) {
     res.status(500).json({ error: "Error retrieving current user" });
@@ -342,32 +404,68 @@ app.post("/api/profiles/update", authenticate, (req, res) => {
       tiktok: data.tiktok || undefined,
       instagram: data.instagram || undefined,
       otherSocial: data.otherSocial || undefined,
+      // Interests are user-editable; sanitize to string arrays. Verification
+      // fields are intentionally NOT settable through this endpoint.
+      interests: sanitizeInterests(data.interests) || db.profiles[profileIdx].interests,
     };
 
     dbManager.writeDb(db);
-    res.json(db.profiles[profileIdx]);
+    res.json(ownProfileView(db.profiles[profileIdx]));
   } catch (error) {
     res.status(500).json({ error: "Error updating profile" });
   }
 });
 
-// Verify Profile (e.g., student verification)
-app.post("/api/profiles/verify", authenticate, (req, res) => {
+// Submit student-verification details for manual admin review. Submitting
+// NEVER verifies the account by itself — an administrator approves or
+// rejects every request. Email domain is a supporting signal only.
+app.post("/api/verification/submit", authenticate, (req, res) => {
   try {
     const userId = (req as any).userId;
-    const db = dbManager.readDb();
-    const profileIdx = db.profiles.findIndex(p => p.userId === userId);
+    const { university, universityEmail, note } = req.body;
 
-    if (profileIdx === -1) {
+    if (!university || typeof university !== "string" || !university.trim()) {
+      return res.status(400).json({ error: "University name is required" });
+    }
+    if (
+      !universityEmail ||
+      typeof universityEmail !== "string" ||
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(universityEmail.trim())
+    ) {
+      return res.status(400).json({ error: "A valid university email address is required" });
+    }
+
+    const db = dbManager.readDb();
+    const profile = db.profiles.find(p => p.userId === userId);
+    if (!profile) {
       return res.status(404).json({ error: "Profile not found" });
     }
 
-    db.profiles[profileIdx].isVerified = true;
-    dbManager.writeDb(db);
+    if (profile.verificationStatus === "approved") {
+      return res.status(400).json({ error: "Your account is already verified" });
+    }
+    if (profile.verificationStatus === "pending") {
+      return res.status(400).json({ error: "Your verification is already under review" });
+    }
 
-    res.json({ success: true, profile: db.profiles[profileIdx] });
+    profile.verificationStatus = "pending";
+    profile.isVerified = false;
+    profile.university = university.trim();
+    profile.verification = {
+      ...profile.verification,
+      university: university.trim(),
+      universityEmail: universityEmail.trim().toLowerCase(),
+      userNote: typeof note === "string" && note.trim() ? note.trim().slice(0, 500) : undefined,
+      submittedAt: new Date().toISOString(),
+      reviewedAt: undefined,
+      reviewedById: undefined,
+      rejectionReason: undefined
+    };
+
+    dbManager.writeDb(db);
+    res.json({ success: true, profile: ownProfileView(profile) });
   } catch (error) {
-    res.status(500).json({ error: "Error verifying profile" });
+    res.status(500).json({ error: "Error submitting verification" });
   }
 });
 
@@ -440,17 +538,18 @@ app.get("/api/profiles", authenticate, (req, res) => {
       .filter(s => s.fromUserId === userId)
       .map(s => s.toUserId);
 
-    // Filter profiles:
-    // 1. Belongs to other users
-    // 2. Is verified
-    // 3. Not swiped yet
-    const discoverableProfiles = db.profiles.filter(p => 
-      p.userId !== userId && 
-      p.isVerified && 
+    // Discoverable = other users, admin-approved verification, active
+    // account, not yet swiped. Pending/rejected/suspended members are never
+    // shown or recommended.
+    const activeUserIds = new Set(db.users.filter(u => u.status === "active").map(u => u.id));
+    const discoverableProfiles = db.profiles.filter(p =>
+      p.userId !== userId &&
+      p.verificationStatus === "approved" &&
+      activeUserIds.has(p.userId) &&
       !swipedUserIds.includes(p.userId)
     );
 
-    res.json(discoverableProfiles);
+    res.json(discoverableProfiles.map(publicProfileView));
   } catch (error) {
     res.status(500).json({ error: "Error loading discovery profiles" });
   }
@@ -470,6 +569,19 @@ app.post("/api/swipe", authenticate, (req, res) => {
     }
 
     const db = dbManager.readDb();
+
+    // Only admin-approved members can initiate or receive matching
+    const actorProfile = db.profiles.find(p => p.userId === userId);
+    if (!actorProfile || actorProfile.verificationStatus !== "approved") {
+      return res.status(403).json({
+        error: "Your account must be verified before you can match",
+        requiresVerification: true
+      });
+    }
+    const targetProfile = db.profiles.find(p => p.userId === toUserId);
+    if (!targetProfile || targetProfile.verificationStatus !== "approved") {
+      return res.status(403).json({ error: "This member is not available for matching" });
+    }
 
     // Register swipe
     const newSwipe: Swipe = {
@@ -561,7 +673,7 @@ app.get("/api/matches", authenticate, (req, res) => {
       return {
         id: m.id,
         otherUserId,
-        profile: otherProfile,
+        profile: otherProfile ? publicProfileView(otherProfile) : undefined,
         messages: messages.sort((a,b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()),
         compatibilityRating: report.score,
         compatibilityReport: {
@@ -1236,7 +1348,12 @@ app.get("/api/admin/users", authenticateAdmin, (req, res) => {
         id: u.id,
         email: u.email,
         isAdmin: u.isAdmin,
+        role: u.role,
+        status: u.status,
+        source: u.source,
         isPremium: u.isPremium,
+        premiumExpiresAt: u.premiumExpiresAt,
+        lastActiveAt: u.lastActiveAt,
         createdAt: u.createdAt,
         profile: profile ? {
           name: profile.name,
@@ -1246,6 +1363,8 @@ app.get("/api/admin/users", authenticateAdmin, (req, res) => {
           currentCity: profile.currentCity,
           languages: profile.languages,
           photo: profile.photo,
+          isVerified: profile.isVerified,
+          verificationStatus: profile.verificationStatus,
         } : null
       };
     });
@@ -1259,6 +1378,7 @@ app.get("/api/admin/users", authenticateAdmin, (req, res) => {
 // Admin delete any user
 app.delete("/api/admin/users/:userId", authenticateAdmin, (req, res) => {
   try {
+    const adminId = (req as any).userId;
     const { userId } = req.params;
     const db = dbManager.readDb();
 
@@ -1267,16 +1387,181 @@ app.delete("/api/admin/users/:userId", authenticateAdmin, (req, res) => {
       return res.status(404).json({ error: "User not found" });
     }
 
-    if (isAdminEmail(user.email)) {
+    if (user.role === "admin" || isAdminEmail(user.email)) {
       return res.status(400).json({ error: "Cannot delete an administrator account!" });
     }
 
     deleteUserData(userId, db);
+    recordAudit(db, adminId, "user.delete", userId, user.email);
     dbManager.writeDb(db);
 
     res.json({ success: true, message: `User account ${user.email} and all associated data have been deleted.` });
   } catch (error) {
     res.status(500).json({ error: "Error deleting user account" });
+  }
+});
+
+// Admin: suspend / restore an account. Suspended members cannot log in or
+// use authenticated APIs and disappear from discovery.
+app.post("/api/admin/users/:userId/suspend", authenticateAdmin, (req, res) => {
+  try {
+    const adminId = (req as any).userId;
+    const { userId } = req.params;
+    const db = dbManager.readDb();
+    const user = db.users.find(u => u.id === userId);
+
+    if (!user) return res.status(404).json({ error: "User not found" });
+    if (user.role === "admin") return res.status(400).json({ error: "Cannot suspend an administrator account" });
+
+    user.status = "suspended";
+    db.sessions = db.sessions.filter(s => s.userId !== userId);
+    recordAudit(db, adminId, "user.suspend", userId);
+    dbManager.writeDb(db);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: "Error suspending account" });
+  }
+});
+
+app.post("/api/admin/users/:userId/restore", authenticateAdmin, (req, res) => {
+  try {
+    const adminId = (req as any).userId;
+    const { userId } = req.params;
+    const db = dbManager.readDb();
+    const user = db.users.find(u => u.id === userId);
+
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    user.status = "active";
+    recordAudit(db, adminId, "user.restore", userId);
+    dbManager.writeDb(db);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: "Error restoring account" });
+  }
+});
+
+// ----------------------------------------------------
+// ADMIN VERIFICATION REVIEW ENDPOINTS
+// ----------------------------------------------------
+
+// List verification requests (defaults to pending, oldest first)
+app.get("/api/admin/verifications", authenticateAdmin, (req, res) => {
+  try {
+    const statusFilter = (req.query.status as string) || "pending";
+    const db = dbManager.readDb();
+
+    const list = db.profiles
+      .filter(p => (statusFilter === "all" ? true : p.verificationStatus === statusFilter))
+      .map(p => {
+        const user = db.users.find(u => u.id === p.userId);
+        return {
+          userId: p.userId,
+          name: p.name,
+          age: p.age,
+          photo: p.photo,
+          university: p.university,
+          nationality: p.nationality,
+          email: user?.email,
+          accountCreatedAt: user?.createdAt,
+          accountStatus: user?.status,
+          verificationStatus: p.verificationStatus,
+          verification: p.verification || {}
+        };
+      })
+      .sort((a, b) => (a.verification.submittedAt || "").localeCompare(b.verification.submittedAt || ""));
+
+    res.json(list);
+  } catch (error) {
+    res.status(500).json({ error: "Error loading verification requests" });
+  }
+});
+
+// Approve a member's verification
+app.post("/api/admin/verifications/:userId/approve", authenticateAdmin, (req, res) => {
+  try {
+    const adminId = (req as any).userId;
+    const { userId } = req.params;
+    const db = dbManager.readDb();
+    const profile = db.profiles.find(p => p.userId === userId);
+
+    if (!profile) return res.status(404).json({ error: "Profile not found" });
+    if (profile.verificationStatus === "approved") {
+      return res.status(400).json({ error: "This member is already approved" });
+    }
+
+    profile.verificationStatus = "approved";
+    profile.isVerified = true;
+    profile.verification = {
+      ...profile.verification,
+      reviewedAt: new Date().toISOString(),
+      reviewedById: adminId,
+      rejectionReason: undefined,
+      adminNote:
+        typeof req.body?.adminNote === "string" && req.body.adminNote.trim()
+          ? req.body.adminNote.trim().slice(0, 500)
+          : profile.verification?.adminNote
+    };
+
+    db.notifications.push({
+      id: generateId(),
+      userId,
+      text: "Your student verification has been approved. Welcome to the NEST community!",
+      timestamp: new Date().toISOString(),
+      read: false,
+      createdAt: new Date().toISOString()
+    });
+
+    recordAudit(db, adminId, "verification.approve", userId);
+    dbManager.writeDb(db);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: "Error approving verification" });
+  }
+});
+
+// Reject a member's verification with a member-visible reason
+app.post("/api/admin/verifications/:userId/reject", authenticateAdmin, (req, res) => {
+  try {
+    const adminId = (req as any).userId;
+    const { userId } = req.params;
+    const reason = typeof req.body?.reason === "string" ? req.body.reason.trim() : "";
+
+    if (!reason) {
+      return res.status(400).json({ error: "A rejection reason is required" });
+    }
+
+    const db = dbManager.readDb();
+    const profile = db.profiles.find(p => p.userId === userId);
+    if (!profile) return res.status(404).json({ error: "Profile not found" });
+
+    profile.verificationStatus = "rejected";
+    profile.isVerified = false;
+    profile.verification = {
+      ...profile.verification,
+      reviewedAt: new Date().toISOString(),
+      reviewedById: adminId,
+      rejectionReason: reason.slice(0, 300),
+      adminNote:
+        typeof req.body?.adminNote === "string" && req.body.adminNote.trim()
+          ? req.body.adminNote.trim().slice(0, 500)
+          : profile.verification?.adminNote
+    };
+
+    db.notifications.push({
+      id: generateId(),
+      userId,
+      text: `Your verification could not be approved: ${reason.slice(0, 300)} You can update your details and resubmit.`,
+      timestamp: new Date().toISOString(),
+      read: false,
+      createdAt: new Date().toISOString()
+    });
+
+    recordAudit(db, adminId, "verification.reject", userId, reason.slice(0, 300));
+    dbManager.writeDb(db);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: "Error rejecting verification" });
   }
 });
 

@@ -1,12 +1,17 @@
 import React, { useState, useEffect } from "react";
-import { ShieldCheck, Trash2, Mail, Landmark, Users, MapPin, Search, Calendar, Star, CheckCircle, ExternalLink } from "lucide-react";
-import { UserProfile, Recommendation } from "../types";
+import { ShieldCheck, Trash2, Users, MapPin, Search, ExternalLink, Ban, RotateCcw, BadgeCheck, XCircle } from "lucide-react";
+import { Recommendation } from "../types";
 
 interface AdminUser {
   id: string;
   email: string;
   isAdmin: boolean;
+  role: "admin" | "member";
+  status: "active" | "suspended";
+  source: string;
   isPremium: boolean;
+  premiumExpiresAt?: string;
+  lastActiveAt?: string;
   createdAt: string;
   profile: {
     name: string;
@@ -16,37 +21,74 @@ interface AdminUser {
     currentCity: string;
     languages: string[];
     photo: string;
+    isVerified: boolean;
+    verificationStatus: string;
   } | null;
+}
+
+interface VerificationRequest {
+  userId: string;
+  name: string;
+  age: number;
+  photo: string;
+  university: string;
+  nationality: string;
+  email?: string;
+  accountCreatedAt?: string;
+  accountStatus?: string;
+  verificationStatus: string;
+  verification: {
+    university?: string;
+    universityEmail?: string;
+    userNote?: string;
+    submittedAt?: string;
+    reviewedAt?: string;
+    rejectionReason?: string;
+  };
 }
 
 interface AdminDashboardProps {
   onDeleteRecommendation?: (id: string) => Promise<boolean>;
 }
 
+const authHeaders = () => ({ "Authorization": `Bearer ${localStorage.getItem("nest_token")}` });
+
+const VERIFICATION_BADGE: Record<string, string> = {
+  approved: "bg-amber-50 text-amber-700 border-amber-200/50",
+  pending: "bg-sky-50 text-sky-700 border-sky-200/50",
+  rejected: "bg-rose-50 text-rose-700 border-rose-200/50",
+  unsubmitted: "bg-slate-100 text-slate-500 border-slate-200"
+};
+
 export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboardProps) {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [recs, setRecs] = useState<Recommendation[]>([]);
+  const [verifications, setVerifications] = useState<VerificationRequest[]>([]);
   const [isLoadingUsers, setIsLoadingUsers] = useState(true);
   const [isLoadingRecs, setIsLoadingRecs] = useState(true);
+  const [isLoadingVerifications, setIsLoadingVerifications] = useState(true);
   const [userSearch, setUserSearch] = useState("");
   const [recSearch, setRecSearch] = useState("");
-  const [activeSubTab, setActiveSubTab] = useState<"users" | "spots">("users");
+  const [verificationFilter, setVerificationFilter] = useState<string>("pending");
+  const [userStatusFilter, setUserStatusFilter] = useState<string>("all");
+  const [activeSubTab, setActiveSubTab] = useState<"verifications" | "users" | "spots">("verifications");
 
-  const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
+  const [busyUserId, setBusyUserId] = useState<string | null>(null);
   const [deletingRecId, setDeletingRecId] = useState<string | null>(null);
+  const [rejectingUserId, setRejectingUserId] = useState<string | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
+  const [feedback, setFeedback] = useState("");
+
+  const notify = (message: string) => {
+    setFeedback(message);
+    window.setTimeout(() => setFeedback(""), 4000);
+  };
 
   const fetchUsers = async () => {
     setIsLoadingUsers(true);
     try {
-      const res = await fetch("/api/admin/users", {
-        headers: {
-          "Authorization": `Bearer ${localStorage.getItem("nest_token")}`
-        }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setUsers(data);
-      }
+      const res = await fetch("/api/admin/users", { headers: authHeaders() });
+      if (res.ok) setUsers(await res.json());
     } catch (err) {
       console.error("Error fetching users for admin:", err);
     } finally {
@@ -57,15 +99,8 @@ export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboar
   const fetchRecs = async () => {
     setIsLoadingRecs(true);
     try {
-      const res = await fetch("/api/recommendations", {
-        headers: {
-          "Authorization": `Bearer ${localStorage.getItem("nest_token")}`
-        }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setRecs(data);
-      }
+      const res = await fetch("/api/recommendations", { headers: authHeaders() });
+      if (res.ok) setRecs(await res.json());
     } catch (err) {
       console.error("Error fetching spots for admin:", err);
     } finally {
@@ -73,83 +108,168 @@ export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboar
     }
   };
 
+  const fetchVerifications = async (status = verificationFilter) => {
+    setIsLoadingVerifications(true);
+    try {
+      const res = await fetch(`/api/admin/verifications?status=${encodeURIComponent(status)}`, { headers: authHeaders() });
+      if (res.ok) setVerifications(await res.json());
+    } catch (err) {
+      console.error("Error fetching verifications:", err);
+    } finally {
+      setIsLoadingVerifications(false);
+    }
+  };
+
   useEffect(() => {
     fetchUsers();
     fetchRecs();
+    fetchVerifications();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleDeleteUser = async (userId: string, email: string) => {
-    if (!confirm(`Are you absolutely sure you want to permanently delete user ${email}? All their profiles, chats, matches, recommendations, and active sessions will be permanently purged.`)) {
-      return;
-    }
-    setDeletingUserId(userId);
+  useEffect(() => {
+    fetchVerifications(verificationFilter);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [verificationFilter]);
+
+  const refreshAll = () => {
+    fetchUsers();
+    fetchVerifications();
+  };
+
+  const handleApprove = async (userId: string, name: string) => {
+    setBusyUserId(userId);
     try {
-      const res = await fetch(`/api/admin/users/${userId}`, {
-        method: "DELETE",
-        headers: {
-          "Authorization": `Bearer ${localStorage.getItem("nest_token")}`
-        }
+      const res = await fetch(`/api/admin/verifications/${userId}/approve`, {
+        method: "POST",
+        headers: { ...authHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({})
       });
       if (res.ok) {
-        alert("User account and all associated data have been deleted successfully.");
-        fetchUsers();
-        fetchRecs(); // Reload spots as well since user's spots are deleted
+        notify(`${name} approved.`);
+        refreshAll();
       } else {
-        const err = await res.json();
-        alert(err.error || "Failed to delete user.");
+        notify((await res.json()).error || "Could not approve.");
+      }
+    } catch {
+      notify("Could not approve — network error.");
+    } finally {
+      setBusyUserId(null);
+    }
+  };
+
+  const handleReject = async (userId: string, name: string) => {
+    if (!rejectReason.trim()) {
+      notify("A rejection reason is required — it is shown to the member.");
+      return;
+    }
+    setBusyUserId(userId);
+    try {
+      const res = await fetch(`/api/admin/verifications/${userId}/reject`, {
+        method: "POST",
+        headers: { ...authHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ reason: rejectReason.trim() })
+      });
+      if (res.ok) {
+        notify(`${name}'s request rejected.`);
+        setRejectingUserId(null);
+        setRejectReason("");
+        refreshAll();
+      } else {
+        notify((await res.json()).error || "Could not reject.");
+      }
+    } catch {
+      notify("Could not reject — network error.");
+    } finally {
+      setBusyUserId(null);
+    }
+  };
+
+  const handleSuspendToggle = async (user: AdminUser) => {
+    const action = user.status === "suspended" ? "restore" : "suspend";
+    if (action === "suspend" && !confirm(`Suspend ${user.email}? She will be signed out everywhere and hidden from discovery.`)) {
+      return;
+    }
+    setBusyUserId(user.id);
+    try {
+      const res = await fetch(`/api/admin/users/${user.id}/${action}`, { method: "POST", headers: authHeaders() });
+      if (res.ok) {
+        notify(action === "suspend" ? "Account suspended." : "Account restored.");
+        fetchUsers();
+      } else {
+        notify((await res.json()).error || `Could not ${action}.`);
+      }
+    } catch {
+      notify(`Could not ${action} — network error.`);
+    } finally {
+      setBusyUserId(null);
+    }
+  };
+
+  const handleDeleteUser = async (userId: string, email: string) => {
+    if (!confirm(`Permanently delete ${email}? All her profile data, chats, matches, and sessions will be removed. This cannot be undone.`)) {
+      return;
+    }
+    setBusyUserId(userId);
+    try {
+      const res = await fetch(`/api/admin/users/${userId}`, { method: "DELETE", headers: authHeaders() });
+      if (res.ok) {
+        notify("Account deleted.");
+        fetchUsers();
+        fetchRecs();
+        fetchVerifications();
+      } else {
+        notify((await res.json()).error || "Failed to delete user.");
       }
     } catch (err) {
       console.error(err);
-      alert("Error occurred during deletion.");
+      notify("Error occurred during deletion.");
     } finally {
-      setDeletingUserId(null);
+      setBusyUserId(null);
     }
   };
 
   const handleDeleteRec = async (recId: string, recName: string) => {
-    if (!confirm(`Are you sure you want to delete recommendation "${recName}"?`)) {
-      return;
-    }
+    if (!confirm(`Delete recommendation "${recName}"?`)) return;
     setDeletingRecId(recId);
-    if (onDeleteRecommendation) {
-      const success = await onDeleteRecommendation(recId);
-      if (success) {
-        alert("Recommendation deleted successfully.");
-        fetchRecs();
-      }
-      setDeletingRecId(null);
-    } else {
-      try {
-        const res = await fetch(`/api/recommendations/${recId}`, {
-          method: "DELETE",
-          headers: {
-            "Authorization": `Bearer ${localStorage.getItem("nest_token")}`
-          }
-        });
+    try {
+      if (onDeleteRecommendation) {
+        const success = await onDeleteRecommendation(recId);
+        if (success) {
+          notify("Recommendation deleted.");
+          fetchRecs();
+        }
+      } else {
+        const res = await fetch(`/api/recommendations/${recId}`, { method: "DELETE", headers: authHeaders() });
         if (res.ok) {
-          alert("Recommendation deleted successfully.");
+          notify("Recommendation deleted.");
           fetchRecs();
         } else {
-          const err = await res.json();
-          alert(err.error || "Failed to delete spot.");
+          notify((await res.json()).error || "Failed to delete spot.");
         }
-      } catch (err) {
-        console.error(err);
-        alert("Error deleting spot.");
-      } finally {
-        setDeletingRecId(null);
       }
+    } catch (err) {
+      console.error(err);
+      notify("Error deleting spot.");
+    } finally {
+      setDeletingRecId(null);
     }
   };
 
   // Filter lists
   const filteredUsers = users.filter(u => {
     const term = userSearch.toLowerCase();
-    return (
+    const matchesTerm =
       u.email.toLowerCase().includes(term) ||
       (u.profile?.name && u.profile.name.toLowerCase().includes(term)) ||
-      (u.profile?.university && u.profile.university.toLowerCase().includes(term))
-    );
+      (u.profile?.university && u.profile.university.toLowerCase().includes(term));
+    const matchesStatus =
+      userStatusFilter === "all" ? true :
+      userStatusFilter === "suspended" ? u.status === "suspended" :
+      userStatusFilter === "premium" ? u.isPremium :
+      userStatusFilter === "admins" ? u.role === "admin" :
+      (u.profile?.verificationStatus || "unsubmitted") === userStatusFilter;
+    return matchesTerm && matchesStatus;
   });
 
   const filteredRecs = recs.filter(r => {
@@ -162,106 +282,262 @@ export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboar
     );
   });
 
+  const pendingCount = users.filter(u => u.profile?.verificationStatus === "pending").length;
+
   return (
     <div className="max-w-6xl mx-auto space-y-6 select-text animate-fade-in">
-      
-      {/* Admin Title Board */}
+
+      {/* Header */}
       <div className="bg-slate-900 text-white rounded-[28px] p-6 shadow-xl border border-slate-800 relative overflow-hidden">
         <div className="absolute right-0 top-0 translate-x-12 -translate-y-12 w-64 h-64 bg-rose-500/10 rounded-full blur-2xl" />
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 relative z-10">
           <div>
             <div className="inline-flex items-center gap-1.5 bg-rose-500/20 text-rose-400 px-3 py-1 rounded-full text-[10px] font-sans font-black uppercase tracking-wider border border-rose-500/30">
               <ShieldCheck size={12} />
-              <span>NEST Official Administration Panel</span>
+              <span>NEST Administration</span>
             </div>
             <h2 className="font-sans font-black text-2xl tracking-tight mt-2 text-white">
               Platform Dashboard
             </h2>
             <p className="text-slate-400 text-xs mt-1 leading-normal font-sans max-w-xl">
-              As an official NEST student administrator, you hold complete regulatory control over registered accounts, university verifications, and custom student recommendations.
+              Member management, verification review, and content moderation.
             </p>
           </div>
 
-          <div className="flex gap-4">
+          <div className="flex gap-3">
             <div className="bg-slate-800/80 border border-slate-700/50 px-4 py-2.5 rounded-2xl text-center">
-              <span className="text-[10px] text-slate-400 uppercase font-bold tracking-widest font-mono block">Registered Users</span>
+              <span className="text-[10px] text-slate-400 uppercase font-bold tracking-widest font-mono block">Members</span>
               <strong className="text-xl font-sans text-rose-400 font-black">{users.length}</strong>
             </div>
             <div className="bg-slate-800/80 border border-slate-700/50 px-4 py-2.5 rounded-2xl text-center">
-              <span className="text-[10px] text-slate-400 uppercase font-bold tracking-widest font-mono block">Secret Spots</span>
+              <span className="text-[10px] text-slate-400 uppercase font-bold tracking-widest font-mono block">Pending review</span>
+              <strong className="text-xl font-sans text-sky-400 font-black">{pendingCount}</strong>
+            </div>
+            <div className="bg-slate-800/80 border border-slate-700/50 px-4 py-2.5 rounded-2xl text-center">
+              <span className="text-[10px] text-slate-400 uppercase font-bold tracking-widest font-mono block">Spots</span>
               <strong className="text-xl font-sans text-amber-400 font-black">{recs.length}</strong>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Navigation and Actions */}
-      <div className="flex items-center gap-2 border-b border-white/40 pb-2">
+      {/* Feedback */}
+      {feedback && (
+        <div className="bg-slate-900 text-white text-xs font-sans font-bold px-4 py-3 rounded-2xl shadow-lg animate-fade-in">
+          {feedback}
+        </div>
+      )}
+
+      {/* Tabs */}
+      <div className="flex items-center gap-2 border-b border-white/40 pb-2 overflow-x-auto">
+        <button
+          onClick={() => setActiveSubTab("verifications")}
+          className={`px-4 py-2 rounded-xl text-xs font-sans font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
+            activeSubTab === "verifications" ? "bg-slate-900 text-white shadow-md" : "bg-white/40 text-slate-600 hover:bg-white/75"
+          }`}
+        >
+          <BadgeCheck size={14} />
+          <span>Verification{pendingCount > 0 ? ` (${pendingCount})` : ""}</span>
+        </button>
         <button
           onClick={() => setActiveSubTab("users")}
-          className={`px-4 py-2 rounded-xl text-xs font-sans font-bold transition flex items-center gap-1.5 ${
-            activeSubTab === "users"
-              ? "bg-slate-900 text-white shadow-md"
-              : "bg-white/40 text-slate-600 hover:bg-white/75"
+          className={`px-4 py-2 rounded-xl text-xs font-sans font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
+            activeSubTab === "users" ? "bg-slate-900 text-white shadow-md" : "bg-white/40 text-slate-600 hover:bg-white/75"
           }`}
         >
           <Users size={14} />
-          <span>View Users ({filteredUsers.length})</span>
+          <span>Members ({filteredUsers.length})</span>
         </button>
         <button
           onClick={() => setActiveSubTab("spots")}
-          className={`px-4 py-2 rounded-xl text-xs font-sans font-bold transition flex items-center gap-1.5 ${
-            activeSubTab === "spots"
-              ? "bg-slate-900 text-white shadow-md"
-              : "bg-white/40 text-slate-600 hover:bg-white/75"
+          className={`px-4 py-2 rounded-xl text-xs font-sans font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
+            activeSubTab === "spots" ? "bg-slate-900 text-white shadow-md" : "bg-white/40 text-slate-600 hover:bg-white/75"
           }`}
         >
           <MapPin size={14} />
-          <span>Moderate Secret Spots ({filteredRecs.length})</span>
+          <span>Spots ({filteredRecs.length})</span>
         </button>
       </div>
 
-      {/* Tab Panel Content */}
-      {activeSubTab === "users" ? (
+      {/* VERIFICATION REVIEW */}
+      {activeSubTab === "verifications" && (
         <div className="bg-white/40 backdrop-blur-xl rounded-[28px] border border-white/60 p-5 shadow-xl space-y-4">
-          <div className="flex items-center gap-2 bg-white/60 border border-white/80 rounded-xl px-3 py-1.5 max-w-sm">
-            <Search size={14} className="text-slate-400" />
-            <input
-              type="text"
-              placeholder="Search by name, email, or university..."
-              value={userSearch}
-              onChange={(e) => setUserSearch(e.target.value)}
-              className="bg-transparent text-xs text-slate-800 placeholder-slate-400 focus:outline-none w-full"
-            />
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {["pending", "rejected", "approved", "all"].map(f => (
+              <button
+                key={f}
+                onClick={() => setVerificationFilter(f)}
+                className={`px-3 py-1.5 rounded-lg text-[11px] font-sans font-bold capitalize transition ${
+                  verificationFilter === f ? "bg-slate-900 text-white" : "bg-white/60 text-slate-600 hover:bg-white"
+                }`}
+              >
+                {f}
+              </button>
+            ))}
+          </div>
+
+          {isLoadingVerifications ? (
+            <div className="text-center py-10 text-slate-500 font-sans text-xs">Loading verification requests…</div>
+          ) : verifications.length === 0 ? (
+            <div className="text-center py-10 text-slate-400 text-xs font-sans border border-dashed border-slate-200 rounded-2xl bg-white/25">
+              {verificationFilter === "pending" ? "No requests waiting for review." : `No ${verificationFilter} requests.`}
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {verifications.map(v => (
+                <div key={v.userId} className="bg-white/80 rounded-2xl border border-white/60 p-4 shadow-sm">
+                  <div className="flex flex-col md:flex-row md:items-start justify-between gap-3">
+                    <div className="flex items-start gap-3 min-w-0">
+                      {v.photo ? (
+                        <img src={v.photo} alt={v.name} referrerPolicy="no-referrer" className="w-11 h-11 rounded-xl object-cover border border-white/80 shadow-sm shrink-0" />
+                      ) : (
+                        <div className="w-11 h-11 rounded-xl bg-slate-200 text-slate-500 flex items-center justify-center font-bold text-xs shrink-0">
+                          {(v.name || "?")[0]}
+                        </div>
+                      )}
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h4 className="font-sans font-bold text-sm text-slate-900">{v.name}, {v.age}</h4>
+                          <span className={`text-[9px] px-2 py-0.5 rounded-full font-sans font-extrabold uppercase border ${VERIFICATION_BADGE[v.verificationStatus] || VERIFICATION_BADGE.unsubmitted}`}>
+                            {v.verificationStatus}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-500 font-mono truncate">{v.email}</p>
+                        <div className="text-[11px] text-slate-600 mt-1.5 space-y-0.5">
+                          <p><span className="font-bold">University:</span> {v.verification.university || v.university || "—"}</p>
+                          <p><span className="font-bold">University email:</span> <span className="font-mono">{v.verification.universityEmail || "—"}</span></p>
+                          {v.verification.userNote && (
+                            <p className="text-slate-500 italic">“{v.verification.userNote}”</p>
+                          )}
+                          {v.verification.submittedAt && (
+                            <p className="text-[10px] text-slate-400">
+                              Submitted {new Date(v.verification.submittedAt).toLocaleString()}
+                            </p>
+                          )}
+                          {v.verificationStatus === "rejected" && v.verification.rejectionReason && (
+                            <p className="text-[10px] text-rose-500">Rejected: {v.verification.rejectionReason}</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {v.verificationStatus !== "approved" && (
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          onClick={() => handleApprove(v.userId, v.name)}
+                          disabled={busyUserId !== null}
+                          className="bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-black px-3.5 py-2 rounded-xl transition flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                        >
+                          <BadgeCheck size={13} />
+                          <span>Approve</span>
+                        </button>
+                        {rejectingUserId !== v.userId && (
+                          <button
+                            onClick={() => {
+                              setRejectingUserId(v.userId);
+                              setRejectReason("");
+                            }}
+                            disabled={busyUserId !== null}
+                            className="bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 text-[11px] font-bold px-3.5 py-2 rounded-xl transition flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                          >
+                            <XCircle size={13} />
+                            <span>Reject</span>
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {rejectingUserId === v.userId && (
+                    <div className="mt-3 bg-rose-50/60 border border-rose-100 rounded-xl p-3 space-y-2">
+                      <label className="text-[10px] font-sans font-bold text-rose-700 block">
+                        Reason (shown to the member)
+                      </label>
+                      <input
+                        type="text"
+                        value={rejectReason}
+                        onChange={(e) => setRejectReason(e.target.value)}
+                        placeholder="e.g. The email provided is not a university address."
+                        className="w-full bg-white border border-rose-200 rounded-lg px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-rose-300"
+                      />
+                      <div className="flex justify-end gap-2">
+                        <button
+                          onClick={() => setRejectingUserId(null)}
+                          className="text-[11px] font-bold text-slate-500 px-3 py-1.5 hover:text-slate-700"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={() => handleReject(v.userId, v.name)}
+                          disabled={busyUserId !== null || !rejectReason.trim()}
+                          className="bg-rose-600 hover:bg-rose-700 text-white text-[11px] font-black px-3.5 py-1.5 rounded-lg transition disabled:opacity-40"
+                        >
+                          Confirm rejection
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* MEMBERS */}
+      {activeSubTab === "users" && (
+        <div className="bg-white/40 backdrop-blur-xl rounded-[28px] border border-white/60 p-5 shadow-xl space-y-4">
+          <div className="flex flex-col md:flex-row md:items-center gap-3">
+            <div className="flex items-center gap-2 bg-white/60 border border-white/80 rounded-xl px-3 py-1.5 max-w-sm w-full">
+              <Search size={14} className="text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search by name, email, or university…"
+                value={userSearch}
+                onChange={(e) => setUserSearch(e.target.value)}
+                className="bg-transparent text-xs text-slate-800 placeholder-slate-400 focus:outline-none w-full"
+              />
+            </div>
+            <select
+              value={userStatusFilter}
+              onChange={(e) => setUserStatusFilter(e.target.value)}
+              className="bg-white/60 border border-white/80 rounded-xl px-3 py-2 text-xs text-slate-700 font-bold focus:outline-none"
+            >
+              <option value="all">All members</option>
+              <option value="pending">Verification pending</option>
+              <option value="approved">Verified</option>
+              <option value="rejected">Verification rejected</option>
+              <option value="unsubmitted">Not submitted</option>
+              <option value="suspended">Suspended</option>
+              <option value="premium">Premium</option>
+              <option value="admins">Admins</option>
+            </select>
           </div>
 
           {isLoadingUsers ? (
-            <div className="text-center py-10 text-slate-500 font-sans text-xs flex flex-col items-center gap-2">
-              <div className="animate-spin text-rose-500">⌛</div>
-              <span>Fetching user records...</span>
-            </div>
+            <div className="text-center py-10 text-slate-500 font-sans text-xs">Loading members…</div>
           ) : filteredUsers.length === 0 ? (
             <div className="text-center py-10 text-slate-400 text-xs font-sans border border-dashed border-slate-200 rounded-2xl bg-white/25">
-              No registered user accounts found matching that search.
+              No members match this search or filter.
             </div>
           ) : (
             <div className="overflow-x-auto rounded-2xl border border-white/50 shadow-sm bg-white/20">
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
                   <tr className="bg-slate-100/80 border-b border-slate-200 text-slate-600 font-sans font-bold">
-                    <th className="p-3.5">User Profile / Info</th>
+                    <th className="p-3.5">Member</th>
                     <th className="p-3.5">Email</th>
                     <th className="p-3.5">University</th>
-                    <th className="p-3.5">Nationalities</th>
-                    <th className="p-3.5">Registered</th>
+                    <th className="p-3.5">Joined</th>
+                    <th className="p-3.5">Last active</th>
+                    <th className="p-3.5 text-center">Verification</th>
                     <th className="p-3.5 text-center">Status</th>
                     <th className="p-3.5 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {filteredUsers.map((u) => (
-                    <tr key={u.id} className="hover:bg-white/40 transition">
-                      {/* Name & Photo */}
+                    <tr key={u.id} className={`hover:bg-white/40 transition ${u.status === "suspended" ? "opacity-60" : ""}`}>
                       <td className="p-3.5">
                         <div className="flex items-center gap-3">
                           {u.profile?.photo ? (
@@ -277,62 +553,61 @@ export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboar
                             </div>
                           )}
                           <div>
-                            <h4 className="font-sans font-bold text-slate-900">{u.profile?.name || "Unfinished Profile"}</h4>
-                            {u.profile && <span className="text-[10px] text-slate-400 font-sans">Age {u.profile.age}</span>}
+                            <h4 className="font-sans font-bold text-slate-900">{u.profile?.name || "Unfinished profile"}</h4>
+                            <span className="text-[10px] text-slate-400 font-sans">
+                              {u.profile ? `Age ${u.profile.age}` : ""}{u.isPremium ? " · Premium" : ""}{u.role === "admin" ? " · Admin" : ""}
+                            </span>
                           </div>
                         </div>
                       </td>
-
-                      {/* Email */}
-                      <td className="p-3.5 font-mono text-[11px] text-slate-600 select-text">
-                        {u.email}
-                      </td>
-
-                      {/* Uni */}
+                      <td className="p-3.5 font-mono text-[11px] text-slate-600 select-text">{u.email}</td>
                       <td className="p-3.5 font-sans font-semibold text-slate-700 capitalize">
-                        {u.profile?.university || <span className="text-stone-400 font-normal">N/A</span>}
+                        {u.profile?.university || <span className="text-stone-400 font-normal">—</span>}
                       </td>
-
-                      {/* Nationality */}
-                      <td className="p-3.5 font-sans text-slate-600 truncate max-w-[150px]" title={u.profile?.nationality}>
-                        {u.profile?.nationality || <span className="text-stone-400">N/A</span>}
-                      </td>
-
-                      {/* Date */}
                       <td className="p-3.5 font-mono text-[10px] text-slate-500">
                         {new Date(u.createdAt).toLocaleDateString()}
                       </td>
-
-                      {/* Admin status */}
-                      <td className="p-3.5 text-center">
-                        {u.isAdmin ? (
-                          <span className="bg-rose-50 text-rose-700 border border-rose-200/50 rounded-full px-2.5 py-0.5 text-[9px] font-sans font-extrabold uppercase tracking-wider inline-block">
-                            Admin
-                          </span>
-                        ) : u.profile?.isVerified ? (
-                          <span className="bg-amber-50 text-amber-700 border border-amber-200/50 rounded-full px-2.5 py-0.5 text-[9px] font-sans font-extrabold uppercase tracking-wider inline-block">
-                            Student
-                          </span>
-                        ) : (
-                          <span className="bg-slate-100 text-slate-500 border border-slate-200 rounded-full px-2.5 py-0.5 text-[9px] font-sans font-extrabold uppercase tracking-wider inline-block">
-                            Pending
-                          </span>
-                        )}
+                      <td className="p-3.5 font-mono text-[10px] text-slate-500">
+                        {u.lastActiveAt ? new Date(u.lastActiveAt).toLocaleDateString() : "—"}
                       </td>
-
-                      {/* Actions */}
+                      <td className="p-3.5 text-center">
+                        <span className={`text-[9px] px-2 py-0.5 rounded-full font-sans font-extrabold uppercase border inline-block ${VERIFICATION_BADGE[u.profile?.verificationStatus || "unsubmitted"]}`}>
+                          {u.profile?.verificationStatus || "unsubmitted"}
+                        </span>
+                      </td>
+                      <td className="p-3.5 text-center">
+                        <span className={`text-[9px] px-2 py-0.5 rounded-full font-sans font-extrabold uppercase border inline-block ${
+                          u.status === "suspended" ? "bg-rose-50 text-rose-600 border-rose-200" : "bg-emerald-50 text-emerald-700 border-emerald-200/60"
+                        }`}>
+                          {u.status}
+                        </span>
+                      </td>
                       <td className="p-3.5 text-right">
-                        {u.isAdmin ? (
+                        {u.role === "admin" ? (
                           <span className="text-[10px] text-slate-400 italic font-sans pr-2">Admin</span>
                         ) : (
-                          <button
-                            onClick={() => handleDeleteUser(u.id, u.email)}
-                            disabled={deletingUserId !== null}
-                            className="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-lg p-2.5 transition active:scale-95 flex items-center justify-center ml-auto cursor-pointer"
-                            title="Purge user and associated data securely"
-                          >
-                            <Trash2 size={13} />
-                          </button>
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              onClick={() => handleSuspendToggle(u)}
+                              disabled={busyUserId !== null}
+                              className={`p-2 rounded-lg border transition cursor-pointer ${
+                                u.status === "suspended"
+                                  ? "bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200"
+                                  : "bg-amber-50 hover:bg-amber-100 text-amber-700 border-amber-200"
+                              }`}
+                              title={u.status === "suspended" ? "Restore account" : "Suspend account"}
+                            >
+                              {u.status === "suspended" ? <RotateCcw size={13} /> : <Ban size={13} />}
+                            </button>
+                            <button
+                              onClick={() => handleDeleteUser(u.id, u.email)}
+                              disabled={busyUserId !== null}
+                              className="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-lg p-2 transition cursor-pointer"
+                              title="Permanently delete account"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
                         )}
                       </td>
                     </tr>
@@ -342,13 +617,16 @@ export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboar
             </div>
           )}
         </div>
-      ) : (
+      )}
+
+      {/* SPOTS */}
+      {activeSubTab === "spots" && (
         <div className="bg-white/40 backdrop-blur-xl rounded-[28px] border border-white/60 p-5 shadow-xl space-y-4">
           <div className="flex items-center gap-2 bg-white/60 border border-white/80 rounded-xl px-3 py-1.5 max-w-sm">
             <Search size={14} className="text-slate-400" />
             <input
               type="text"
-              placeholder="Search spots by name, desc, address..."
+              placeholder="Search spots by name, description, address…"
               value={recSearch}
               onChange={(e) => setRecSearch(e.target.value)}
               className="bg-transparent text-xs text-slate-800 placeholder-slate-400 focus:outline-none w-full"
@@ -356,20 +634,16 @@ export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboar
           </div>
 
           {isLoadingRecs ? (
-            <div className="text-center py-10 text-slate-500 font-sans text-xs flex flex-col items-center gap-2">
-              <div className="animate-spin text-rose-500">⌛</div>
-              <span>Fetching secret spots...</span>
-            </div>
+            <div className="text-center py-10 text-slate-500 font-sans text-xs">Loading spots…</div>
           ) : filteredRecs.length === 0 ? (
             <div className="text-center py-10 text-slate-400 text-xs font-sans border border-dashed border-slate-200 rounded-2xl bg-white/25">
-              No recommendations found matching that search.
+              No recommendations found.
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {filteredRecs.map((rec) => (
                 <div key={rec.id} className="bg-white/80 backdrop-blur-sm rounded-2xl border border-white/60 p-4 shadow-sm flex flex-col justify-between hover:shadow-md transition">
                   <div>
-                    {/* Header */}
                     <div className="flex justify-between items-start gap-2 mb-2">
                       <span className="text-[9px] uppercase tracking-wider bg-rose-50 text-rose-700 border border-rose-100 px-2 py-0.5 rounded font-bold font-mono">
                         {rec.category}
@@ -392,7 +666,7 @@ export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboar
                       📍 {rec.address}
                     </p>
                     <p className="text-xs text-slate-600 line-clamp-3 leading-relaxed bg-slate-50/50 p-2.5 rounded-xl border border-slate-100 mb-3">
-                      "{rec.description}"
+                      “{rec.description}”
                     </p>
                   </div>
 

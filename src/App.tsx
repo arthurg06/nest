@@ -347,20 +347,6 @@ export default function App() {
     }
   };
 
-  // Toggle Verification state manually in editor
-  const handleVerifyProfileManually = async () => {
-    try {
-      const res = await fetchWithAuth("/api/profiles/verify", {
-        method: "POST"
-      });
-      if (res.ok) {
-        loadProfile();
-      }
-    } catch (err) {
-      console.error("Verification error:", err);
-    }
-  };
-
   // Profile Editor save profiles
   const handleSaveProfile = async (updated: UserProfile) => {
     try {
@@ -411,14 +397,19 @@ export default function App() {
                 <ShieldCheck size={14} className="text-amber-600 fill-amber-100" />
                 <span>Verified Student</span>
               </span>
+            ) : currentUser.verificationStatus === "pending" ? (
+              <span className="bg-stone-50 text-stone-500 border border-stone-200 font-sans text-xs px-2.5 py-1 rounded-full flex items-center gap-1">
+                <ShieldAlert size={14} />
+                <span>Verification pending</span>
+              </span>
             ) : (
-              <button 
-                onClick={handleVerifyProfileManually}
+              <button
+                onClick={() => setActiveTab("profile")}
                 className="bg-stone-100 text-rose-500 hover:text-rose-600 hover:bg-rose-50 border border-stone-200 font-sans text-xs px-2.5 py-1 rounded-full flex items-center gap-1 transition cursor-pointer"
-                title="Click to instantly authenticate student account"
+                title="Submit your student verification"
               >
                 <ShieldAlert size={14} />
-                <span>Click to Verify Student Profile 🛡️</span>
+                <span>Verify your profile</span>
               </button>
             )}
           </div>
@@ -489,17 +480,45 @@ export default function App() {
 
               {!currentUser.isVerified ? (
                 <div className="bg-white/40 backdrop-blur-xl rounded-[32px] border border-stone-200 p-8 shadow-xl text-center max-w-md mx-auto space-y-4 py-12 animate-fade-in">
-                  <span className="text-5xl select-none block">🛡️</span>
-                  <h3 className="font-sans font-black text-slate-800 text-base">Verify your student account first</h3>
-                  <p className="font-sans text-xs text-slate-500 leading-relaxed max-w-xs mx-auto">
-                    To maintain an authentic, girls-only environment in Madrid, you must verify your university student status before seeing or matching with other members.
-                  </p>
-                  <button
-                    onClick={handleVerifyProfileManually}
-                    className="bg-rose-500 hover:bg-rose-600 text-white font-sans text-xs font-black px-6 py-2.5 rounded-xl shadow-lg transition"
-                  >
-                    Instantly Verify Student Profile
-                  </button>
+                  {currentUser.verificationStatus === "pending" ? (
+                    <>
+                      <span className="text-5xl select-none block">⏳</span>
+                      <h3 className="font-sans font-black text-slate-800 text-base">Verification under review</h3>
+                      <p className="font-sans text-xs text-slate-500 leading-relaxed max-w-xs mx-auto">
+                        Our team reviews every member to keep NEST a safe, women-only community. We'll notify you once you're approved.
+                      </p>
+                    </>
+                  ) : currentUser.verificationStatus === "rejected" ? (
+                    <>
+                      <span className="text-5xl select-none block">🛡️</span>
+                      <h3 className="font-sans font-black text-slate-800 text-base">Verification not approved</h3>
+                      {currentUser.verification?.rejectionReason && (
+                        <p className="font-sans text-xs text-slate-600 leading-relaxed max-w-xs mx-auto bg-rose-50 border border-rose-100 rounded-xl p-3">
+                          {currentUser.verification.rejectionReason}
+                        </p>
+                      )}
+                      <button
+                        onClick={() => setActiveTab("profile")}
+                        className="bg-rose-500 hover:bg-rose-600 text-white font-sans text-xs font-black px-6 py-2.5 rounded-xl shadow-lg transition"
+                      >
+                        Update &amp; resubmit
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-5xl select-none block">🛡️</span>
+                      <h3 className="font-sans font-black text-slate-800 text-base">Verify your student status</h3>
+                      <p className="font-sans text-xs text-slate-500 leading-relaxed max-w-xs mx-auto">
+                        Matching opens once an administrator approves your student verification.
+                      </p>
+                      <button
+                        onClick={() => setActiveTab("profile")}
+                        className="bg-rose-500 hover:bg-rose-600 text-white font-sans text-xs font-black px-6 py-2.5 rounded-xl shadow-lg transition"
+                      >
+                        Start verification
+                      </button>
+                    </>
+                  )}
                 </div>
               ) : swipeQueue.length > 0 ? (
                 <SwipeCard 
@@ -513,26 +532,10 @@ export default function App() {
                   <span className="text-5xl select-none block animate-pulse">✨🌸</span>
                   <div className="space-y-1">
                     <h3 className="font-sans font-black text-slate-800 text-base leading-snug">
-                      There are no current profiles available in Madrid yet!
+                      You're all caught up
                     </h3>
                     <p className="font-sans text-xs text-slate-500 leading-relaxed max-w-xs mx-auto">
-                      NEST is a 100% verified, real student community starting empty. Fake profiles or simulated users are strictly prohibited.
-                    </p>
-                  </div>
-
-                  {/* Sandbox helper instructions */}
-                  <div className="border-t border-slate-200/50 pt-5 mt-4 text-left space-y-3">
-                    <div className="flex items-center gap-1.5">
-                      <span className="flex h-2 w-2 relative">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                      </span>
-                      <span className="text-[10px] font-mono font-extrabold uppercase text-rose-500 tracking-wider block">
-                        🎓 How to test Match & Chat features?
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-slate-500 leading-normal">
-                      Since this is a real social network, you can simulate user growth simply by signing up on another account (e.g. from an Incognito tab or another browser) with some different names. Verify those accounts, and they'll show up right here in your swiping deck instantly!
+                      New members appear here as soon as their student verification is approved. Check back soon.
                     </p>
                   </div>
                 </div>
@@ -681,6 +684,7 @@ export default function App() {
               onSaveProfile={handleSaveProfile}
               onDeleteRecommendation={handleDeleteRecommendation}
               onSignOut={handleSignOut}
+              onRefreshProfile={loadProfile}
             />
           )}
 

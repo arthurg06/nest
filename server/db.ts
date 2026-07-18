@@ -8,13 +8,24 @@ const DB_FILE =
   process.env.DB_PATH ||
   (process.env.VERCEL ? "/tmp/db.json" : path.join(process.cwd(), "db.json"));
 
+export type UserRole = "admin" | "member";
+export type AccountStatus = "active" | "suspended";
+// Where the account was created. Extensible for future clients
+// (e.g. "ios", "android", "admin_created"); only "web" is issued today.
+export type AccountSource = "web" | "ios" | "android" | "admin_created";
+
 export interface User {
   id: string;
   email: string;
   passwordHash: string;
+  /** Derived from role — kept for backward compatibility with older clients. */
   isAdmin: boolean;
+  role: UserRole;
+  status: AccountStatus;
+  source: AccountSource;
   isPremium: boolean;
   premiumExpiresAt?: string;
+  lastActiveAt?: string;
   createdAt: string;
 }
 
@@ -24,6 +35,23 @@ export interface Interests {
   social: string[];
   lifestyle: string[];
   spendingStyle: string; // "budget queen" | "middle range baddie" | "high spender" | "luxury lover"
+}
+
+export type VerificationStatus = "unsubmitted" | "pending" | "approved" | "rejected";
+
+export interface VerificationInfo {
+  university?: string;
+  universityEmail?: string;
+  /** Free-text context provided by the member. */
+  userNote?: string;
+  submittedAt?: string;
+  reviewedAt?: string;
+  /** Admin user ID — internal, never sent to the member. */
+  reviewedById?: string;
+  /** Shown to the member when rejected. */
+  rejectionReason?: string;
+  /** Internal admin note — never sent to the member. */
+  adminNote?: string;
 }
 
 export interface UserProfile {
@@ -39,13 +67,25 @@ export interface UserProfile {
   friendshipType: string;
   bio: string;
   interests: Interests;
+  /** Derived: verificationStatus === "approved". Kept for compatibility. */
   isVerified: boolean;
+  verificationStatus: VerificationStatus;
+  verification?: VerificationInfo;
   avatarSeed: string;
   avatarColor: string;
   photo: string;
   tiktok?: string;
   instagram?: string;
   otherSocial?: string;
+  createdAt: string;
+}
+
+export interface AdminAuditEntry {
+  id: string;
+  adminId: string;
+  action: string;
+  targetUserId?: string;
+  detail?: string;
   createdAt: string;
 }
 
@@ -157,6 +197,7 @@ export interface DbSchema {
   posts: Post[];
   notifications: Notification[];
   sessions: Session[];
+  adminAudit: AdminAuditEntry[];
 }
 
 const initialDb: DbSchema = {
@@ -171,20 +212,69 @@ const initialDb: DbSchema = {
   posts: [],
   notifications: [],
   sessions: [],
+  adminAudit: [],
 };
+
+// Fills in fields introduced after the prototype era so records written by
+// older code keep working. Idempotent; returns true when anything changed.
+function migrateDb(db: DbSchema): boolean {
+  let changed = false;
+
+  if (!Array.isArray(db.adminAudit)) {
+    db.adminAudit = [];
+    changed = true;
+  }
+
+  for (const user of db.users) {
+    if (!user.role) {
+      user.role = user.isAdmin ? "admin" : "member";
+      changed = true;
+    }
+    if (user.isAdmin !== (user.role === "admin")) {
+      user.isAdmin = user.role === "admin";
+      changed = true;
+    }
+    if (!user.status) {
+      user.status = "active";
+      changed = true;
+    }
+    if (!user.source) {
+      user.source = "web";
+      changed = true;
+    }
+  }
+
+  for (const profile of db.profiles) {
+    if (!profile.verificationStatus) {
+      profile.verificationStatus = profile.isVerified ? "approved" : "unsubmitted";
+      changed = true;
+    }
+    const shouldBeVerified = profile.verificationStatus === "approved";
+    if (profile.isVerified !== shouldBeVerified) {
+      profile.isVerified = shouldBeVerified;
+      changed = true;
+    }
+  }
+
+  return changed;
+}
 
 // Helper to load db
 export function readDb(): DbSchema {
   try {
     if (!fs.existsSync(DB_FILE)) {
       fs.writeFileSync(DB_FILE, JSON.stringify(initialDb, null, 2), "utf-8");
-      return initialDb;
+      return structuredClone(initialDb);
     }
     const content = fs.readFileSync(DB_FILE, "utf-8");
-    return JSON.parse(content) as DbSchema;
+    const db = JSON.parse(content) as DbSchema;
+    if (migrateDb(db)) {
+      writeDb(db);
+    }
+    return db;
   } catch (error) {
     console.error("Error reading database file, returning default:", error);
-    return initialDb;
+    return structuredClone(initialDb);
   }
 }
 
