@@ -56,7 +56,7 @@ The server auto-creates an empty `db.json` on first run and migrates older recor
 
 ## Deployment
 
-**Vercel** (configured via `vercel.json`): static frontend from `dist/`, `/api/*` + `/uploads/*` through a serverless Express function (region `fra1`), SPA fallback for direct URLs.
+**Vercel** (configured via `vercel.json`): static frontend from `dist/`, `/api/*` + `/uploads/*` through a serverless Express function (region `iad1`, co-located with the Neon database in `us-east-1`; if the database is ever recreated in an EU region, move `regions` back to `fra1` in the same change), SPA fallback for direct URLs.
 
 **Storage** is selected by environment (`server/storage/`):
 
@@ -92,7 +92,7 @@ The server auto-creates an empty `db.json` on first run and migrates older recor
 
 ## Remaining production blockers
 
-1. **Neon terms acceptance.** The storage layer, Blob store, and seed are live in code; the Postgres resource itself needs a one-time marketplace terms acceptance in the Vercel dashboard, then `vercel integration add neon --plan free --name nest-db` and a redeploy.
+1. ~~Hosted database~~ **Done (2026-07-18):** Neon Postgres (`nest-db`, free plan, `us-east-1`) + Vercel Blob are live in production; persistence of accounts, matches, and messages across fresh deployments is verified end-to-end (`scripts/verify-prod-db.mjs` is the read-only check).
 2. **Stripe activation** requires account credentials and dashboard setup (docs/STRIPE.md). Until then Premium is visibly "being configured" and collects nothing.
 3. **Safety features** — reporting, blocking, community standards, privacy controls — are not yet implemented and are required before real users meet through the app (also an App Store requirement). See docs/PRODUCT_ROADMAP.md (B1).
 4. **Email verification / password reset** flows do not exist yet.
@@ -100,7 +100,7 @@ The server auto-creates an empty `db.json` on first run and migrates older recor
 
 ## Deployment checklist (production)
 
-- [ ] Neon Postgres provisioned (terms accepted) and `DATABASE_URL` present in all environments
+- [x] Neon Postgres provisioned and `DATABASE_URL` present in all environments (2026-07-18)
 - [ ] `ADMIN_EMAILS` set; first admin account created and verified
 - [ ] Stripe live keys + webhook + Customer Portal + Apple Pay domain (docs/STRIPE.md)
 - [ ] `APP_BASE_URL` set to the production domain

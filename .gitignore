@@ -33,3 +33,8 @@ public/seed/
 *.log
 .DS_Store
 .vercel
+
+# Tool-installed agent helper files (Neon marketplace CLI)
+.agents/
+.claude/
+skills-lock.json
