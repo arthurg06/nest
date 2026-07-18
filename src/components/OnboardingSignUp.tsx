@@ -399,7 +399,7 @@ export default function OnboardingSignUp({ onAuthSuccess }: OnboardingSignUpProp
       {/* Header logo */}
       <div className="text-center max-w-md mx-auto mb-6 shrink-0 flex flex-col items-center">
         <div className="inline-flex items-center gap-2.5 mb-1.5">
-          <img src="/nest-logo.png" alt="NEST Logo" className="w-12 h-12 rounded-2xl object-cover shadow-lg border border-white/25" />
+          <img src="/icons/nest-192.png" alt="NEST logo" className="w-12 h-12 rounded-2xl object-cover shadow-lg border border-white/25" />
           <div className="text-left">
             <span className="font-sans font-black tracking-tight text-slate-900 text-2xl uppercase">Nest</span>
             <span className="font-mono text-[9px] font-bold text-rose-500 tracking-widest block -mt-1 uppercase">Madrid Student Net</span>

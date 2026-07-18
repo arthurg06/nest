@@ -14,6 +14,9 @@ db.json.tmp
 uploads/*
 !uploads/.gitkeep
 
+# Supplied personal source assets (applied locally via scripts/, never committed)
+images/
+
 # Environment variables (secrets)
 .env
 .env.*

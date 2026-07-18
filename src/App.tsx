@@ -93,16 +93,19 @@ export default function App() {
   };
 
   // API loading functions
-  const loadProfile = async () => {
+  const loadProfile = async (): Promise<boolean> => {
     try {
       const res = await fetchWithAuth("/api/auth/me");
       const data = await res.json();
       if (res.ok) {
         setAccountUser(data.user);
         setCurrentUser(data.profile);
+        return true;
       }
+      return false;
     } catch (err: any) {
       console.error("Error loading profile:", err);
+      return false;
     }
   };
 
@@ -170,10 +173,14 @@ export default function App() {
     }
   };
 
-  // Initial trigger
+  // Initial trigger. If the stored session can't be restored (expired token
+  // or unreachable server), fall back to the sign-in screen instead of an
+  // endless splash.
   useEffect(() => {
     if (token) {
-      loadProfile();
+      loadProfile().then(ok => {
+        if (!ok) handleSignOut();
+      });
     }
   }, [token]);
 
@@ -362,6 +369,22 @@ export default function App() {
     }
   };
 
+  // Branded splash while an existing session is being restored
+  if (token && !currentUser) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4 select-none">
+        <img
+          src="/icons/nest-512.png"
+          alt="NEST logo"
+          className="w-24 h-24 rounded-[28px] shadow-xl animate-pulse"
+        />
+        <span className="font-mono text-[10px] uppercase tracking-widest text-stone-400">
+          Madrid Student Net
+        </span>
+      </div>
+    );
+  }
+
   // Render auth screen if not logged in
   if (!token || !currentUser) {
     return <OnboardingSignUp onAuthSuccess={handleAuthSuccess} />;
@@ -379,7 +402,7 @@ export default function App() {
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           {/* Logo */}
           <div className="flex items-center gap-2.5">
-            <img src="/nest-logo.png" alt="NEST Logo" className="w-9 h-9 rounded-xl object-cover shadow-sm border border-white/50" />
+            <img src="/icons/nest-192.png" alt="NEST logo" className="w-9 h-9 rounded-xl object-cover shadow-sm border border-white/50" />
             <div>
               <span className="font-sans font-black tracking-tighter text-[#1F1E1D] text-lg uppercase">Nest</span>
               <span className="font-mono text-[9px] font-extrabold text-[#C85B49] tracking-widest block -mt-1 uppercase">Madrid Student Net</span>
