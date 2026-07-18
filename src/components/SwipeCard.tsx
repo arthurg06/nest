@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { UserProfile } from "../types";
 import { calculateCompatibility } from "../data";
 import { ANIMAL_EMOJI } from "../../shared/compatibility";
@@ -39,6 +39,14 @@ export default function SwipeCard({ profile, currentUser, onSwipeLeft, onSwipeRi
 
   // Older profiles only have the single `photo` field.
   const gallery = profile.photos?.length ? profile.photos : [profile.photo];
+
+  // Each card starts fresh: without this the gallery index and the expanded
+  // state carried over to the next woman, so someone with a single photo
+  // could render a blank image box.
+  useEffect(() => {
+    setPhotoIndex(0);
+    setShowFullProfile(false);
+  }, [profile.id]);
   const [swipeDirection, setSwipeDirection] = useState<"left" | "right" | null>(null);
 
   // Calculate compatibility using the core function

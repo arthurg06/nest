@@ -94,7 +94,22 @@ function sanitizePhotos(raw: unknown, fallback: string[], existing: string[] = [
     .map(v => v.trim())
     .filter(v => isAppIssuedImage(v) || grandfathered.has(v))
     .slice(0, MAX_PROFILE_PHOTOS);
-  return cleaned.length > 0 ? cleaned : fallback;
+  // An explicitly empty list is a real choice — silently restoring her photo
+  // would ignore a member removing it. Only a malformed payload falls back.
+  return cleaned.length > 0 ? cleaned : raw.length === 0 ? [] : fallback;
+}
+
+// Photos already claimed by ANOTHER member. Being app-issued is not enough:
+// photo URLs are visible in discovery, so without this a member could put
+// someone else's picture on her own profile and pass as her.
+function photosClaimedByOthers(db: DbSchema, ownerUserId: string): Set<string> {
+  const taken = new Set<string>();
+  for (const profile of db.profiles) {
+    if (profile.userId === ownerUserId) continue;
+    if (profile.photo) taken.add(profile.photo);
+    for (const url of profile.photos || []) taken.add(url);
+  }
+  return taken;
 }
 
 // Belt and braces for deletion: never remove an image another record still
@@ -794,7 +809,11 @@ app.post("/api/profiles/update", authenticate, async (req, res) => {
       ...(() => {
         const current = db.profiles[profileIdx];
         const currentPhotos = current.photos?.length ? current.photos : [current.photo];
-        const photos = sanitizePhotos(data.photos, currentPhotos, currentPhotos);
+        const taken = photosClaimedByOthers(db, userId);
+        const requested = Array.isArray(data.photos)
+          ? data.photos.filter((url: unknown) => typeof url !== "string" || !taken.has(url))
+          : data.photos;
+        const photos = sanitizePhotos(requested, currentPhotos, currentPhotos);
         // photo stays the primary so older clients keep working
         return { photos, photo: photos[0] || data.photo || current.photo };
       })(),
@@ -1153,6 +1172,9 @@ app.post("/api/chats/:matchId/plans", authenticate, async (req, res) => {
     if (!cleanPlace) return res.status(400).json({ error: "A place is required" });
     if (!/^\d{4}-\d{2}-\d{2}$/.test(cleanDate)) return res.status(400).json({ error: "A valid date is required" });
     if (!/^\d{2}:\d{2}$/.test(cleanTime)) return res.status(400).json({ error: "A valid time is required" });
+    if (cleanDate < new Date().toISOString().slice(0, 10)) {
+      return res.status(400).json({ error: "Pick a date that hasn't passed yet" });
+    }
 
     const db = await dbManager.readDb();
     const match = db.matches.find(m => m.id === matchId && (m.user1Id === userId || m.user2Id === userId));
@@ -1162,10 +1184,15 @@ app.post("/api/chats/:matchId/plans", authenticate, async (req, res) => {
 
     const receiverId = match.user1Id === userId ? match.user2Id : match.user1Id;
 
-    // One open proposal at a time keeps the thread readable and prevents
-    // spamming a match with invitations.
-    if (db.plans.some(p => p.matchId === matchId && p.status === "pending")) {
-      return res.status(400).json({ error: "There is already a pending outing for this chat" });
+    // One open proposal at a time keeps the thread readable, but only while
+    // it is still relevant: an invite nobody answered used to lock the
+    // planner for that pair permanently, including after the date had passed.
+    const today = new Date().toISOString().slice(0, 10);
+    const blocking = db.plans.find(
+      p => p.matchId === matchId && p.status === "pending" && p.date >= today
+    );
+    if (blocking) {
+      return res.status(400).json({ error: "There is already an outing waiting for an answer in this chat" });
     }
 
     const planId = generateId();
@@ -1223,14 +1250,19 @@ app.post("/api/plans/:planId/respond", authenticate, async (req, res) => {
     const { planId } = req.params;
     const { status } = req.body;
 
-    if (status !== "accepted" && status !== "declined") {
-      return res.status(400).json({ error: "Status must be accepted or declined" });
+    if (status !== "accepted" && status !== "declined" && status !== "cancelled") {
+      return res.status(400).json({ error: "Status must be accepted, declined or cancelled" });
     }
 
     const db = await dbManager.readDb();
     const plan = db.plans.find(p => p.id === planId);
     if (!plan) return res.status(404).json({ error: "Outing not found" });
-    if (plan.receiverId !== userId) {
+    // Answering belongs to the receiver; withdrawing belongs to the sender.
+    if (status === "cancelled") {
+      if (plan.senderId !== userId) {
+        return res.status(403).json({ error: "Only the member who sent this outing can withdraw it" });
+      }
+    } else if (plan.receiverId !== userId) {
       return res.status(403).json({ error: "Only the member who received this outing can answer it" });
     }
     if (plan.status !== "pending") {
@@ -1244,9 +1276,11 @@ app.post("/api/plans/:planId/respond", authenticate, async (req, res) => {
     const responderName = db.profiles.find(p => p.userId === userId)?.name || "Your match";
     db.notifications.push({
       id: generateId(),
-      userId: plan.senderId,
+      userId: status === "cancelled" ? plan.receiverId : plan.senderId,
       text: status === "accepted"
         ? `${responderName} accepted: ${plan.title}`
+        : status === "cancelled"
+        ? `${responderName} withdrew: ${plan.title}`
         : `${responderName} can't make it to: ${plan.title}`,
       timestamp: now,
       read: false,

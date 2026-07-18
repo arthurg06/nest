@@ -137,6 +137,49 @@ describe("outing plans", () => {
       .expect(200);
   });
 
+  it("a stale invite nobody answered no longer blocks the chat", async () => {
+    const { a, matchId } = await createMatchedPair();
+
+    // an invite for a date that has passed
+    const past = await request(app)
+      .post(`/api/chats/${matchId}/plans`)
+      .set(auth(a.token))
+      .send({ ...validPlan, date: "2020-01-05" });
+    // the server refuses past dates outright now
+    expect(past.status).toBe(400);
+
+    // and a pending invite for today still blocks a second one
+    const today = new Date();
+    const iso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+    await request(app).post(`/api/chats/${matchId}/plans`).set(auth(a.token)).send({ ...validPlan, date: iso }).expect(200);
+    await request(app).post(`/api/chats/${matchId}/plans`).set(auth(a.token)).send({ ...validPlan, date: iso }).expect(400);
+  });
+
+  it("lets the sender withdraw her own invite, and only her", async () => {
+    const { a, b, matchId } = await createMatchedPair();
+    const created = await request(app)
+      .post(`/api/chats/${matchId}/plans`)
+      .set(auth(a.token))
+      .send(validPlan)
+      .expect(200);
+
+    // the receiver cannot "withdraw" — that is the sender's action
+    await request(app)
+      .post(`/api/plans/${created.body.id}/respond`)
+      .set(auth(b.token))
+      .send({ status: "cancelled" })
+      .expect(403);
+
+    await request(app)
+      .post(`/api/plans/${created.body.id}/respond`)
+      .set(auth(a.token))
+      .send({ status: "cancelled" })
+      .expect(200);
+
+    // the chat is free again
+    await request(app).post(`/api/chats/${matchId}/plans`).set(auth(a.token)).send(validPlan).expect(200);
+  });
+
   it("refuses statuses outside accepted/declined", async () => {
     const { a, b, matchId } = await createMatchedPair();
     const created = await request(app)

@@ -49,13 +49,28 @@ export async function saveImage(buffer: Buffer, ext: string): Promise<string> {
 // produced are touched; anything else (external stock photos, seed assets)
 // is ignored. Failures are logged, never thrown — image cleanup must not
 // block account or content deletion.
+// Our own Blob host, derived from the store id embedded in the token
+// (vercel_blob_rw_<storeId>_<secret>). Nothing about the token is logged.
+function ourBlobHost(): string | null {
+  const segments = (process.env.BLOB_READ_WRITE_TOKEN || "").split("_");
+  const storeId = segments.length >= 4 ? segments[3] : "";
+  return /^[a-z0-9]+$/i.test(storeId) ? `${storeId.toLowerCase()}.public.blob.vercel-storage.com` : null;
+}
+
 // True only for URLs this app itself issued. Anything else — another site's
-// image, or a Blob path we did not create — must never be accepted into a
-// profile nor passed to the delete API.
+// image, or a Blob path from a store that is not ours — must never be
+// accepted into a profile nor passed to the delete API.
 export function isAppIssuedImage(url: string | undefined): boolean {
   if (!url) return false;
   if (url.startsWith("/uploads/")) return true;
-  return /^https:\/\/[a-z0-9-]+\.public\.blob\.vercel-storage\.com\/uploads\/[\w.-]+$/.test(url);
+
+  const match = /^https:\/\/([a-z0-9-]+\.public\.blob\.vercel-storage\.com)\/uploads\/[\w.-]+$/.exec(url);
+  if (!match) return false;
+
+  // When the store is known, require an exact host match; otherwise fall back
+  // to the shape check so local and self-hosted setups keep working.
+  const host = ourBlobHost();
+  return host ? match[1] === host : true;
 }
 
 export async function deleteImage(url: string | undefined): Promise<void> {

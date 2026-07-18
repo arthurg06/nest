@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { UserProfile, Interests } from "../types";
 import { PREDEFINED_INTEREST_OPTIONS } from "../data";
 import { ANIMAL_EMOJI } from "../../shared/compatibility";
@@ -37,6 +37,15 @@ export default function OnboardingSignUp({ onAuthSuccess }: OnboardingSignUpProp
   };
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const stepBodyRef = useRef<HTMLDivElement>(null);
+
+  // The error banner lives at the top of the scrolling step body while the
+  // buttons are in a fixed footer, so without this the member sees nothing
+  // happen when a rule blocks her.
+  const reportError = (message: string) => {
+    setError(message);
+    window.setTimeout(() => stepBodyRef.current?.scrollTo({ top: 0, behavior: "smooth" }), 0);
+  };
 
   // Login inputs
   const [loginEmail, setLoginEmail] = useState("");
@@ -166,25 +175,25 @@ export default function OnboardingSignUp({ onAuthSuccess }: OnboardingSignUpProp
     setError("");
     if (step === 1) {
       if (!email.trim() || !password.trim() || !name.trim() || !age.trim() || selectedNationalities.length === 0 || !university.trim()) {
-        setError("Please fill out Email, Password, Name, Age, University and select at least one Nationality.");
+        reportError("Please fill out Email, Password, Name, Age, University and select at least one Nationality.");
         return;
       }
       if (password.length < 6) {
-        setError("Password must be at least 6 characters.");
+        reportError("Password must be at least 6 characters.");
         return;
       }
       if (Number(age) < 18 || Number(age) > 35) {
-        setError("NEST is designed for university-aged students (18-35).");
+        reportError("NEST is designed for university-aged students (18-35).");
         return;
       }
       if (languagesList.length === 0) {
-        setError("Please add at least one language you speak with its fluency level.");
+        reportError("Please add at least one language you speak with its fluency level.");
         return;
       }
       setStep(2);
     } else if (step === 2) {
       if (!photo) {
-        setError("A profile photo is mandatory! Please upload an image from your device.");
+        reportError("A profile photo is mandatory! Please upload an image from your device.");
         return;
       }
       setStep(3);
@@ -195,7 +204,7 @@ export default function OnboardingSignUp({ onAuthSuccess }: OnboardingSignUpProp
   const handleSubmitSignUp = async () => {
     setError("");
     if (!bio.trim()) {
-      setError("Please write a short bio to introduce yourself to other students!");
+      reportError("Please write a short bio to introduce yourself to other students!");
       return;
     }
 
@@ -224,10 +233,13 @@ export default function OnboardingSignUp({ onAuthSuccess }: OnboardingSignUpProp
           instagram: instagram.trim() || undefined,
           otherSocial: otherSocial.trim() || undefined,
           interests: {
-            activities: selectedActivities.length > 0 ? selectedActivities : ["yoga", "art"],
-            music: selectedMusic.length > 0 ? selectedMusic : ["pop", "indie"],
-            social: selectedSocial.length > 0 ? selectedSocial : ["cafes", "brunch"],
-            lifestyle: selectedLifestyle.length > 0 ? selectedLifestyle : ["wellness"],
+            // Only what she actually picked. Inventing tastes here meant
+            // her card advertised music and habits she never chose, and
+            // compatibility scored on them.
+            activities: selectedActivities,
+            music: selectedMusic,
+            social: selectedSocial,
+            lifestyle: selectedLifestyle,
             spendingStyle: spendingStyle,
             animals: animals || undefined
           }
@@ -241,7 +253,7 @@ export default function OnboardingSignUp({ onAuthSuccess }: OnboardingSignUpProp
 
       onAuthSuccess(data.token, data.user, data.profile);
     } catch (err: any) {
-      setError(err.message || "Error creating your student account.");
+      reportError(err.message || "Error creating your student account.");
     } finally {
       setLoading(false);
     }
@@ -388,7 +400,7 @@ export default function OnboardingSignUp({ onAuthSuccess }: OnboardingSignUpProp
                 its padding (-mx-2 + px-2): content stays aligned with the
                 header/footer while focus rings and borders keep 8px of
                 painting room instead of being cut at the edge. */}
-            <div className="py-6 grow overflow-y-auto max-h-[420px] md:max-h-[480px] -mx-2 px-2">
+            <div ref={stepBodyRef} className="py-6 grow overflow-y-auto max-h-[420px] md:max-h-[480px] -mx-2 px-2">
               {error && (
                 <div className="bg-destructive/10 border border-destructive/25 text-destructive p-3.5 rounded-2xl text-xs font-medium mb-5 animate-fade-in">
                   ⚠️ {error}

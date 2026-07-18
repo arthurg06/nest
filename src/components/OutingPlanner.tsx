@@ -35,10 +35,14 @@ interface OutingPlannerProps {
   error?: string;
 }
 
+// Built from local parts on purpose: toISOString() yields the UTC date, so
+// between midnight and 02:00 in Madrid "Today" resolved to yesterday.
 const isoDate = (offsetDays: number): string => {
   const d = new Date();
   d.setDate(d.getDate() + offsetDays);
-  return d.toISOString().slice(0, 10);
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${month}-${day}`;
 };
 
 // Saturday of the current week (or today if it already is the weekend)
