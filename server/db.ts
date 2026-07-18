@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import { normalizeStoredNationalities } from "../shared/countries";
 
 // Vercel's deployment filesystem is read-only; /tmp is the only writable
 // location there (ephemeral — data resets between cold starts). Self-hosted
@@ -253,6 +254,16 @@ function migrateDb(db: DbSchema): boolean {
     if (profile.isVerified !== shouldBeVerified) {
       profile.isVerified = shouldBeVerified;
       changed = true;
+    }
+
+    // Migrate legacy country names ("Korea, South", "Turkey", …) to the
+    // canonical dataset; unknown values pass through untouched.
+    if (profile.nationality) {
+      const normalized = normalizeStoredNationalities(profile.nationality);
+      if (normalized !== profile.nationality) {
+        profile.nationality = normalized;
+        changed = true;
+      }
     }
   }
 
