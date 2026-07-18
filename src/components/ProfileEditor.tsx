@@ -1109,6 +1109,9 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
                     onChange={(e) => setVerEmail(e.target.value)}
                     className="w-full bg-white/40 border border-white/50 rounded-lg p-2 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-rose-300"
                   />
+                  <p className="text-[10px] text-slate-400 leading-normal">
+                    Used only to verify your student status. This won't change your NEST login email.
+                  </p>
                 </div>
 
                 <div className="space-y-1">
@@ -1138,7 +1141,7 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
                 </button>
 
                 <p className="text-[10px] text-slate-400 leading-normal">
-                  Reviews are manual and usually quick. Your email is used for verification only.
+                  Reviews are manual and usually quick. You'll keep signing in with your personal email.
                 </p>
               </form>
             )}

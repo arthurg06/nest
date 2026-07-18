@@ -403,8 +403,8 @@ export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboar
                             {v.verificationStatus}
                           </span>
                         </div>
-                        <p className="text-[11px] text-slate-500 font-mono truncate">{v.email}</p>
                         <div className="text-[11px] text-slate-600 mt-1.5 space-y-0.5">
+                          <p><span className="font-bold">Account email:</span> <span className="font-mono">{v.email}</span></p>
                           <p><span className="font-bold">University:</span> {v.verification.university || v.university || "—"}</p>
                           <p><span className="font-bold">University email:</span> <span className="font-mono">{v.verification.universityEmail || "—"}</span></p>
                           {v.verification.userNote && (
@@ -413,6 +413,7 @@ export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboar
                           {v.verification.submittedAt && (
                             <p className="text-[10px] text-slate-400">
                               Submitted {new Date(v.verification.submittedAt).toLocaleString()}
+                              {v.verification.reviewedAt && ` · Reviewed ${new Date(v.verification.reviewedAt).toLocaleString()}`}
                             </p>
                           )}
                           {v.verificationStatus === "rejected" && v.verification.rejectionReason && (

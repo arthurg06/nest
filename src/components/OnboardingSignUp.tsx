@@ -273,7 +273,7 @@ export default function OnboardingSignUp({ onAuthSuccess }: OnboardingSignUpProp
 
               {/* Email */}
               <div className="space-y-1">
-                <label className="text-[10px] font-mono font-bold text-slate-500 uppercase block">Student Email</label>
+                <label className="text-[10px] font-mono font-bold text-slate-500 uppercase block">Personal Email</label>
                 <div className="relative">
                   <Mail size={14} className="absolute left-3.5 top-3.5 text-slate-400" />
                   <input
@@ -371,7 +371,7 @@ export default function OnboardingSignUp({ onAuthSuccess }: OnboardingSignUpProp
                   {/* Credentials */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div className="space-y-1">
-                      <label className="text-[10px] font-mono font-bold text-slate-400 uppercase block">Email Address</label>
+                      <label className="text-[10px] font-mono font-bold text-slate-400 uppercase block">Personal Email</label>
                       <input
                         type="email"
                         required
@@ -380,6 +380,7 @@ export default function OnboardingSignUp({ onAuthSuccess }: OnboardingSignUpProp
                         placeholder="yourname@domain.com"
                         className="w-full bg-white/60 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-rose-400 focus:bg-white"
                       />
+                      <p className="text-[10px] text-slate-400 leading-normal">Use the email you want to sign in with.</p>
                     </div>
                     <div className="space-y-1">
                       <label className="text-[10px] font-mono font-bold text-slate-400 uppercase block">Password (Min 6 chars)</label>
