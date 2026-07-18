@@ -11,7 +11,7 @@ import OnboardingSignUp from "./components/OnboardingSignUp";
 import AdminDashboard from "./components/AdminDashboard";
 import {
   Sparkles, MessageSquare, MapPin, Users, Calendar, User,
-  ShieldAlert, Bell, Heart, Check, X, ShieldCheck, HelpCircle, RefreshCw, Key
+  Bell, Heart, Check, X, ShieldCheck, HelpCircle, RefreshCw, Key
 } from "lucide-react";
 import { apiUrl } from "./lib/api";
 
@@ -430,8 +430,9 @@ export default function App() {
   return (
       <div className="min-h-screen text-slate-800 flex flex-col antialiased">
       
-      {/* 1. TOP HEADER BANNER */}
-      <header className="bg-white/60 backdrop-blur-xl border-b border-stone-200/60 py-3 px-4 md:px-6 pt-[max(0.75rem,env(safe-area-inset-top))] sticky top-0 z-30 select-none">
+      {/* 1. TOP HEADER BANNER — brand identity only; personal status lives
+          beside the member's name on her profile, not in the global header */}
+      <header className="bg-sidebar/85 backdrop-blur-xl border-b border-sidebar-border py-3 px-4 md:px-6 pt-[max(0.75rem,env(safe-area-inset-top))] sticky top-0 z-30 select-none">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           {/* Logo */}
           <div className="flex items-center gap-2.5">
@@ -440,30 +441,6 @@ export default function App() {
               <span className="font-display font-semibold tracking-tight text-stone-900 text-lg lowercase">nest</span>
               <span className="font-mono text-[9px] font-bold text-rose-600 tracking-widest block -mt-1 uppercase">Madrid</span>
             </div>
-          </div>
-
-          {/* Verification status */}
-          <div className="hidden sm:flex items-center gap-3">
-            {currentUser.isVerified ? (
-              <span className="bg-amber-50 text-amber-800 border border-amber-200 font-sans font-bold text-xs px-2.5 py-1 rounded-full flex items-center gap-1">
-                <ShieldCheck size={14} className="text-amber-600 fill-amber-100" />
-                <span>Verified Student</span>
-              </span>
-            ) : currentUser.verificationStatus === "pending" ? (
-              <span className="bg-stone-50 text-stone-500 border border-stone-200 font-sans text-xs px-2.5 py-1 rounded-full flex items-center gap-1">
-                <ShieldAlert size={14} />
-                <span>Verification pending</span>
-              </span>
-            ) : (
-              <button
-                onClick={() => setActiveTab("profile")}
-                className="bg-stone-100 text-rose-500 hover:text-rose-600 hover:bg-rose-50 border border-stone-200 font-sans text-xs px-2.5 py-1 rounded-full flex items-center gap-1 transition cursor-pointer"
-                title="Submit your student verification"
-              >
-                <ShieldAlert size={14} />
-                <span>Verify your profile</span>
-              </button>
-            )}
           </div>
 
           {/* Right menu details: current user profile snippet and reset button */}
@@ -564,7 +541,7 @@ export default function App() {
                       )}
                       <button
                         onClick={() => setActiveTab("profile")}
-                        className="bg-rose-500 hover:bg-rose-600 text-white font-sans text-xs font-black px-6 py-2.5 rounded-xl shadow-lg transition"
+                        className="bg-rose-500 hover:bg-rose-600 text-white font-sans text-xs font-black px-6 py-2.5 rounded-xl shadow-pop transition"
                       >
                         Update &amp; resubmit
                       </button>
@@ -578,7 +555,7 @@ export default function App() {
                       </p>
                       <button
                         onClick={() => setActiveTab("profile")}
-                        className="bg-rose-500 hover:bg-rose-600 text-white font-sans text-xs font-black px-6 py-2.5 rounded-xl shadow-lg transition"
+                        className="bg-rose-500 hover:bg-rose-600 text-white font-sans text-xs font-black px-6 py-2.5 rounded-xl shadow-pop transition"
                       >
                         Start verification
                       </button>
@@ -768,13 +745,13 @@ export default function App() {
             
             {/* Visual Header Matches Icon */}
             <div className="relative w-28 h-20 mx-auto flex items-center justify-center">
-              <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-rose-200 to-amber-200 flex items-center justify-center border-2 border-white shadow-md absolute -left-2 transform -rotate-12 z-10 font-bold text-[#C85B49] text-2xl select-none">
+              <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-rose-200 to-amber-200 flex items-center justify-center border-2 border-white shadow-md absolute -left-2 transform -rotate-12 z-10 font-bold text-rose-600 text-2xl select-none">
                 {currentUser.name[0]}
               </div>
               <div className={`w-16 h-16 rounded-full bg-gradient-to-tr ${newMatchAlert.avatarColor || "from-rose-400 to-rose-600"} flex items-center justify-center border-2 border-white shadow-md absolute -right-2 transform rotate-12 z-10 font-bold text-white text-2xl select-none`}>
                 {newMatchAlert.name[0]}
               </div>
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 bg-stone-900 text-[#E78370] p-2 rounded-full shadow border border-stone-700 animate-pulse">
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 bg-stone-900 text-rose-300 p-2 rounded-full shadow border border-stone-700 animate-pulse">
                 <Heart size={18} fill="currentColor" stroke="none" />
               </div>
             </div>
@@ -811,14 +788,14 @@ export default function App() {
       )}
 
       {/* 4. BOTTOM NAVIGATION BAR (safe-area aware for mobile devices) */}
-      <nav className="bg-white/70 backdrop-blur-xl border-t border-stone-200/60 pt-2.5 px-4 pb-[max(0.625rem,env(safe-area-inset-bottom))] sticky bottom-0 z-30 select-none shrink-0">
+      <nav className="bg-sidebar/85 backdrop-blur-xl border-t border-sidebar-border pt-2.5 px-4 pb-[max(0.625rem,env(safe-area-inset-bottom))] sticky bottom-0 z-30 select-none shrink-0">
         <div className="max-w-md mx-auto flex items-center justify-between gap-1 text-center">
           
           {/* Swipe */}
           <button
             onClick={() => setActiveTab("swipe")}
             className={`flex flex-col items-center gap-1 flex-1 py-1 px-1 rounded-xl transition-all ${
-              activeTab === "swipe" ? "text-[#C85B49] font-bold" : "text-stone-400 hover:text-stone-700"
+              activeTab === "swipe" ? "text-rose-600 font-bold" : "text-stone-400 hover:text-stone-700"
             }`}
           >
             <Sparkles size={18} className={activeTab === "swipe" ? "scale-110" : ""} />
@@ -829,7 +806,7 @@ export default function App() {
           <button
             onClick={() => setActiveTab("chat")}
             className={`flex flex-col items-center gap-1 flex-1 py-1 px-1 rounded-xl transition-all relative ${
-              activeTab === "chat" ? "text-[#C85B49] font-bold" : "text-stone-400 hover:text-stone-700"
+              activeTab === "chat" ? "text-rose-600 font-bold" : "text-stone-400 hover:text-stone-700"
             }`}
           >
             <MessageSquare size={18} className={activeTab === "chat" ? "scale-110" : ""} />
@@ -837,7 +814,7 @@ export default function App() {
             
             {/* Active notifications indicator badge */}
             {matches.length > 0 && (
-              <span className="absolute top-1 right-5 w-2 h-2 rounded-full bg-[#C85B49] border border-white" />
+              <span className="absolute top-1 right-5 w-2 h-2 rounded-full bg-rose-500 border border-white" />
             )}
           </button>
 
@@ -845,7 +822,7 @@ export default function App() {
           <button
             onClick={() => setActiveTab("city")}
             className={`flex flex-col items-center gap-1 flex-1 py-1 px-1 rounded-xl transition-all ${
-              activeTab === "city" ? "text-[#C85B49] font-bold" : "text-stone-400 hover:text-stone-700"
+              activeTab === "city" ? "text-rose-600 font-bold" : "text-stone-400 hover:text-stone-700"
             }`}
           >
             <MapPin size={18} className={activeTab === "city" ? "scale-110" : ""} />
@@ -856,7 +833,7 @@ export default function App() {
           <button
             onClick={() => setActiveTab("events")}
             className={`flex flex-col items-center gap-1 flex-1 py-1 px-1 rounded-xl transition-all ${
-              activeTab === "events" ? "text-[#C85B49] font-bold" : "text-stone-400 hover:text-stone-700"
+              activeTab === "events" ? "text-rose-600 font-bold" : "text-stone-400 hover:text-stone-700"
             }`}
           >
             <Calendar size={18} className={activeTab === "events" ? "scale-110" : ""} />
@@ -867,7 +844,7 @@ export default function App() {
           <button
             onClick={() => setActiveTab("profile")}
             className={`flex flex-col items-center gap-1 flex-1 py-1 px-1 rounded-xl transition-all ${
-              activeTab === "profile" ? "text-[#C85B49] font-bold" : "text-stone-400 hover:text-stone-700"
+              activeTab === "profile" ? "text-rose-600 font-bold" : "text-stone-400 hover:text-stone-700"
             }`}
           >
             <User size={18} className={activeTab === "profile" ? "scale-110" : ""} />

@@ -55,7 +55,7 @@ interface AdminDashboardProps {
 const authHeaders = () => ({ "Authorization": `Bearer ${localStorage.getItem("nest_token")}` });
 
 const VERIFICATION_BADGE: Record<string, string> = {
-  approved: "bg-amber-50 text-amber-700 border-amber-200/50",
+  approved: "bg-success-muted text-success border-success-border",
   pending: "bg-sky-50 text-sky-700 border-sky-200/50",
   rejected: "bg-rose-50 text-rose-700 border-rose-200/50",
   unsubmitted: "bg-slate-100 text-slate-500 border-slate-200"

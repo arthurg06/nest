@@ -2,9 +2,10 @@ import React, { useState, useEffect, useRef } from "react";
 import { Match, Message, UserProfile, MapSpot, Plan } from "../types";
 import { MADRID_MAP_SPOTS } from "../data";
 import Map from "./Map";
-import { Send, MapPin, Calendar, Clock, Smile, Sparkles, AlertCircle, X, Check, ShieldCheck } from "lucide-react";
+import { Send, MapPin, Calendar, Clock, Smile, Sparkles, AlertCircle, X, Check } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { isOwnMessage } from "../lib/chat";
+import VerifiedBadge from "./VerifiedBadge";
 
 interface ChatWindowProps {
   activeMatch: Match;
@@ -126,13 +127,11 @@ export default function ChatWindow({
             {activeMatch.profile.name[0]}
           </div>
           <div>
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 flex-wrap">
               <h4 className="font-sans font-bold text-sm text-slate-900 leading-none">
                 {activeMatch.profile.name}
               </h4>
-              {activeMatch.profile.isVerified && (
-                <ShieldCheck size={14} className="text-rose-500 fill-rose-100" />
-              )}
+              <VerifiedBadge profile={activeMatch.profile} />
             </div>
             <p className="text-[10px] text-slate-400 font-mono leading-tight mt-0.5">
               {activeMatch.profile.university} • {activeMatch.profile.nationality}

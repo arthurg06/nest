@@ -5,6 +5,7 @@ import { ShieldCheck, User, Sparkles, Languages, Check, Mail, Upload, FileText, 
 import { ImageUploader } from "./ImageUploader";
 import { searchCountries } from "../../shared/countries";
 import { apiUrl } from "../lib/api";
+import VerifiedBadge from "./VerifiedBadge";
 
 interface ProfileEditorProps {
   currentUser: UserProfile;
@@ -357,11 +358,14 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
         </div>
       )}
 
-      {/* Title */}
+      {/* Title — own identity row with verification badge beside the name */}
       <div className="animate-fade-in">
-        <h2 className="font-display text-3xl text-slate-900">
-          Your profile
-        </h2>
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <h2 className="font-display text-3xl text-slate-900">
+            Your profile
+          </h2>
+          <VerifiedBadge profile={currentUser} />
+        </div>
         <p className="font-sans text-xs text-slate-500 mt-1">
           What you share here shapes your matches.
         </p>
@@ -857,7 +861,7 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
           <div className="pt-4 border-t border-white/30 flex justify-end">
             <button
               onClick={handleSave}
-              className="w-full sm:w-auto bg-rose-500 text-white font-sans text-xs font-black px-6 py-3 rounded-xl shadow-lg shadow-rose-200/50 hover:bg-rose-600 transition active:scale-95 cursor-pointer"
+              className="w-full sm:w-auto bg-rose-500 text-white font-sans text-xs font-black px-6 py-3 rounded-xl shadow-pop hover:bg-rose-600 transition active:scale-95 cursor-pointer"
             >
               Save profile
             </button>
@@ -1058,10 +1062,10 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
             </p>
 
             {isVerified ? (
-              <div className="bg-amber-50/75 backdrop-blur-sm text-amber-800 p-3.5 rounded-xl border border-amber-200/50 text-center space-y-1.5 select-none shadow-sm">
-                <ShieldCheck size={26} className="text-amber-600 fill-amber-200 mx-auto" />
-                <h4 className="font-sans font-bold text-xs">Verified member</h4>
-                <p className="font-sans text-[10px] text-slate-600 leading-normal">
+              <div className="bg-success-muted text-success p-3.5 rounded-xl border border-success-border text-center space-y-1.5 select-none">
+                <ShieldCheck size={26} className="mx-auto" />
+                <h4 className="font-sans font-bold text-xs">Verified Student</h4>
+                <p className="font-sans text-[11px] leading-normal">
                   Your student status has been approved. You have full access to matching.
                 </p>
               </div>

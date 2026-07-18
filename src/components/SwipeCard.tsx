@@ -1,8 +1,9 @@
 import React, { useState } from "react";
 import { UserProfile } from "../types";
 import { calculateCompatibility } from "../data";
-import { X, Heart, ShieldCheck, MapPin, Languages, Sparkles, GraduationCap, ChevronDown, ChevronUp } from "lucide-react";
+import { X, Heart, MapPin, Languages, Sparkles, GraduationCap, ChevronDown, ChevronUp } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
+import VerifiedBadge from "./VerifiedBadge";
 
 interface SwipeCardProps {
   profile: UserProfile;
@@ -78,13 +79,7 @@ export default function SwipeCard({ profile, currentUser, onSwipeLeft, onSwipeRi
                 {profile.nationality} ✈️
               </span>
 
-              {/* Gold Verification Badge */}
-              {profile.isVerified && (
-                <div className="flex items-center gap-1 bg-white/80 backdrop-blur-md text-rose-600 text-[10px] font-bold px-2.5 py-1 rounded-full border border-white/70 shadow-sm animate-pulse">
-                  <ShieldCheck size={12} className="text-rose-500 fill-rose-100" />
-                  <span>Student Verified</span>
-                </div>
-              )}
+              {/* Verification badge lives beside the name below, not on the photo */}
             </div>
 
             {/* Avatar & Matching score row */}
@@ -110,13 +105,14 @@ export default function SwipeCard({ profile, currentUser, onSwipeLeft, onSwipeRi
 
           {/* Profile Name & Primary Info Section */}
           <div className="px-6 pt-5 md:pt-8 pb-3 border-b border-white/20 shrink-0">
-            <div className="flex items-baseline gap-2 mb-1.5">
+            <div className="flex items-baseline gap-x-2 gap-y-1 flex-wrap mb-1.5">
               <h3 className="font-display text-2xl text-slate-950">
                 {profile.name}
               </h3>
               <span className="font-display text-xl text-slate-400">
                 {profile.age}
               </span>
+              <VerifiedBadge profile={profile} />
             </div>
 
             <div className="flex flex-col gap-1 text-xs text-slate-500 font-sans">
@@ -332,7 +328,7 @@ export default function SwipeCard({ profile, currentUser, onSwipeLeft, onSwipeRi
             {/* Right/Like Button */}
             <button
               onClick={handleLike}
-              className="w-16 h-16 rounded-full bg-rose-500 shadow-xl shadow-rose-200/50 text-white flex items-center justify-center hover:bg-rose-600 hover:scale-105 transition-all duration-200 active:scale-95 border border-rose-400"
+              className="w-16 h-16 rounded-full bg-rose-500 shadow-pop-lg text-white flex items-center justify-center hover:bg-rose-600 hover:scale-105 transition-all duration-200 active:scale-95 border border-rose-400"
             >
               <Heart size={30} fill="currentColor" stroke="none" />
             </button>
