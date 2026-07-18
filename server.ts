@@ -14,6 +14,8 @@ import { RateLimiter } from "./server/rateLimit.js";
 import { getStripe, isStripeConfigured, isWebhookConfigured, premiumPriceId } from "./server/stripe.js";
 import { saveImage, deleteImage, isAppIssuedImage } from "./server/images.js";
 import { PREMIUM_PLAN, PREMIUM_PRICE_LABEL } from "./shared/subscription.js";
+import { profileFor } from "./shared/visibility.js";
+import { avatarGradient } from "./shared/avatar.js";
 
 dotenv.config({ quiet: true });
 
@@ -37,19 +39,20 @@ function ownProfileView(profile: UserProfile) {
   return { ...profile, verification: visible };
 }
 
-// A profile as shown to OTHER members: no verification record at all.
 // A profile as shown to OTHER members: no verification record, and no social
 // handles — those are the highest-value scraping target, so they are shared
 // only once two members have matched (see matchedProfileView).
+//
+// Both views delegate to shared/visibility.ts, which is also what the in-app
+// profile preview reads: a member is shown her card hiding exactly the fields
+// the server hides, so the preview cannot promise a privacy the API breaks.
 function publicProfileView(profile: UserProfile) {
-  const { verification, instagram, tiktok, otherSocial, ...rest } = profile;
-  return rest;
+  return profileFor(profile, "everyone");
 }
 
 // A profile as shown to someone she has matched with: handles included.
 function matchedProfileView(profile: UserProfile) {
-  const { verification, ...rest } = profile;
-  return rest;
+  return profileFor(profile, "match");
 }
 
 // Free text limits. Without these a single member could store megabytes that
@@ -491,7 +494,11 @@ app.post("/api/auth/signup", async (req, res) => {
       isVerified: false,
       verificationStatus: "unsubmitted",
       avatarSeed: name,
-      avatarColor: "#" + Math.floor(Math.random() * 16777215).toString(16),
+      // A pair of Tailwind gradient classes, not a hex string: the badge is
+      // painted with bg-gradient-to-tr, which ignores anything else. Derived
+      // from the seed rather than random so the card she previews during
+      // sign-up carries the colour her account ends up with.
+      avatarColor: avatarGradient({ avatarSeed: name }),
       photo: photo || "https://images.unsplash.com/photo-1512413919939-b40067ca849d?auto=format&fit=crop&w=600&q=80",
       photos: sanitizePhotos(req.body.photos, photo ? [photo] : []),
       tiktok: tiktok || undefined,

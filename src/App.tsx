@@ -14,6 +14,7 @@ import {
   Bell, Heart, Check, X, ShieldCheck, HelpCircle, RefreshCw, Key
 } from "lucide-react";
 import { apiUrl } from "./lib/api";
+import { avatarGradient } from "../shared/avatar";
 
 export default function App() {
   // Navigation State: "swipe" | "chat" | "city" | "events" | "profile" | "admin"
@@ -529,7 +530,7 @@ export default function App() {
               onClick={() => setActiveTab("profile")}
               className={`flex items-center gap-2 text-left bg-card p-1.5 rounded-xl border border-border/50 hover:bg-muted/50 transition`}
             >
-              <div className={`w-7 h-7 rounded-lg bg-gradient-to-tr ${currentUser.avatarColor || "from-rose-400 to-rose-600"} flex items-center justify-center text-white text-[11px] font-extrabold`}>
+              <div className={`w-7 h-7 rounded-lg bg-gradient-to-tr ${avatarGradient(currentUser)} flex items-center justify-center text-white text-[11px] font-extrabold`}>
                 {currentUser.name[0]}
               </div>
               <span className="hidden md:inline font-sans font-black text-xs text-foreground">
@@ -838,7 +839,7 @@ export default function App() {
               <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-rose-200 to-amber-200 flex items-center justify-center border-2 border-white shadow-md absolute -left-2 transform -rotate-12 z-10 font-bold text-primary text-2xl select-none">
                 {currentUser.name[0]}
               </div>
-              <div className={`w-16 h-16 rounded-full bg-gradient-to-tr ${newMatchAlert.avatarColor || "from-rose-400 to-rose-600"} flex items-center justify-center border-2 border-white shadow-md absolute -right-2 transform rotate-12 z-10 font-bold text-white text-2xl select-none`}>
+              <div className={`w-16 h-16 rounded-full bg-gradient-to-tr ${avatarGradient(newMatchAlert)} flex items-center justify-center border-2 border-white shadow-md absolute -right-2 transform rotate-12 z-10 font-bold text-white text-2xl select-none`}>
                 {newMatchAlert.name[0]}
               </div>
               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 bg-stone-900 text-rose-300 p-2 rounded-full shadow border border-stone-700 animate-pulse">

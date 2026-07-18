@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { ImageUploader } from "./ImageUploader";
 import { apiUrl } from "../lib/api";
+import { avatarGradient } from "../../shared/avatar";
 
 interface CityDiscoveryProps {
   recommendations: Recommendation[];
@@ -361,7 +362,7 @@ export default function CityDiscovery({
                 
                 {/* Author profile tag */}
                 <div className="flex items-center gap-2 shrink-0">
-                  <div className={`w-6 h-6 rounded-lg bg-gradient-to-tr ${rec.authorAvatarColor || "from-rose-400 to-orange-400"} flex items-center justify-center text-white text-[10px] font-extrabold`}>
+                  <div className={`w-6 h-6 rounded-lg bg-gradient-to-tr ${avatarGradient({ avatarColor: rec.authorAvatarColor, avatarSeed: rec.authorAvatarSeed })} flex items-center justify-center text-white text-[10px] font-extrabold`}>
                     {(rec.authorName || "N")[0]}
                   </div>
                   <div>

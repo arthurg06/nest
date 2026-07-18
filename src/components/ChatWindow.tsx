@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Match, UserProfile, Plan, Recommendation } from "../types";
-import { Send, MapPin, Clock, Calendar, X, Check } from "lucide-react";
+import { Send, MapPin, Clock, Calendar, X, Check, Instagram, AtSign } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { isOwnMessage } from "../lib/chat";
 import VerifiedBadge from "./VerifiedBadge";
@@ -175,6 +175,40 @@ export default function ChatWindow({
           <span className="sm:hidden">Plan</span>
         </button>
       </div>
+
+      {/* The handles she chose to share. These only reach this client once the
+          two have matched — the server strips them from the open deck. Until
+          now nothing rendered them anywhere, so a member could fill in her
+          Instagram and have it seen by nobody, ever. Shown as plain text
+          rather than links: the value is hers to type, and it is not turning
+          into a URL this app follows. */}
+      {(activeMatch.profile.instagram || activeMatch.profile.tiktok || activeMatch.profile.otherSocial) && (
+        <div className="px-4 md:px-5 py-2 border-b border-border/30 bg-card/20 shrink-0 flex flex-wrap items-center gap-x-3 gap-y-1 select-text">
+          <span className="text-[9px] font-mono uppercase tracking-widest text-muted-foreground shrink-0">
+            Find her on
+          </span>
+          {activeMatch.profile.instagram && (
+            <span className="inline-flex items-center gap-1 text-[11px] font-sans font-bold text-foreground">
+              <Instagram size={12} className="text-primary shrink-0" />
+              <span className="break-all">@{activeMatch.profile.instagram}</span>
+            </span>
+          )}
+          {activeMatch.profile.tiktok && (
+            <span className="inline-flex items-center gap-1 text-[11px] font-sans font-bold text-foreground">
+              <span className="w-3.5 h-3.5 rounded bg-black flex items-center justify-center text-[8px] text-rose-400 font-mono font-black shrink-0 select-none">
+                T
+              </span>
+              <span className="break-all">@{activeMatch.profile.tiktok}</span>
+            </span>
+          )}
+          {activeMatch.profile.otherSocial && (
+            <span className="inline-flex items-center gap-1 text-[11px] font-sans font-bold text-foreground">
+              <AtSign size={12} className="text-muted-foreground shrink-0" />
+              <span className="break-all">{activeMatch.profile.otherSocial}</span>
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto min-h-0 px-4 md:px-5 py-4 space-y-4">

@@ -2,18 +2,29 @@ import React, { useState, useRef, useEffect } from "react";
 import { UserProfile } from "../types";
 import { calculateCompatibility } from "../data";
 import { ANIMAL_EMOJI } from "../../shared/compatibility";
-import { X, Heart, MapPin, Languages, Sparkles, GraduationCap, ChevronDown, ChevronUp } from "lucide-react";
+import { avatarGradient } from "../../shared/avatar";
+import { X, Heart, MapPin, Languages, Sparkles, GraduationCap, ChevronDown, ChevronUp, Instagram, AtSign } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import VerifiedBadge from "./VerifiedBadge";
 
 interface SwipeCardProps {
   profile: UserProfile;
-  currentUser: UserProfile;
-  onSwipeLeft: () => void;
-  onSwipeRight: (isMatch: boolean) => void;
+  /** Absent in preview mode — there is nobody on the other side to compare against. */
+  currentUser?: UserProfile;
+  onSwipeLeft?: () => void;
+  onSwipeRight?: (isMatch: boolean) => void;
+  /**
+   * Her own card, shown back to her. The card itself is rendered by this same
+   * component so the preview cannot drift from the real thing; only what
+   * belongs to the *viewer* is neutralised — the match score, the
+   * shared-interest markers and the two action buttons, none of which mean
+   * anything without a second person. The buttons stay in place, inert, so
+   * the card keeps exactly the proportions another member will see.
+   */
+  preview?: boolean;
 }
 
-export default function SwipeCard({ profile, currentUser, onSwipeLeft, onSwipeRight }: SwipeCardProps) {
+export default function SwipeCard({ profile, currentUser, onSwipeLeft, onSwipeRight, preview = false }: SwipeCardProps) {
   const [showFullProfile, setShowFullProfile] = useState(false);
   const [photoIndex, setPhotoIndex] = useState(0);
   const cardRef = useRef<HTMLDivElement>(null);
@@ -49,14 +60,15 @@ export default function SwipeCard({ profile, currentUser, onSwipeLeft, onSwipeRi
   }, [profile.id]);
   const [swipeDirection, setSwipeDirection] = useState<"left" | "right" | null>(null);
 
-  // Calculate compatibility using the core function
-  const report = calculateCompatibility(currentUser, profile);
+  // Compatibility only exists relative to a viewer, so there is none to show
+  // when she is looking at her own card.
+  const report = currentUser ? calculateCompatibility(currentUser, profile) : null;
 
   // Handle Swipe triggers
   const handlePass = () => {
     setSwipeDirection("left");
     setTimeout(() => {
-      onSwipeLeft();
+      onSwipeLeft?.();
       setSwipeDirection(null);
     }, 250);
   };
@@ -65,16 +77,18 @@ export default function SwipeCard({ profile, currentUser, onSwipeLeft, onSwipeRi
     setSwipeDirection("right");
     // Whether this is a match is decided by the server, never here.
     setTimeout(() => {
-      onSwipeRight(false);
+      onSwipeRight?.(false);
       setSwipeDirection(null);
     }, 250);
   };
 
   // Helper to determine interest overlaps
-  const isSharedActivity = (act: string) => currentUser.interests.activities.includes(act);
-  const isSharedMusic = (mus: string) => currentUser.interests.music.includes(mus);
-  const isSharedSocial = (soc: string) => currentUser.interests.social.includes(soc);
-  const isSharedLifestyle = (life: string) => currentUser.interests.lifestyle.includes(life);
+  const isSharedActivity = (act: string) => currentUser?.interests.activities.includes(act) ?? false;
+  const isSharedMusic = (mus: string) => currentUser?.interests.music.includes(mus) ?? false;
+  const isSharedSocial = (soc: string) => currentUser?.interests.social.includes(soc) ?? false;
+  const isSharedLifestyle = (life: string) => currentUser?.interests.lifestyle.includes(life) ?? false;
+  const sharesSpending = currentUser?.interests.spendingStyle === profile.interests.spendingStyle;
+  const sharesAnimals = currentUser?.interests.animals === profile.interests.animals;
 
   return (
     <div className="relative w-full max-w-md mx-auto">
@@ -150,7 +164,7 @@ export default function SwipeCard({ profile, currentUser, onSwipeLeft, onSwipeRi
             {/* Avatar & Matching score row */}
             <div className="absolute bottom-3 left-0 w-full px-5 flex items-end justify-between z-10">
               {/* Initials Small Circle on edge */}
-              <div className={`w-12 h-12 rounded-2xl bg-gradient-to-tr ${profile.avatarColor} shadow-lg flex items-center justify-center border-2 border-border/90`}>
+              <div className={`w-12 h-12 rounded-2xl bg-gradient-to-tr ${avatarGradient(profile)} shadow-lg flex items-center justify-center border-2 border-border/90`}>
                 <span className="font-sans font-extrabold text-white text-base select-none">
                   {profile.name[0]}
                 </span>
@@ -159,7 +173,7 @@ export default function SwipeCard({ profile, currentUser, onSwipeLeft, onSwipeRi
               {/* Compatibility score ring */}
               <div className="flex flex-col items-center bg-card/90 backdrop-blur-md text-foreground rounded-2xl px-3 py-1.5 border border-border/75 shadow-md">
                 <div className="font-sans font-black text-sm md:text-base text-primary leading-tight">
-                  {report.score}%
+                  {report ? `${report.score}%` : "—"}
                 </div>
                 <div className="font-mono text-[8px] uppercase tracking-widest text-muted-foreground leading-none">
                   Match
@@ -193,10 +207,26 @@ export default function SwipeCard({ profile, currentUser, onSwipeLeft, onSwipeRi
                 <Languages size={14} className="text-muted-foreground" />
                 <span>Speaks: {profile.languages.join(", ")}</span>
               </div>
+              {/* Handles reach this component only for a member she has matched
+                  with, or in her own preview — the server withholds them from
+                  the open deck. Instagram and the free-text handle were being
+                  collected and stored without ever being shown to anyone. */}
+              {profile.instagram && (
+                <div className="flex items-center gap-1.5 font-bold text-foreground mt-0.5">
+                  <Instagram size={14} className="text-primary shrink-0" />
+                  <span>Instagram: <span className="text-primary hover:underline">@{profile.instagram}</span></span>
+                </div>
+              )}
               {profile.tiktok && (
                 <div className="flex items-center gap-1.5 font-bold text-foreground mt-0.5">
                   <span className="w-4.5 h-4.5 rounded bg-black flex items-center justify-center text-[10px] text-rose-400 font-mono font-black shrink-0 select-none">𝅘𝅥𝅮</span>
                   <span>TikTok: <span className="text-primary hover:underline">@{profile.tiktok}</span></span>
+                </div>
+              )}
+              {profile.otherSocial && (
+                <div className="flex items-start gap-1.5 font-bold text-foreground mt-0.5">
+                  <AtSign size={14} className="text-muted-foreground shrink-0 mt-px" />
+                  <span className="min-w-0 break-words">{profile.otherSocial}</span>
                 </div>
               )}
             </div>
@@ -221,9 +251,11 @@ export default function SwipeCard({ profile, currentUser, onSwipeLeft, onSwipeRi
                 <span>Why you'll match</span>
               </div>
               <p className="text-[11px] text-muted-foreground font-sans leading-relaxed">
-                {report.explanation}
+                {report
+                  ? report.explanation
+                  : "Everyone who opens your card reads her own reason here, written from the interests the two of you have in common."}
               </p>
-              {report.sharedInterests.length > 0 && (
+              {report && report.sharedInterests.length > 0 && (
                 <div className="mt-2 flex flex-wrap gap-1">
                   {report.sharedInterests.slice(0, 3).map(interest => (
                     <span key={interest} className="text-[9px] bg-accent/60 text-primary px-2 py-0.5 rounded-full font-sans font-bold">
@@ -240,7 +272,7 @@ export default function SwipeCard({ profile, currentUser, onSwipeLeft, onSwipeRi
                 onClick={openFullProfile}
                 className="w-full py-3 border border-border/60 rounded-2xl text-foreground bg-card/60 backdrop-blur-sm font-sans text-sm font-bold flex items-center justify-center gap-1.5 hover:bg-card transition shadow-sm"
               >
-                <span>See her full profile</span>
+                <span>{preview ? "See the full profile" : "See her full profile"}</span>
                 <ChevronDown size={14} />
               </button>
             ) : (
@@ -359,12 +391,12 @@ export default function SwipeCard({ profile, currentUser, onSwipeLeft, onSwipeRi
                       Spending Style
                     </span>
                     <span className={`text-xs font-sans font-bold inline-block px-3 py-1 rounded-xl mt-1 ${
-                      currentUser.interests.spendingStyle === profile.interests.spendingStyle
+                      sharesSpending
                         ? "bg-accent/60 text-primary border border-border/50"
                         : "bg-card/40 text-muted-foreground border border-border/40"
                     }`}>
                       👑 {profile.interests.spendingStyle}
-                      {currentUser.interests.spendingStyle === profile.interests.spendingStyle && " (Match!)"}
+                      {sharesSpending && " (Match!)"}
                     </span>
                   </div>
 
@@ -375,12 +407,12 @@ export default function SwipeCard({ profile, currentUser, onSwipeLeft, onSwipeRi
                         Animals
                       </span>
                       <span className={`text-xs font-sans font-bold inline-block px-3 py-1 rounded-xl mt-1 ${
-                        currentUser.interests.animals === profile.interests.animals
+                        sharesAnimals
                           ? "bg-accent/60 text-primary border border-border/50"
                           : "bg-card/40 text-muted-foreground border border-border/40"
                       }`}>
                         {ANIMAL_EMOJI[profile.interests.animals] || "🐾"} {profile.interests.animals}
-                        {currentUser.interests.animals === profile.interests.animals && " (Match!)"}
+                        {sharesAnimals && " (Match!)"}
                       </span>
                     </div>
                   )}
@@ -397,23 +429,38 @@ export default function SwipeCard({ profile, currentUser, onSwipeLeft, onSwipeRi
             )}
           </div>
 
-          {/* Swipe/Match Action Buttons Footer */}
+          {/* Swipe/Match Action Buttons Footer. In preview the same two shapes
+              are drawn without handlers: removing them would shorten the card
+              and she would be judging proportions nobody else will see. */}
           <div className="px-6 py-4 bg-card/25 border-t border-border/30 flex items-center justify-center gap-5 shrink-0">
-            {/* Left/Dislike Button */}
-            <button
-              onClick={handlePass}
-              className="w-14 h-14 rounded-full bg-card/60 border border-border/50 shadow-md text-muted-foreground flex items-center justify-center hover:bg-accent/30 hover:text-primary hover:border-border hover:scale-105 transition-all duration-200 active:scale-95"
-            >
-              <X size={26} strokeWidth={2.5} />
-            </button>
+            {preview ? (
+              <div className="flex items-center justify-center gap-5 opacity-40" aria-hidden="true">
+                <div className="w-14 h-14 rounded-full bg-card/60 border border-border/50 shadow-md text-muted-foreground flex items-center justify-center">
+                  <X size={26} strokeWidth={2.5} />
+                </div>
+                <div className="w-16 h-16 rounded-full bg-primary shadow-pop-lg text-primary-foreground flex items-center justify-center border border-rose-400">
+                  <Heart size={30} fill="currentColor" stroke="none" />
+                </div>
+              </div>
+            ) : (
+              <>
+                {/* Left/Dislike Button */}
+                <button
+                  onClick={handlePass}
+                  className="w-14 h-14 rounded-full bg-card/60 border border-border/50 shadow-md text-muted-foreground flex items-center justify-center hover:bg-accent/30 hover:text-primary hover:border-border hover:scale-105 transition-all duration-200 active:scale-95"
+                >
+                  <X size={26} strokeWidth={2.5} />
+                </button>
 
-            {/* Right/Like Button */}
-            <button
-              onClick={handleLike}
-              className="w-16 h-16 rounded-full bg-primary shadow-pop-lg text-primary-foreground flex items-center justify-center hover:bg-primary/90 hover:scale-105 transition-all duration-200 active:scale-95 border border-rose-400"
-            >
-              <Heart size={30} fill="currentColor" stroke="none" />
-            </button>
+                {/* Right/Like Button */}
+                <button
+                  onClick={handleLike}
+                  className="w-16 h-16 rounded-full bg-primary shadow-pop-lg text-primary-foreground flex items-center justify-center hover:bg-primary/90 hover:scale-105 transition-all duration-200 active:scale-95 border border-rose-400"
+                >
+                  <Heart size={30} fill="currentColor" stroke="none" />
+                </button>
+              </>
+            )}
           </div>
         </motion.div>
       </AnimatePresence>

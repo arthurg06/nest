@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from "react";
 import { UserProfile, Interests } from "../types";
 import { PREDEFINED_INTEREST_OPTIONS } from "../data";
 import { ANIMAL_EMOJI } from "../../shared/compatibility";
-import { ShieldCheck, User, Sparkles, Languages, Check, Mail, Upload, FileText, Globe, Search, Trash2, Edit, MapPin, ExternalLink, ShieldAlert } from "lucide-react";
+import { ShieldCheck, User, Sparkles, Languages, Check, Mail, Upload, FileText, Globe, Search, Trash2, Edit, MapPin, ExternalLink, ShieldAlert, Eye } from "lucide-react";
+import ProfilePreview from "./ProfilePreview";
 import { PhotoGalleryEditor } from "./PhotoGalleryEditor";
 import { ThemeToggle } from "./ThemeToggle";
 import { searchCountries } from "../../shared/countries";
@@ -26,6 +27,7 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
   // and silently switching tabs looked like nothing had happened.
   const verificationRef = useRef<HTMLDivElement>(null);
   const [highlightVerification, setHighlightVerification] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
 
   useEffect(() => {
     if (focusSection !== "verification") return;
@@ -293,6 +295,41 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
     }, 4000);
   };
 
+  // The profile exactly as saving would publish it. The preview renders this
+  // same object, so what she checks is what other members will get — edits
+  // she has not saved yet included.
+  const draftProfile = (): UserProfile => ({
+    ...currentUser,
+    name: name.trim() || "User",
+    age: Number(age) || 20,
+    nationality: selectedNationalities.join(", "),
+    university: university.trim() || "IE University",
+    languages: languagesList,
+    personalityType: "",
+    friendshipType: friendshipType.trim() || "Outing planner",
+    bio: bio.trim() || "Moving to Madrid!",
+    isVerified: currentUser.isVerified,
+    photo: photos[0] || photo,
+    photos,
+    tiktok: tiktok.trim() || undefined,
+    instagram: instagram.trim() || undefined,
+    otherSocial: otherSocial.trim() || undefined,
+    interests: {
+      activities: selectedActivities,
+      music: selectedMusic,
+      social: selectedSocial,
+      lifestyle: selectedLifestyle,
+      spendingStyle: spendingStyle,
+      animals: animals || undefined
+    }
+  });
+
+  // "Unsaved" means: different from the last state we know the server holds.
+  // Captured once on mount, moved forward on every save.
+  const draftJson = JSON.stringify(draftProfile());
+  const savedSnapshot = useRef<string>(draftJson);
+  const hasUnsavedChanges = savedSnapshot.current !== draftJson;
+
   const handleSave = () => {
     if (selectedNationalities.length === 0) {
       showFeedback("Please select or add at least one Nationality!", "error");
@@ -303,34 +340,8 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
       return;
     }
 
-    const finalNationality = selectedNationalities.join(", ");
-
-    const updatedProfile: UserProfile = {
-      ...currentUser,
-      name: name.trim() || "User",
-      age: Number(age) || 20,
-      nationality: finalNationality,
-      university: university.trim() || "IE University",
-      languages: languagesList,
-      personalityType: "",
-      friendshipType: friendshipType.trim() || "Outing planner",
-      bio: bio.trim() || "Moving to Madrid!",
-      isVerified: currentUser.isVerified,
-      photo: photos[0] || photo,
-      photos,
-      tiktok: tiktok.trim() || undefined,
-      instagram: instagram.trim() || undefined,
-      otherSocial: otherSocial.trim() || undefined,
-      interests: {
-        activities: selectedActivities,
-        music: selectedMusic,
-        social: selectedSocial,
-        lifestyle: selectedLifestyle,
-        spendingStyle: spendingStyle,
-        animals: animals || undefined
-      }
-    };
-
+    const updatedProfile = draftProfile();
+    savedSnapshot.current = JSON.stringify(updatedProfile);
     onSaveProfile(updatedProfile);
     showFeedback("Profile saved.", "success");
   };
@@ -386,17 +397,36 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
         </div>
       )}
 
-      {/* Title — own identity row with verification badge beside the name */}
-      <div className="animate-fade-in">
-        <div className="flex items-center gap-2.5 flex-wrap">
-          <h2 className="font-display text-3xl text-foreground">
-            Your profile
-          </h2>
-          <VerifiedBadge profile={currentUser} />
+      {/* Title — own identity row with verification badge beside the name.
+          The preview sits up here so it is reachable the moment she opens her
+          profile, rather than buried at the foot of a long form. */}
+      <div className="animate-fade-in flex items-start justify-between gap-3 flex-wrap">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <h2 className="font-display text-3xl text-foreground">
+              Your profile
+            </h2>
+            <VerifiedBadge profile={currentUser} />
+          </div>
+          <p className="font-sans text-xs text-muted-foreground mt-1">
+            What you share here shapes your matches.
+          </p>
         </div>
-        <p className="font-sans text-xs text-muted-foreground mt-1">
-          What you share here shapes your matches.
-        </p>
+
+        <button
+          type="button"
+          onClick={() => setShowPreview(true)}
+          className="shrink-0 flex items-center gap-1.5 bg-card border border-border/70 text-foreground font-sans text-[11px] font-bold px-3.5 py-2.5 rounded-xl hover:bg-muted transition shadow-sm"
+        >
+          <Eye size={13} className="text-primary" />
+          <span>How others see me</span>
+          {hasUnsavedChanges && (
+            <span
+              className="w-1.5 h-1.5 rounded-full bg-primary"
+              title="Includes changes you have not saved yet"
+            />
+          )}
+        </button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-start">
@@ -1250,6 +1280,14 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
         </div>
 
       </div>
+
+      {showPreview && (
+        <ProfilePreview
+          profile={draftProfile()}
+          unsaved={hasUnsavedChanges}
+          onClose={() => setShowPreview(false)}
+        />
+      )}
 
     </div>
   );

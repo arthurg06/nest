@@ -2,7 +2,8 @@ import React, { useState, useRef } from "react";
 import { UserProfile, Interests } from "../types";
 import { PREDEFINED_INTEREST_OPTIONS } from "../data";
 import { ANIMAL_EMOJI } from "../../shared/compatibility";
-import { Sparkles, ShieldCheck, GraduationCap, Globe, MessageCircle, Heart, Film, ArrowRight, User, Check, Lock, Mail, Instagram, Search } from "lucide-react";
+import { Sparkles, ShieldCheck, GraduationCap, Globe, MessageCircle, Heart, Film, ArrowRight, User, Check, Lock, Mail, Instagram, Search, Eye } from "lucide-react";
+import ProfilePreview from "./ProfilePreview";
 import { ImageUploader } from "./ImageUploader";
 import { searchCountries } from "../../shared/countries";
 import { apiUrl } from "../lib/api";
@@ -37,6 +38,7 @@ export default function OnboardingSignUp({ onAuthSuccess }: OnboardingSignUpProp
   };
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showPreview, setShowPreview] = useState(false);
   const stepBodyRef = useRef<HTMLDivElement>(null);
 
   // The error banner lives at the top of the scrolling step body while the
@@ -200,6 +202,49 @@ export default function OnboardingSignUp({ onAuthSuccess }: OnboardingSignUpProp
     }
   };
 
+  // The profile half of the sign-up request. The preview is built from this
+  // same function, so the card she approves before creating her account is
+  // the card her account will actually hold.
+  const profileFields = () => ({
+    name: name.trim(),
+    age: Number(age) || 20,
+    nationality: selectedNationalities.join(", "),
+    university: university.trim(),
+    currentCity: "Madrid",
+    languages: languagesList,
+    personalityType: "",
+    friendshipType: friendshipType.trim() || "Cafe & shopping companion",
+    bio: bio.trim(),
+    photo,
+    tiktok: tiktok.trim() || undefined,
+    instagram: instagram.trim() || undefined,
+    otherSocial: otherSocial.trim() || undefined,
+    interests: {
+      // Only what she actually picked. Inventing tastes here meant her card
+      // advertised music and habits she never chose, and compatibility
+      // scored on them.
+      activities: selectedActivities,
+      music: selectedMusic,
+      social: selectedSocial,
+      lifestyle: selectedLifestyle,
+      spendingStyle: spendingStyle,
+      animals: animals || undefined
+    }
+  });
+
+  // The same fields dressed as a full profile so the card can render them.
+  // avatarColor is left out on purpose: the server derives it from the name,
+  // and so does the preview, so the two agree without guessing.
+  const draftProfile = (): UserProfile => ({
+    ...profileFields(),
+    id: "preview",
+    isVerified: false,
+    verificationStatus: "unsubmitted",
+    avatarSeed: name.trim(),
+    avatarColor: "",
+    photos: photo ? [photo] : []
+  });
+
   // Sign up submission
   const handleSubmitSignUp = async () => {
     setError("");
@@ -207,9 +252,6 @@ export default function OnboardingSignUp({ onAuthSuccess }: OnboardingSignUpProp
       reportError("Please write a short bio to introduce yourself to other students!");
       return;
     }
-
-    const finalPhoto = photo;
-    const finalNationality = selectedNationalities.join(", ");
 
     setLoading(true);
     try {
@@ -219,30 +261,7 @@ export default function OnboardingSignUp({ onAuthSuccess }: OnboardingSignUpProp
         body: JSON.stringify({
           email: email.trim(),
           password,
-          name: name.trim(),
-          age: Number(age) || 20,
-          nationality: finalNationality,
-          university: university.trim(),
-          currentCity: "Madrid",
-          languages: languagesList,
-          personalityType: "",
-          friendshipType: friendshipType.trim() || "Cafe & shopping companion",
-          bio: bio.trim(),
-          photo: finalPhoto,
-          tiktok: tiktok.trim() || undefined,
-          instagram: instagram.trim() || undefined,
-          otherSocial: otherSocial.trim() || undefined,
-          interests: {
-            // Only what she actually picked. Inventing tastes here meant
-            // her card advertised music and habits she never chose, and
-            // compatibility scored on them.
-            activities: selectedActivities,
-            music: selectedMusic,
-            social: selectedSocial,
-            lifestyle: selectedLifestyle,
-            spendingStyle: spendingStyle,
-            animals: animals || undefined
-          }
+          ...profileFields()
         })
       });
 
@@ -652,6 +671,19 @@ export default function OnboardingSignUp({ onAuthSuccess }: OnboardingSignUpProp
                       label="Your Profile Photo"
                     />
                   </div>
+
+                  {/* How the photo is actually cropped on the card is worth
+                      seeing before she moves on. */}
+                  {photo && (
+                    <button
+                      type="button"
+                      onClick={() => setShowPreview(true)}
+                      className="w-full max-w-xs mx-auto py-2.5 border border-border/70 rounded-xl text-foreground bg-card/60 font-sans text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-card transition"
+                    >
+                      <Eye size={13} className="text-primary" />
+                      <span>See how your card looks</span>
+                    </button>
+                  )}
                 </div>
               )}
 
@@ -777,6 +809,17 @@ export default function OnboardingSignUp({ onAuthSuccess }: OnboardingSignUpProp
                       </div>
                     </div>
                   </div>
+
+                  {/* A last look before the account exists, so she can still
+                      change anything she is not happy with. */}
+                  <button
+                    type="button"
+                    onClick={() => setShowPreview(true)}
+                    className="w-full py-3 border border-border/70 rounded-2xl text-foreground bg-card/60 font-sans text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-card transition shadow-sm"
+                  >
+                    <Eye size={14} className="text-primary" />
+                    <span>See how your profile looks to others</span>
+                  </button>
                 </div>
               )}
             </div>
@@ -837,6 +880,10 @@ export default function OnboardingSignUp({ onAuthSuccess }: OnboardingSignUpProp
           <span>Women only · Every member verified</span>
         </div>
       </div>
+
+      {showPreview && (
+        <ProfilePreview profile={draftProfile()} onClose={() => setShowPreview(false)} />
+      )}
     </div>
   );
 }
