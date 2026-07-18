@@ -54,6 +54,8 @@ export interface Match {
   profile: UserProfile;
   timestamp: string;
   messages: Message[];
+  /** Outing proposals exchanged in this chat (server-provided). */
+  plans?: Plan[];
   compatibilityRating: number; // 0 to 100
   compatibilityReport: {
     sharedInterests: string[];
@@ -120,27 +122,20 @@ export interface Recommendation {
   googleMapsUrl?: string; // Official Google Maps Link
 }
 
-export interface MapSpot {
-  id: string;
-  name: string;
-  category: "cafe" | "restaurant" | "study" | "activity" | "hidden_gem" | "landmark";
-  description: string;
-  address: string;
-  lat: number; // custom canvas/svg grid coordinates or simulated coords
-  lng: number;
-  icon: string;
-  bestFor: string[]; // interest tags that match this place
-}
-
 export interface Plan {
   id: string;
-  title: string;
-  date: string;
-  time: string;
-  locationName: string;
-  locationAddress: string;
-  status: "pending" | "accepted" | "declined";
+  matchId: string;
   senderId: string;
   receiverId: string;
-  notes?: string;
+  activity: string;
+  title: string;
+  placeName: string;
+  placeArea?: string;
+  placeAddress?: string;
+  date: string;
+  time: string;
+  note?: string;
+  status: "pending" | "accepted" | "declined";
+  createdAt: string;
+  respondedAt?: string;
 }

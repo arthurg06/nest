@@ -3,6 +3,7 @@ import { UserProfile, Match, Message, Community, Event, Recommendation, Plan, Co
 import { calculateCompatibility } from "./data";
 import SwipeCard from "./components/SwipeCard";
 import ChatWindow from "./components/ChatWindow";
+import type { OutingDraft } from "./components/OutingPlanner";
 import CityDiscovery from "./components/CityDiscovery";
 import Communities from "./components/Communities";
 import Events from "./components/Events";
@@ -28,6 +29,9 @@ export default function App() {
   const [swipeQueue, setSwipeQueue] = useState<UserProfile[]>([]);
   const [matches, setMatches] = useState<Match[]>([]);
   const [activeMatchId, setActiveMatchId] = useState<string>("");
+  // Set when another screen sends the member to a specific part of her
+  // profile (e.g. "Verify my status" → the verification card).
+  const [profileFocus, setProfileFocus] = useState<string | null>(null);
 
   // Submissions, Outings, Spots
   const [events, setEvents] = useState<Event[]>([]);
@@ -131,7 +135,9 @@ export default function App() {
       const data = await res.json();
       if (res.ok) {
         setMatches(data);
-        if (data.length > 0 && !activeMatchId) {
+        // Preselect a conversation on wide screens only: on phones the list
+        // is the first thing she should see.
+        if (data.length > 0 && !activeMatchId && window.innerWidth >= 768) {
           setActiveMatchId(data[0].id);
         }
       }
@@ -164,16 +170,28 @@ export default function App() {
     }
   };
 
+  // Only unread notifications drive the banner. The endpoint returns the full
+  // history (read included), so filtering here is what makes "Dismiss" stick.
   const loadNotifications = async () => {
     try {
       const res = await fetchWithAuth("/api/notifications");
       const data = await res.json();
       if (res.ok) {
-        setNotifications(data);
+        setNotifications(Array.isArray(data) ? data.filter((n: any) => !n.read) : []);
       }
     } catch (err) {
       console.error("Error loading notifications:", err);
     }
+  };
+
+  const dismissNotifications = async () => {
+    setNotifications([]); // clear immediately; the write is confirmation only
+    try {
+      await fetchWithAuth("/api/notifications/read", { method: "POST" });
+    } catch (err) {
+      console.error("Error clearing notifications:", err);
+    }
+    loadNotifications();
   };
 
   const loadSubscription = async () => {
@@ -285,6 +303,40 @@ export default function App() {
       }
     } catch (err) {
       console.error("Error sending message:", err);
+    }
+  };
+
+  // Outing proposals. Both handlers resolve to an error message (or null on
+  // success) so the planner can show exactly what the server said.
+  const handleSuggestPlan = async (matchId: string, draft: OutingDraft): Promise<string | null> => {
+    try {
+      const res = await fetchWithAuth(`/api/chats/${matchId}/plans`, {
+        method: "POST",
+        body: JSON.stringify(draft)
+      });
+      const data = await res.json();
+      if (!res.ok) return data.error || "Could not send this invite.";
+      await loadMatches();
+      return null;
+    } catch (err) {
+      console.error("Error sending outing proposal:", err);
+      return "Could not send this invite. Please try again.";
+    }
+  };
+
+  const handleRespondToPlan = async (planId: string, status: "accepted" | "declined"): Promise<string | null> => {
+    try {
+      const res = await fetchWithAuth(`/api/plans/${planId}/respond`, {
+        method: "POST",
+        body: JSON.stringify({ status })
+      });
+      const data = await res.json();
+      if (!res.ok) return data.error || "Could not answer this invite.";
+      await loadMatches();
+      return null;
+    } catch (err) {
+      console.error("Error answering outing proposal:", err);
+      return "Could not answer this invite. Please try again.";
     }
   };
 
@@ -427,12 +479,15 @@ export default function App() {
   const isPremiumActive = accountUser?.isPremium || false;
   const isAdmin = accountUser?.isAdmin || false;
 
+  // App shell: exactly one viewport tall, with the tab panel as the only
+  // scrolling region — the bottom navigation is a flex row here, so it can
+  // never float over the content the way a sticky bar does.
   return (
-      <div className="min-h-screen text-foreground flex flex-col antialiased">
+      <div className="h-[100dvh] overflow-hidden text-foreground flex flex-col antialiased">
       
       {/* 1. TOP HEADER BANNER — brand identity only; personal status lives
           beside the member's name on her profile, not in the global header */}
-      <header className="bg-sidebar/85 backdrop-blur-xl border-b border-sidebar-border py-3 px-4 md:px-6 pt-[max(0.75rem,env(safe-area-inset-top))] sticky top-0 z-30 select-none">
+      <header className="bg-sidebar/85 backdrop-blur-xl border-b border-sidebar-border py-3 px-4 md:px-6 pt-[max(0.75rem,env(safe-area-inset-top))] shrink-0 z-30 select-none">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           {/* Logo */}
           <div className="flex items-center gap-2.5">
@@ -472,7 +527,7 @@ export default function App() {
       </header>
 
       {/* 2. MAIN HUB VIEWPORT CONTAINER */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 flex flex-col">
+      <main className="flex-1 min-h-0 max-w-7xl w-full mx-auto p-4 md:p-6 flex flex-col">
         
         {/* Checkout return banner */}
         {checkoutBanner && (
@@ -494,20 +549,18 @@ export default function App() {
               <Bell size={14} className="text-amber-600 fill-amber-100" />
               <span>{notifications[0].text}</span>
             </div>
-            <button 
-              onClick={async () => {
-                await fetchWithAuth("/api/notifications/read", { method: "POST" });
-                loadNotifications();
-              }}
-              className="text-amber-900 hover:text-amber-950 hover:underline font-bold text-[10px]"
+            <button
+              onClick={dismissNotifications}
+              className="text-amber-900 hover:text-amber-950 hover:underline font-bold text-[10px] px-2 py-2 -my-1 shrink-0"
             >
               Dismiss
             </button>
           </div>
         )}
 
-        {/* TAB CORRESPONDENCE PANEL RENDERING */}
-        <div className="flex-1">
+        {/* TAB PANELS — the chat manages its own internal scrolling; every
+            other tab scrolls as a normal page inside this region. */}
+        <div className={`flex-1 min-h-0 ${activeTab === "chat" ? "overflow-hidden" : "overflow-y-auto -mx-1 px-1"}`}>
           {activeTab === "swipe" && (
             <div className="space-y-6">
               {/* Swipe Deck Header and Intro */}
@@ -520,76 +573,129 @@ export default function App() {
                 </p>
               </div>
 
-              {!currentUser.isVerified ? (
-                <div className="bg-card/40 backdrop-blur-xl rounded-[32px] border border-border p-8 shadow-xl text-center max-w-md mx-auto space-y-4 py-12 animate-fade-in">
-                  {currentUser.verificationStatus === "pending" ? (
-                    <>
-                      <span className="text-5xl select-none block">⏳</span>
-                      <h3 className="font-sans font-black text-foreground text-base">Verification under review</h3>
-                      <p className="font-sans text-xs text-muted-foreground leading-relaxed max-w-xs mx-auto">
-                        Our team reviews every member to keep NEST a safe, women-only community. We'll notify you once you're approved.
-                      </p>
-                    </>
-                  ) : currentUser.verificationStatus === "rejected" ? (
-                    <>
-                      <span className="text-5xl select-none block">🛡️</span>
-                      <h3 className="font-sans font-black text-foreground text-base">Verification not approved</h3>
-                      {currentUser.verification?.rejectionReason && (
-                        <p className="font-sans text-xs text-muted-foreground leading-relaxed max-w-xs mx-auto bg-accent/30 border border-border/70 rounded-xl p-3">
-                          {currentUser.verification.rejectionReason}
-                        </p>
-                      )}
-                      <button
-                        onClick={() => setActiveTab("profile")}
-                        className="bg-primary hover:bg-primary/90 text-primary-foreground font-sans text-xs font-black px-6 py-2.5 rounded-xl shadow-pop transition"
-                      >
-                        Update &amp; resubmit
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <span className="text-5xl select-none block">🛡️</span>
-                      <h3 className="font-sans font-black text-foreground text-base">Verify your student status</h3>
-                      <p className="font-sans text-xs text-muted-foreground leading-relaxed max-w-xs mx-auto">
-                        Matching opens once an administrator approves your student verification.
-                      </p>
-                      <button
-                        onClick={() => setActiveTab("profile")}
-                        className="bg-primary hover:bg-primary/90 text-primary-foreground font-sans text-xs font-black px-6 py-2.5 rounded-xl shadow-pop transition"
-                      >
-                        Start verification
-                      </button>
-                    </>
-                  )}
-                </div>
-              ) : swipeQueue.length > 0 ? (
-                <SwipeCard 
-                  profile={swipeQueue[0]} 
-                  currentUser={currentUser} 
-                  onSwipeLeft={handleSwipeLeft}
-                  onSwipeRight={handleSwipeRight}
-                />
-              ) : (
-                <div className="bg-card/40 backdrop-blur-xl rounded-[32px] border border-border/60 p-6 md:p-8 shadow-xl text-center max-w-md mx-auto space-y-6 py-10 animate-fade-in select-text">
-                  <span className="text-5xl select-none block animate-pulse">✨🌸</span>
-                  <div className="space-y-1">
-                    <h3 className="font-sans font-black text-foreground text-base leading-snug">
-                      You're all caught up
-                    </h3>
-                    <p className="font-sans text-xs text-muted-foreground leading-relaxed max-w-xs mx-auto">
-                      New members appear here as soon as their student verification is approved. Check back soon.
+              {/* Verification nudge — informative, never a wall: members can
+                  browse and match while their review is in progress. */}
+              {currentUser.verificationStatus !== "approved" && (
+                <div className="max-w-2xl mx-auto bg-card/50 border border-border/70 rounded-2xl p-3.5 flex flex-col sm:flex-row sm:items-center gap-3 animate-fade-in">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-sans font-bold text-xs text-foreground">
+                      {currentUser.verificationStatus === "pending"
+                        ? "Your student verification is under review"
+                        : currentUser.verificationStatus === "rejected"
+                        ? "Your verification wasn't approved"
+                        : "Get your Verified Student badge"}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5 leading-normal">
+                      {currentUser.verificationStatus === "pending"
+                        ? "We'll let you know as soon as an admin has reviewed it."
+                        : currentUser.verificationStatus === "rejected"
+                        ? currentUser.verification?.rejectionReason || "Update your details and send it again."
+                        : "It takes a minute and shows others you're a real student here."}
                     </p>
                   </div>
+                  {currentUser.verificationStatus !== "pending" && (
+                    <button
+                      onClick={() => {
+                        setProfileFocus("verification");
+                        setActiveTab("profile");
+                      }}
+                      className="shrink-0 bg-primary hover:bg-primary/90 text-primary-foreground font-sans text-[11px] font-black px-4 py-2.5 rounded-xl shadow-pop transition"
+                    >
+                      {currentUser.verificationStatus === "rejected" ? "Update & resubmit" : "Verify my status"}
+                    </button>
+                  )}
                 </div>
               )}
+
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-start">
+                {/* LEFT — your circle: everyone you already matched with */}
+                <aside className="md:col-span-4 order-2 md:order-1 bg-card/40 backdrop-blur-xl rounded-2xl border border-border/60 p-4 shadow-sm">
+                  <h3 className="font-sans font-black text-foreground text-sm flex items-center gap-2">
+                    <Heart size={15} className="text-primary" />
+                    <span>Your circle</span>
+                    {matches.length > 0 && (
+                      <span className="text-[10px] font-mono text-muted-foreground">({matches.length})</span>
+                    )}
+                  </h3>
+
+                  {matches.length === 0 ? (
+                    <p className="text-[11px] text-muted-foreground leading-normal mt-3">
+                      Nobody yet. When you and someone else both say yes, she shows up here.
+                    </p>
+                  ) : (
+                    <div className="mt-3 flex md:flex-col gap-2 overflow-x-auto md:overflow-x-visible md:max-h-[420px] md:overflow-y-auto -mx-2 px-2 pb-1">
+                      {matches.map(m => (
+                        <button
+                          key={m.id}
+                          onClick={() => {
+                            setActiveMatchId(m.id);
+                            setActiveTab("chat");
+                          }}
+                          className="shrink-0 md:shrink w-20 md:w-auto flex flex-col md:flex-row md:items-center gap-2 p-2 rounded-xl border border-border/40 bg-card/60 hover:bg-card transition text-center md:text-left"
+                        >
+                          <img
+                            src={m.profile.photo}
+                            alt={m.profile.name}
+                            referrerPolicy="no-referrer"
+                            className="w-14 h-14 md:w-10 md:h-10 rounded-xl object-cover mx-auto md:mx-0 shrink-0"
+                          />
+                          <span className="min-w-0 md:flex-1">
+                            <span className="block text-[11px] font-bold text-foreground truncate">
+                              {m.profile.name.split(" ")[0]}
+                            </span>
+                            <span className="hidden md:block text-[10px] text-muted-foreground truncate">
+                              {m.messages.length > 0 ? m.messages[m.messages.length - 1].text : "Say hi"}
+                            </span>
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </aside>
+
+                {/* RIGHT — new people to meet */}
+                <div className="md:col-span-8 order-1 md:order-2">
+                  {swipeQueue.length > 0 ? (
+                    <SwipeCard
+                      profile={swipeQueue[0]}
+                      currentUser={currentUser}
+                      onSwipeLeft={handleSwipeLeft}
+                      onSwipeRight={handleSwipeRight}
+                    />
+                  ) : (
+                    <div className="bg-card/40 backdrop-blur-xl rounded-[32px] border border-border/60 p-6 md:p-8 shadow-xl text-center space-y-5 py-10 animate-fade-in select-text">
+                      <span className="text-5xl select-none block">✨🌸</span>
+                      <div className="space-y-1">
+                        <h3 className="font-sans font-black text-foreground text-base leading-snug">
+                          You're all caught up
+                        </h3>
+                        <p className="font-sans text-xs text-muted-foreground leading-relaxed max-w-xs mx-auto">
+                          You've seen everyone for now. New members show up here as they join.
+                        </p>
+                      </div>
+                      {events.length > 0 && (
+                        <button
+                          onClick={() => setActiveTab("events")}
+                          className="bg-card border border-border text-foreground font-sans text-[11px] font-bold px-4 py-2.5 rounded-xl hover:bg-muted transition"
+                        >
+                          See what's coming up
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           )}
 
           {activeTab === "chat" && (
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-5 h-[560px] md:h-[620px]">
-              
-              {/* LEFT COLUMN: Matches inbox lists */}
-              <div className="md:col-span-4 bg-card/40 backdrop-blur-xl rounded-2xl border border-border/60 p-4 flex flex-col overflow-hidden shadow-xl">
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-5 h-full min-h-0">
+
+              {/* LEFT COLUMN: Matches inbox. On phones it gives way to the
+                  open conversation instead of splitting the small screen. */}
+              <div className={`md:col-span-4 bg-card/40 backdrop-blur-xl rounded-2xl border border-border/60 p-4 flex-col overflow-hidden shadow-xl min-h-0 ${
+                activeMatch ? "hidden md:flex" : "flex"
+              }`}>
                 <h3 className="font-sans font-black text-foreground text-base border-b border-border/70 pb-2.5 flex items-center gap-2">
                   <MessageSquare size={18} className="text-primary" />
                   <span>Your matches</span>
@@ -668,22 +774,33 @@ export default function App() {
                 </div>
               </div>
 
-              {/* RIGHT COLUMN: Chat box messages stages */}
-              <div className="md:col-span-8 h-full">
+              {/* RIGHT COLUMN: the open conversation */}
+              <div className={`md:col-span-8 h-full min-h-0 flex-col gap-2 ${activeMatch ? "flex" : "hidden md:flex"}`}>
                 {activeMatch ? (
-                  <ChatWindow
-                    activeMatch={activeMatch}
-                    currentUser={currentUser}
-                    currentUserId={accountUser?.id || ""}
-                    onSendMessage={(mId, txt) => handleSendMessage(mId, txt)}
-                    plans={[]}
-                    onRespondToPlan={() => {}}
-                    onSuggestPlan={() => {}}
-                  />
+                  <>
+                    {/* Back to the inbox — phones only */}
+                    <button
+                      onClick={() => setActiveMatchId("")}
+                      className="md:hidden self-start text-[11px] font-bold text-muted-foreground hover:text-foreground px-2 py-2 -ml-2 shrink-0"
+                    >
+                      ← All chats
+                    </button>
+                    <div className="flex-1 min-h-0">
+                      <ChatWindow
+                        activeMatch={activeMatch}
+                        currentUser={currentUser}
+                        currentUserId={accountUser?.id || ""}
+                        recommendations={recommendations}
+                        onSendMessage={(mId, txt) => handleSendMessage(mId, txt)}
+                        onSuggestPlan={handleSuggestPlan}
+                        onRespondToPlan={handleRespondToPlan}
+                      />
+                    </div>
+                  </>
                 ) : (
-                  <div className="bg-card rounded-2xl border border-border p-8 shadow-sm flex flex-col items-center justify-center text-center h-full text-muted-foreground">
-                    <MessageSquare size={36} className="text-muted-foreground/60 mb-2 animate-bounce" />
-                    <p className="text-xs font-sans">Select a matched friend from the inbox to start planning outings!</p>
+                  <div className="bg-card/40 rounded-2xl border border-border/60 p-8 shadow-sm flex flex-col items-center justify-center text-center h-full text-muted-foreground">
+                    <MessageSquare size={32} className="text-muted-foreground/60 mb-2" />
+                    <p className="text-xs font-sans">Pick a conversation to start planning something.</p>
                   </div>
                 )}
               </div>
@@ -728,6 +845,8 @@ export default function App() {
               onDeleteRecommendation={handleDeleteRecommendation}
               onSignOut={handleSignOut}
               onRefreshProfile={loadProfile}
+              focusSection={profileFocus}
+              onFocusHandled={() => setProfileFocus(null)}
             />
           )}
 
@@ -788,7 +907,7 @@ export default function App() {
       )}
 
       {/* 4. BOTTOM NAVIGATION BAR (safe-area aware for mobile devices) */}
-      <nav className="bg-sidebar/85 backdrop-blur-xl border-t border-sidebar-border pt-2.5 px-4 pb-[max(0.625rem,env(safe-area-inset-bottom))] sticky bottom-0 z-30 select-none shrink-0">
+      <nav className="bg-sidebar/85 backdrop-blur-xl border-t border-sidebar-border pt-2.5 px-4 pb-[max(0.625rem,env(safe-area-inset-bottom))] z-30 select-none shrink-0">
         <div className="max-w-md mx-auto flex items-center justify-between gap-1 text-center">
           
           {/* Swipe */}

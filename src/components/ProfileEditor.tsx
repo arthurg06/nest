@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { UserProfile, Interests } from "../types";
 import { PREDEFINED_INTEREST_OPTIONS } from "../data";
 import { ShieldCheck, User, Sparkles, Languages, Check, Mail, Upload, FileText, Globe, Search, Trash2, Edit, MapPin, ExternalLink, ShieldAlert } from "lucide-react";
@@ -14,9 +14,29 @@ interface ProfileEditorProps {
   onDeleteRecommendation?: (id: string) => Promise<boolean>;
   onSignOut: () => void;
   onRefreshProfile: () => void;
+  /** Section to reveal on arrival, e.g. "verification". */
+  focusSection?: string | null;
+  onFocusHandled?: () => void;
 }
 
-export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteRecommendation, onSignOut, onRefreshProfile }: ProfileEditorProps) {
+export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteRecommendation, onSignOut, onRefreshProfile, focusSection, onFocusHandled }: ProfileEditorProps) {
+  // Bringing the member here from another screen must land her ON the
+  // section she asked for: the verification card sits far down a long page,
+  // and silently switching tabs looked like nothing had happened.
+  const verificationRef = useRef<HTMLDivElement>(null);
+  const [highlightVerification, setHighlightVerification] = useState(false);
+
+  useEffect(() => {
+    if (focusSection !== "verification") return;
+    const node = verificationRef.current;
+    if (node) {
+      node.scrollIntoView({ behavior: "smooth", block: "center" });
+      setHighlightVerification(true);
+      window.setTimeout(() => setHighlightVerification(false), 2400);
+    }
+    onFocusHandled?.();
+  }, [focusSection, onFocusHandled]);
+
   // Personal recommendations/spots management state
   const [myRecs, setMyRecs] = useState<any[]>([]);
   const [isLoadingMyRecs, setIsLoadingMyRecs] = useState(false);
@@ -1062,7 +1082,12 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
         <div className="md:col-span-4 space-y-6">
           
           {/* VERIFICATION PANEL */}
-          <div className="bg-card/40 backdrop-blur-xl p-5 rounded-[28px] border border-border/60 shadow-xl space-y-4 animate-fade-in">
+          <div
+            ref={verificationRef}
+            className={`bg-card/40 backdrop-blur-xl p-5 rounded-[28px] border shadow-xl space-y-4 animate-fade-in transition-all duration-500 ${
+              highlightVerification ? "border-primary ring-2 ring-ring" : "border-border/60"
+            }`}
+          >
             <div className="flex items-center gap-1.5 pb-2 border-b border-border/30">
               <ShieldCheck size={18} className="text-amber-500 fill-amber-100" />
               <h3 className="font-sans font-black text-xs text-foreground uppercase tracking-wider">
