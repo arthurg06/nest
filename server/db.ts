@@ -1,13 +1,5 @@
-import fs from "fs";
-import path from "path";
 import { normalizeStoredNationalities } from "../shared/countries.js";
-
-// Vercel's deployment filesystem is read-only; /tmp is the only writable
-// location there (ephemeral — data resets between cold starts). Self-hosted
-// installs keep the database at the project root, or wherever DB_PATH points.
-const DB_FILE =
-  process.env.DB_PATH ||
-  (process.env.VERCEL ? "/tmp/db.json" : path.join(process.cwd(), "db.json"));
+import { selectBackend } from "./storage/index.js";
 
 export type UserRole = "admin" | "member";
 export type AccountStatus = "active" | "suspended";
@@ -306,34 +298,42 @@ function seedFromEnv(): DbSchema | null {
   }
 }
 
-// Helper to load db
-export function readDb(): DbSchema {
-  try {
-    if (!fs.existsSync(DB_FILE)) {
-      const initial = seedFromEnv() ?? structuredClone(initialDb);
-      migrateDb(initial);
-      fs.writeFileSync(DB_FILE, JSON.stringify(initial, null, 2), "utf-8");
-      return initial;
-    }
-    const content = fs.readFileSync(DB_FILE, "utf-8");
-    const db = JSON.parse(content) as DbSchema;
+// Baseline snapshots captured at read time let row-level backends persist
+// only what a request actually changed (keyed by object identity, so
+// concurrent requests in one process never share a baseline).
+const baselines = new WeakMap<DbSchema, DbSchema>();
+
+// Load the database. A store that has never been written is hydrated from
+// DB_SEED (or starts empty) and persisted, so the seed applies at most once
+// per store lifetime — reseeding a persistent database is impossible.
+export async function readDb(): Promise<DbSchema> {
+  const backend = selectBackend();
+
+  let db = await backend.load();
+  if (!db) {
+    db = seedFromEnv() ?? structuredClone(initialDb);
+    migrateDb(db);
+    await backend.persist(null, db);
+  } else {
+    const beforeMigration = structuredClone(db);
     if (migrateDb(db)) {
-      writeDb(db);
+      await backend.persist(beforeMigration, db);
     }
-    return db;
-  } catch (error) {
-    console.error("Error reading database file, returning default:", error);
-    return structuredClone(initialDb);
   }
+
+  baselines.set(db, structuredClone(db));
+  return db;
 }
 
-// Helper to save db atomically
-export function writeDb(data: DbSchema): void {
-  try {
-    const tempFile = `${DB_FILE}.tmp`;
-    fs.writeFileSync(tempFile, JSON.stringify(data, null, 2), "utf-8");
-    fs.renameSync(tempFile, DB_FILE);
-  } catch (error) {
-    console.error("Error writing database file:", error);
+// Persist a snapshot previously obtained from readDb. Errors propagate to
+// the caller — a request must never report success for data that was not
+// durably written.
+export async function writeDb(data: DbSchema): Promise<void> {
+  const backend = selectBackend();
+  const prev = baselines.get(data) ?? null;
+  if (!prev) {
+    console.warn("writeDb called without a read baseline — performing a full sync");
   }
+  await backend.persist(prev, data);
+  baselines.set(data, structuredClone(data));
 }

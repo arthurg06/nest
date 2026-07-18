@@ -11,6 +11,7 @@ import { calculateCompatibility } from "./shared/compatibility.js";
 import { hashPassword, verifyPassword, isHashedPassword, generateSessionToken, generateSecureId, sniffImageType } from "./server/security.js";
 import { RateLimiter } from "./server/rateLimit.js";
 import { getStripe, isStripeConfigured, isWebhookConfigured, premiumPriceId } from "./server/stripe.js";
+import { saveImage, deleteImage } from "./server/images.js";
 import { PREMIUM_PLAN, PREMIUM_PRICE_LABEL } from "./shared/subscription.js";
 
 dotenv.config({ quiet: true });
@@ -105,7 +106,7 @@ const UPLOAD_DIR =
 // STRIPE WEBHOOK (registered BEFORE the JSON body parser — Stripe signature
 // verification requires the raw request body)
 // ----------------------------------------------------
-app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), (req, res) => {
+app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), async (req, res) => {
   const stripe = getStripe();
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
@@ -123,7 +124,7 @@ app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), (req,
   }
 
   try {
-    const db = dbManager.readDb();
+    const db = await dbManager.readDb();
 
     // Idempotency: each Stripe event is applied at most once.
     if (db.processedStripeEvents.includes(event.id)) {
@@ -242,7 +243,7 @@ app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), (req,
         break;
     }
 
-    dbManager.writeDb(db);
+    await dbManager.writeDb(db);
     res.json({ received: true });
   } catch (error) {
     console.error("Stripe webhook processing error:", error);
@@ -273,57 +274,74 @@ function clientIp(req: express.Request): string {
   return req.socket.remoteAddress || "unknown";
 }
 
-// Authentication Middleware
-function authenticate(req: express.Request, res: express.Response, next: express.NextFunction) {
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return res.status(401).json({ error: "Unauthorized: Missing token" });
-  }
-  const token = authHeader.substring(7);
-  const db = dbManager.readDb();
-  const session = db.sessions.find(s => s.token === token);
-  
-  if (!session) {
-    return res.status(401).json({ error: "Unauthorized: Invalid token" });
-  }
+// Authentication Middleware. Async (storage may be remote); Express 4 does
+// not catch async errors, so the body is fully wrapped.
+async function authenticate(req: express.Request, res: express.Response, next: express.NextFunction) {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return res.status(401).json({ error: "Unauthorized: Missing token" });
+    }
+    const token = authHeader.substring(7);
+    const db = await dbManager.readDb();
+    const session = db.sessions.find(s => s.token === token);
 
-  if (new Date(session.expiresAt) < new Date()) {
-    // Clear expired session
-    db.sessions = db.sessions.filter(s => s.token !== token);
-    dbManager.writeDb(db);
-    return res.status(401).json({ error: "Unauthorized: Session expired" });
-  }
+    if (!session) {
+      return res.status(401).json({ error: "Unauthorized: Invalid token" });
+    }
 
-  const user = db.users.find(u => u.id === session.userId);
-  if (!user) {
-    return res.status(401).json({ error: "Unauthorized: Invalid token" });
-  }
-  if (user.status === "suspended") {
-    return res.status(403).json({ error: "This account is suspended. Contact the NEST team for help." });
-  }
+    if (new Date(session.expiresAt) < new Date()) {
+      // Clear expired session
+      db.sessions = db.sessions.filter(s => s.token !== token);
+      await dbManager.writeDb(db);
+      return res.status(401).json({ error: "Unauthorized: Session expired" });
+    }
 
-  // Throttled activity timestamp for the admin dashboard (max one write/hour)
-  const now = Date.now();
-  if (!user.lastActiveAt || now - new Date(user.lastActiveAt).getTime() > 60 * 60 * 1000) {
-    user.lastActiveAt = new Date(now).toISOString();
-    dbManager.writeDb(db);
-  }
+    const user = db.users.find(u => u.id === session.userId);
+    if (!user) {
+      return res.status(401).json({ error: "Unauthorized: Invalid token" });
+    }
+    if (user.status === "suspended") {
+      return res.status(403).json({ error: "This account is suspended. Contact the NEST team for help." });
+    }
 
-  (req as any).userId = session.userId;
-  next();
+    // Throttled activity timestamp for the admin dashboard (max one
+    // write/hour). Best-effort — a failed bookkeeping write must not lock
+    // out a valid session.
+    const now = Date.now();
+    if (!user.lastActiveAt || now - new Date(user.lastActiveAt).getTime() > 60 * 60 * 1000) {
+      user.lastActiveAt = new Date(now).toISOString();
+      try {
+        await dbManager.writeDb(db);
+      } catch (error) {
+        console.error("Could not record activity timestamp:", error);
+      }
+    }
+
+    (req as any).userId = session.userId;
+    next();
+  } catch (error) {
+    console.error("Authentication error:", error);
+    res.status(500).json({ error: "Authentication failed" });
+  }
 }
 
 // Optional Admin Middleware
 function authenticateAdmin(req: express.Request, res: express.Response, next: express.NextFunction) {
-  authenticate(req, res, () => {
-    const userId = (req as any).userId;
-    const db = dbManager.readDb();
-    const user = db.users.find(u => u.id === userId);
-    // Persistent server-side role — never a client-supplied flag
-    if (!user || user.role !== "admin") {
-      return res.status(403).json({ error: "Forbidden: Administrator access required" });
+  authenticate(req, res, async () => {
+    try {
+      const userId = (req as any).userId;
+      const db = await dbManager.readDb();
+      const user = db.users.find(u => u.id === userId);
+      // Persistent server-side role — never a client-supplied flag
+      if (!user || user.role !== "admin") {
+        return res.status(403).json({ error: "Forbidden: Administrator access required" });
+      }
+      next();
+    } catch (error) {
+      console.error("Authorization error:", error);
+      res.status(500).json({ error: "Authorization failed" });
     }
-    next();
   });
 }
 
@@ -348,7 +366,7 @@ app.post("/api/auth/signup", async (req, res) => {
       return res.status(429).json({ error: "Too many sign-up attempts. Please try again later." });
     }
 
-    const db = dbManager.readDb();
+    const db = await dbManager.readDb();
     
     // Check if user already exists
     if (db.users.some(u => u.email.toLowerCase() === email.toLowerCase())) {
@@ -417,7 +435,7 @@ app.post("/api/auth/signup", async (req, res) => {
       expiresAt
     });
 
-    dbManager.writeDb(db);
+    await dbManager.writeDb(db);
 
     res.json({
       token,
@@ -449,7 +467,7 @@ app.post("/api/auth/login", async (req, res) => {
       return res.status(429).json({ error: "Too many login attempts. Please try again in a few minutes." });
     }
 
-    const db = dbManager.readDb();
+    const db = await dbManager.readDb();
     const user = db.users.find(u => u.email.toLowerCase() === email.toLowerCase());
 
     if (!user || !(await verifyPassword(password, user.passwordHash))) {
@@ -482,7 +500,7 @@ app.post("/api/auth/login", async (req, res) => {
       expiresAt
     });
 
-    dbManager.writeDb(db);
+    await dbManager.writeDb(db);
 
     res.json({
       token,
@@ -502,10 +520,10 @@ app.post("/api/auth/login", async (req, res) => {
 });
 
 // Get Current User (Me)
-app.get("/api/auth/me", authenticate, (req, res) => {
+app.get("/api/auth/me", authenticate, async (req, res) => {
   try {
     const userId = (req as any).userId;
-    const db = dbManager.readDb();
+    const db = await dbManager.readDb();
     const user = db.users.find(u => u.id === userId);
     
     if (!user) {
@@ -517,7 +535,7 @@ app.get("/api/auth/me", authenticate, (req, res) => {
     // Auto-promote configured admin accounts when their token is verified
     if (isAdminEmail(user.email) && !user.isAdmin) {
       user.isAdmin = true;
-      dbManager.writeDb(db);
+      await dbManager.writeDb(db);
     }
 
     res.json({
@@ -537,12 +555,12 @@ app.get("/api/auth/me", authenticate, (req, res) => {
 // Sign out: invalidate the presented session token server-side. Account and
 // data are untouched — this is the non-destructive counterpart of account
 // deletion.
-app.post("/api/auth/logout", authenticate, (req, res) => {
+app.post("/api/auth/logout", authenticate, async (req, res) => {
   try {
     const token = (req.headers.authorization as string).substring(7);
-    const db = dbManager.readDb();
+    const db = await dbManager.readDb();
     db.sessions = db.sessions.filter(s => s.token !== token);
-    dbManager.writeDb(db);
+    await dbManager.writeDb(db);
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: "Error signing out" });
@@ -554,12 +572,12 @@ app.post("/api/auth/logout", authenticate, (req, res) => {
 // ----------------------------------------------------
 
 // Update Profile
-app.post("/api/profiles/update", authenticate, (req, res) => {
+app.post("/api/profiles/update", authenticate, async (req, res) => {
   try {
     const userId = (req as any).userId;
     const data = req.body;
 
-    const db = dbManager.readDb();
+    const db = await dbManager.readDb();
     const profileIdx = db.profiles.findIndex(p => p.userId === userId);
 
     if (profileIdx === -1) {
@@ -586,7 +604,7 @@ app.post("/api/profiles/update", authenticate, (req, res) => {
       interests: sanitizeInterests(data.interests) || db.profiles[profileIdx].interests,
     };
 
-    dbManager.writeDb(db);
+    await dbManager.writeDb(db);
     res.json(ownProfileView(db.profiles[profileIdx]));
   } catch (error) {
     res.status(500).json({ error: "Error updating profile" });
@@ -596,7 +614,7 @@ app.post("/api/profiles/update", authenticate, (req, res) => {
 // Submit student-verification details for manual admin review. Submitting
 // NEVER verifies the account by itself — an administrator approves or
 // rejects every request. Email domain is a supporting signal only.
-app.post("/api/verification/submit", authenticate, (req, res) => {
+app.post("/api/verification/submit", authenticate, async (req, res) => {
   try {
     const userId = (req as any).userId;
     const { university, universityEmail, note } = req.body;
@@ -612,7 +630,7 @@ app.post("/api/verification/submit", authenticate, (req, res) => {
       return res.status(400).json({ error: "A valid university email address is required" });
     }
 
-    const db = dbManager.readDb();
+    const db = await dbManager.readDb();
     const profile = db.profiles.find(p => p.userId === userId);
     if (!profile) {
       return res.status(404).json({ error: "Profile not found" });
@@ -639,7 +657,7 @@ app.post("/api/verification/submit", authenticate, (req, res) => {
       rejectionReason: undefined
     };
 
-    dbManager.writeDb(db);
+    await dbManager.writeDb(db);
     res.json({ success: true, profile: ownProfileView(profile) });
   } catch (error) {
     res.status(500).json({ error: "Error submitting verification" });
@@ -653,7 +671,7 @@ app.post("/api/verification/submit", authenticate, (req, res) => {
 // authentication and is noted in docs/SECURITY.md.
 const ALLOWED_IMAGE_MIME = new Set(["image/png", "image/jpeg", "image/webp"]);
 
-app.post("/api/upload", (req, res) => {
+app.post("/api/upload", async (req, res) => {
   try {
     if (!isTestEnv && !uploadLimiter.check(clientIp(req))) {
       return res.status(429).json({ error: "Too many uploads. Please try again later." });
@@ -688,15 +706,11 @@ app.post("/api/upload", (req, res) => {
       return res.status(400).json({ error: "File content is not a valid JPEG, PNG, or WEBP image" });
     }
 
-    if (!fs.existsSync(UPLOAD_DIR)) {
-      fs.mkdirSync(UPLOAD_DIR, { recursive: true });
-    }
+    // Server-generated random name; Vercel Blob (persistent) when
+    // configured, the local uploads directory otherwise.
+    const url = await saveImage(buffer, sniffed);
 
-    // Server-generated random filename (no client input in the path)
-    const finalFileName = `${Date.now()}_${generateSecureId()}.${sniffed}`;
-    fs.writeFileSync(path.join(UPLOAD_DIR, finalFileName), buffer);
-
-    res.json({ url: `/uploads/${finalFileName}` });
+    res.json({ url });
   } catch (error) {
     console.error("Upload handler error:", error);
     res.status(500).json({ error: "Failed to upload image file" });
@@ -705,10 +719,10 @@ app.post("/api/upload", (req, res) => {
 
 // Get profiles of OTHER real users for swiping
 // Constraint: "Users must verify their account before it becomes visible to others."
-app.get("/api/profiles", authenticate, (req, res) => {
+app.get("/api/profiles", authenticate, async (req, res) => {
   try {
     const userId = (req as any).userId;
-    const db = dbManager.readDb();
+    const db = await dbManager.readDb();
 
     // Check if current user is swiped already
     const swipedUserIds = db.swipes
@@ -736,7 +750,7 @@ app.get("/api/profiles", authenticate, (req, res) => {
 // SWIPE & MATCHES ENDPOINTS
 // ----------------------------------------------------
 
-app.post("/api/swipe", authenticate, (req, res) => {
+app.post("/api/swipe", authenticate, async (req, res) => {
   try {
     const userId = (req as any).userId;
     const { toUserId, action } = req.body; // "like" or "dislike"
@@ -745,7 +759,7 @@ app.post("/api/swipe", authenticate, (req, res) => {
       return res.status(400).json({ error: "toUserId and action are required" });
     }
 
-    const db = dbManager.readDb();
+    const db = await dbManager.readDb();
 
     // Only admin-approved members can initiate or receive matching
     const actorProfile = db.profiles.find(p => p.userId === userId);
@@ -813,7 +827,7 @@ app.post("/api/swipe", authenticate, (req, res) => {
       }
     }
 
-    dbManager.writeDb(db);
+    await dbManager.writeDb(db);
 
     res.json({ success: true, isMatch, matchId });
   } catch (error) {
@@ -822,10 +836,10 @@ app.post("/api/swipe", authenticate, (req, res) => {
 });
 
 // Get active matches for current user
-app.get("/api/matches", authenticate, (req, res) => {
+app.get("/api/matches", authenticate, async (req, res) => {
   try {
     const userId = (req as any).userId;
-    const db = dbManager.readDb();
+    const db = await dbManager.readDb();
 
     const myMatches = db.matches.filter(m => m.user1Id === userId || m.user2Id === userId);
 
@@ -873,7 +887,7 @@ app.get("/api/matches", authenticate, (req, res) => {
 // ----------------------------------------------------
 
 // Send message
-app.post("/api/chats/:matchId/messages", authenticate, (req, res) => {
+app.post("/api/chats/:matchId/messages", authenticate, async (req, res) => {
   try {
     const userId = (req as any).userId;
     const { matchId } = req.params;
@@ -883,7 +897,7 @@ app.post("/api/chats/:matchId/messages", authenticate, (req, res) => {
       return res.status(400).json({ error: "Message text is required" });
     }
 
-    const db = dbManager.readDb();
+    const db = await dbManager.readDb();
     const match = db.matches.find(m => m.id === matchId && (m.user1Id === userId || m.user2Id === userId));
 
     if (!match) {
@@ -900,7 +914,7 @@ app.post("/api/chats/:matchId/messages", authenticate, (req, res) => {
     };
 
     db.messages.push(newMessage);
-    dbManager.writeDb(db);
+    await dbManager.writeDb(db);
 
     res.json(newMessage);
   } catch (error) {
@@ -913,10 +927,10 @@ app.post("/api/chats/:matchId/messages", authenticate, (req, res) => {
 // ----------------------------------------------------
 
 // Get Recommendations
-app.get("/api/recommendations", authenticate, (req, res) => {
+app.get("/api/recommendations", authenticate, async (req, res) => {
   try {
     const userId = (req as any).userId;
-    const db = dbManager.readDb();
+    const db = await dbManager.readDb();
 
     // Map recommendation liked status
     const list = db.recommendations.map(rec => ({
@@ -932,7 +946,7 @@ app.get("/api/recommendations", authenticate, (req, res) => {
 
 // Add Recommendation
 // "Recommendations should only appear after: a verified user submits one, or NEST officially publishes one. Never preload recommendations."
-app.post("/api/recommendations", authenticate, (req, res) => {
+app.post("/api/recommendations", authenticate, async (req, res) => {
   try {
     const userId = (req as any).userId;
     const { name, category, description, address, userTags, locationCoords, googleMapsUrl, imageUrl } = req.body;
@@ -941,7 +955,7 @@ app.post("/api/recommendations", authenticate, (req, res) => {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
-    const db = dbManager.readDb();
+    const db = await dbManager.readDb();
     const profile = db.profiles.find(p => p.userId === userId);
 
     if (!profile) {
@@ -979,7 +993,7 @@ app.post("/api/recommendations", authenticate, (req, res) => {
     };
 
     db.recommendations.push(newRec);
-    dbManager.writeDb(db);
+    await dbManager.writeDb(db);
 
     res.json(newRec);
   } catch (error) {
@@ -988,12 +1002,12 @@ app.post("/api/recommendations", authenticate, (req, res) => {
 });
 
 // Like Recommendation
-app.post("/api/recommendations/:id/like", authenticate, (req, res) => {
+app.post("/api/recommendations/:id/like", authenticate, async (req, res) => {
   try {
     const userId = (req as any).userId;
     const { id } = req.params;
 
-    const db = dbManager.readDb();
+    const db = await dbManager.readDb();
     const recIdx = db.recommendations.findIndex(r => r.id === id);
 
     if (recIdx === -1) {
@@ -1013,7 +1027,7 @@ app.post("/api/recommendations/:id/like", authenticate, (req, res) => {
       rec.likes += 1;
     }
 
-    dbManager.writeDb(db);
+    await dbManager.writeDb(db);
     res.json({ likes: rec.likes, userLiked: ! (userLikedIndex > -1) });
   } catch (error) {
     res.status(500).json({ error: "Error updating like" });
@@ -1026,10 +1040,10 @@ app.post("/api/recommendations/:id/like", authenticate, (req, res) => {
 
 // Get Events. Everyone may browse; RSVPs require an active NEST Premium
 // subscription (see shared/subscription.ts for the plan definition).
-app.get("/api/events", authenticate, (req, res) => {
+app.get("/api/events", authenticate, async (req, res) => {
   try {
     const userId = (req as any).userId;
-    const db = dbManager.readDb();
+    const db = await dbManager.readDb();
 
     const list = db.events.map(evt => {
       const rsvps = db.rsvps.filter(r => r.eventId === evt.id);
@@ -1048,7 +1062,7 @@ app.get("/api/events", authenticate, (req, res) => {
 });
 
 // Add Event (NEST administrators only)
-app.post("/api/events", authenticateAdmin, (req, res) => {
+app.post("/api/events", authenticateAdmin, async (req, res) => {
   try {
     const { title, description, date, time, location, category, imageSeed, price, maxParticipants } = req.body;
 
@@ -1056,7 +1070,7 @@ app.post("/api/events", authenticateAdmin, (req, res) => {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
-    const db = dbManager.readDb();
+    const db = await dbManager.readDb();
 
     const newEvent: Event = {
       id: generateId(),
@@ -1074,7 +1088,7 @@ app.post("/api/events", authenticateAdmin, (req, res) => {
     };
 
     db.events.push(newEvent);
-    dbManager.writeDb(db);
+    await dbManager.writeDb(db);
 
     res.json(newEvent);
   } catch (error) {
@@ -1083,15 +1097,15 @@ app.post("/api/events", authenticateAdmin, (req, res) => {
 });
 
 // Delete Event (NEST administrators only)
-app.delete("/api/events/:id", authenticateAdmin, (req, res) => {
+app.delete("/api/events/:id", authenticateAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const db = dbManager.readDb();
+    const db = await dbManager.readDb();
     
     db.events = db.events.filter(e => e.id !== id);
     db.rsvps = db.rsvps.filter(r => r.eventId !== id);
 
-    dbManager.writeDb(db);
+    await dbManager.writeDb(db);
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: "Error deleting event" });
@@ -1099,12 +1113,12 @@ app.delete("/api/events/:id", authenticateAdmin, (req, res) => {
 });
 
 // RSVP to Event (requires active Premium subscription)
-app.post("/api/events/:id/rsvp", authenticate, (req, res) => {
+app.post("/api/events/:id/rsvp", authenticate, async (req, res) => {
   try {
     const userId = (req as any).userId;
     const { id } = req.params;
 
-    const db = dbManager.readDb();
+    const db = await dbManager.readDb();
     const user = db.users.find(u => u.id === userId);
     
     if (!user) {
@@ -1131,7 +1145,7 @@ app.post("/api/events/:id/rsvp", authenticate, (req, res) => {
     if (existingRsvpIdx > -1) {
       // Cancel RSVP
       db.rsvps.splice(existingRsvpIdx, 1);
-      dbManager.writeDb(db);
+      await dbManager.writeDb(db);
       return res.json({ success: true, userRsvped: false, rsvpsCount: rsvps.length - 1 });
     } else {
       // Check limits
@@ -1147,7 +1161,7 @@ app.post("/api/events/:id/rsvp", authenticate, (req, res) => {
         createdAt: new Date().toISOString()
       };
       db.rsvps.push(newRsvp);
-      dbManager.writeDb(db);
+      await dbManager.writeDb(db);
       return res.json({ success: true, userRsvped: true, rsvpsCount: rsvps.length + 1 });
     }
 
@@ -1162,10 +1176,10 @@ app.post("/api/events/:id/rsvp", authenticate, (req, res) => {
 
 // Membership + plan status. Safe to call whether or not Stripe is
 // configured; exposes no secrets.
-app.get("/api/subscription/status", authenticate, (req, res) => {
+app.get("/api/subscription/status", authenticate, async (req, res) => {
   try {
     const userId = (req as any).userId;
-    const db = dbManager.readDb();
+    const db = await dbManager.readDb();
     const user = db.users.find(u => u.id === userId);
     if (!user) return res.status(404).json({ error: "User not found" });
 
@@ -1201,7 +1215,7 @@ app.post("/api/subscription/checkout", authenticate, async (req, res) => {
     }
 
     const userId = (req as any).userId;
-    const db = dbManager.readDb();
+    const db = await dbManager.readDb();
     const user = db.users.find(u => u.id === userId);
     if (!user) return res.status(404).json({ error: "User not found" });
 
@@ -1218,7 +1232,7 @@ app.post("/api/subscription/checkout", authenticate, async (req, res) => {
       });
       customerId = customer.id;
       user.stripeCustomerId = customerId;
-      dbManager.writeDb(db);
+      await dbManager.writeDb(db);
     }
 
     const session = await stripe.checkout.sessions.create({
@@ -1248,7 +1262,7 @@ app.post("/api/subscription/portal", authenticate, async (req, res) => {
     }
 
     const userId = (req as any).userId;
-    const db = dbManager.readDb();
+    const db = await dbManager.readDb();
     const user = db.users.find(u => u.id === userId);
     if (!user?.stripeCustomerId) {
       return res.status(400).json({ error: "No billing profile found for this account" });
@@ -1271,10 +1285,10 @@ app.post("/api/subscription/portal", authenticate, async (req, res) => {
 // ----------------------------------------------------
 
 // Get Feed Posts
-app.get("/api/posts", authenticate, (req, res) => {
+app.get("/api/posts", authenticate, async (req, res) => {
   try {
     const userId = (req as any).userId;
-    const db = dbManager.readDb();
+    const db = await dbManager.readDb();
 
     const list = db.posts.map(post => {
       const liked = post.likedBy.includes(userId);
@@ -1293,7 +1307,7 @@ app.get("/api/posts", authenticate, (req, res) => {
 });
 
 // Create Post
-app.post("/api/posts", authenticate, (req, res) => {
+app.post("/api/posts", authenticate, async (req, res) => {
   try {
     const userId = (req as any).userId;
     const { text, imageUrl } = req.body;
@@ -1302,7 +1316,7 @@ app.post("/api/posts", authenticate, (req, res) => {
       return res.status(400).json({ error: "Post text is required" });
     }
 
-    const db = dbManager.readDb();
+    const db = await dbManager.readDb();
     const profile = db.profiles.find(p => p.userId === userId);
 
     if (!profile) {
@@ -1324,7 +1338,7 @@ app.post("/api/posts", authenticate, (req, res) => {
     };
 
     db.posts.push(newPost);
-    dbManager.writeDb(db);
+    await dbManager.writeDb(db);
 
     res.json(newPost);
   } catch (error) {
@@ -1333,12 +1347,12 @@ app.post("/api/posts", authenticate, (req, res) => {
 });
 
 // Like Post
-app.post("/api/posts/:id/like", authenticate, (req, res) => {
+app.post("/api/posts/:id/like", authenticate, async (req, res) => {
   try {
     const userId = (req as any).userId;
     const { id } = req.params;
 
-    const db = dbManager.readDb();
+    const db = await dbManager.readDb();
     const postIdx = db.posts.findIndex(p => p.id === id);
 
     if (postIdx === -1) {
@@ -1356,7 +1370,7 @@ app.post("/api/posts/:id/like", authenticate, (req, res) => {
       post.likedBy.push(userId);
     }
 
-    dbManager.writeDb(db);
+    await dbManager.writeDb(db);
     res.json({ success: true, likes: post.likedBy.length, userLiked: !(userLikedIndex > -1) });
   } catch (error) {
     res.status(500).json({ error: "Error liking post" });
@@ -1367,10 +1381,10 @@ app.post("/api/posts/:id/like", authenticate, (req, res) => {
 // NOTIFICATIONS ENDPOINTS
 // ----------------------------------------------------
 
-app.get("/api/notifications", authenticate, (req, res) => {
+app.get("/api/notifications", authenticate, async (req, res) => {
   try {
     const userId = (req as any).userId;
-    const db = dbManager.readDb();
+    const db = await dbManager.readDb();
 
     const list = db.notifications.filter(n => n.userId === userId);
     res.json(list.sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
@@ -1379,10 +1393,10 @@ app.get("/api/notifications", authenticate, (req, res) => {
   }
 });
 
-app.post("/api/notifications/read", authenticate, (req, res) => {
+app.post("/api/notifications/read", authenticate, async (req, res) => {
   try {
     const userId = (req as any).userId;
-    const db = dbManager.readDb();
+    const db = await dbManager.readDb();
 
     db.notifications = db.notifications.map(n => {
       if (n.userId === userId) {
@@ -1391,7 +1405,7 @@ app.post("/api/notifications/read", authenticate, (req, res) => {
       return n;
     });
 
-    dbManager.writeDb(db);
+    await dbManager.writeDb(db);
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: "Error clearing notifications" });
@@ -1439,13 +1453,13 @@ function deleteUserData(userId: string, db: any) {
 // ----------------------------------------------------
 
 // Edit Recommendation
-app.put("/api/recommendations/:id", authenticate, (req, res) => {
+app.put("/api/recommendations/:id", authenticate, async (req, res) => {
   try {
     const userId = (req as any).userId;
     const { id } = req.params;
     const { name, category, description, address, userTags, locationCoords, googleMapsUrl, imageUrl } = req.body;
 
-    const db = dbManager.readDb();
+    const db = await dbManager.readDb();
     const recIdx = db.recommendations.findIndex(r => r.id === id);
 
     if (recIdx === -1) {
@@ -1472,7 +1486,7 @@ app.put("/api/recommendations/:id", authenticate, (req, res) => {
       imageUrl: imageUrl !== undefined ? imageUrl : rec.imageUrl,
     };
 
-    dbManager.writeDb(db);
+    await dbManager.writeDb(db);
     res.json(db.recommendations[recIdx]);
   } catch (error) {
     res.status(500).json({ error: "Error updating recommendation" });
@@ -1480,12 +1494,12 @@ app.put("/api/recommendations/:id", authenticate, (req, res) => {
 });
 
 // Delete Recommendation
-app.delete("/api/recommendations/:id", authenticate, (req, res) => {
+app.delete("/api/recommendations/:id", authenticate, async (req, res) => {
   try {
     const userId = (req as any).userId;
     const { id } = req.params;
 
-    const db = dbManager.readDb();
+    const db = await dbManager.readDb();
     const rec = db.recommendations.find(r => r.id === id);
 
     if (!rec) {
@@ -1499,32 +1513,17 @@ app.delete("/api/recommendations/:id", authenticate, (req, res) => {
       return res.status(403).json({ error: "Forbidden: You are not authorized to delete this recommendation" });
     }
 
-    // Safely delete associated image from local disk if it's stored in uploads
-    const deleteImageFile = (imgUrl: string) => {
-      if (imgUrl && imgUrl.startsWith("/uploads/")) {
-        const fileName = path.basename(imgUrl);
-        const filePath = path.join(UPLOAD_DIR, fileName);
-        if (fs.existsSync(filePath)) {
-          try {
-            fs.unlinkSync(filePath);
-          } catch (err) {
-            console.error("Error deleting local image file:", err);
-          }
-        }
+    // Clean up stored images (best-effort; deleteImage only touches URLs
+    // the upload pipeline could have produced)
+    await deleteImage(rec.imageUrl);
+    if (Array.isArray((rec as any).images)) {
+      for (const img of (rec as any).images as string[]) {
+        await deleteImage(img);
       }
-    };
-
-    if (rec.imageUrl) {
-      deleteImageFile(rec.imageUrl);
-    }
-    if ((rec as any).images && Array.isArray((rec as any).images)) {
-      ((rec as any).images).forEach((img: string) => {
-        deleteImageFile(img);
-      });
     }
 
     db.recommendations = db.recommendations.filter(r => r.id !== id);
-    dbManager.writeDb(db);
+    await dbManager.writeDb(db);
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: "Error deleting recommendation" });
@@ -1536,13 +1535,13 @@ app.delete("/api/recommendations/:id", authenticate, (req, res) => {
 // ----------------------------------------------------
 
 // Edit Post
-app.put("/api/posts/:id", authenticate, (req, res) => {
+app.put("/api/posts/:id", authenticate, async (req, res) => {
   try {
     const userId = (req as any).userId;
     const { id } = req.params;
     const { text, imageUrl } = req.body;
 
-    const db = dbManager.readDb();
+    const db = await dbManager.readDb();
     const postIdx = db.posts.findIndex(p => p.id === id);
 
     if (postIdx === -1) {
@@ -1563,7 +1562,7 @@ app.put("/api/posts/:id", authenticate, (req, res) => {
       imageUrl: imageUrl !== undefined ? imageUrl : post.imageUrl
     };
 
-    dbManager.writeDb(db);
+    await dbManager.writeDb(db);
     res.json(db.posts[postIdx]);
   } catch (error) {
     res.status(500).json({ error: "Error updating post" });
@@ -1571,12 +1570,12 @@ app.put("/api/posts/:id", authenticate, (req, res) => {
 });
 
 // Delete Post
-app.delete("/api/posts/:id", authenticate, (req, res) => {
+app.delete("/api/posts/:id", authenticate, async (req, res) => {
   try {
     const userId = (req as any).userId;
     const { id } = req.params;
 
-    const db = dbManager.readDb();
+    const db = await dbManager.readDb();
     const post = db.posts.find(p => p.id === id);
 
     if (!post) {
@@ -1591,7 +1590,7 @@ app.delete("/api/posts/:id", authenticate, (req, res) => {
     }
 
     db.posts = db.posts.filter(p => p.id !== id);
-    dbManager.writeDb(db);
+    await dbManager.writeDb(db);
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: "Error deleting post" });
@@ -1606,16 +1605,19 @@ app.delete("/api/posts/:id", authenticate, (req, res) => {
 app.delete("/api/users/me", authenticate, async (req, res) => {
   try {
     const userId = (req as any).userId;
-    const db = dbManager.readDb();
+    const db = await dbManager.readDb();
 
     const user = db.users.find(u => u.id === userId);
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
 
+    const photo = db.profiles.find(p => p.userId === userId)?.photo;
+
     await cancelStripeSubscriptionSafely(user);
     deleteUserData(userId, db);
-    dbManager.writeDb(db);
+    await dbManager.writeDb(db);
+    await deleteImage(photo);
 
     res.json({ success: true, message: "Your account and all associated data have been permanently deleted." });
   } catch (error) {
@@ -1624,9 +1626,9 @@ app.delete("/api/users/me", authenticate, async (req, res) => {
 });
 
 // Admin list all users
-app.get("/api/admin/users", authenticateAdmin, (req, res) => {
+app.get("/api/admin/users", authenticateAdmin, async (req, res) => {
   try {
-    const db = dbManager.readDb();
+    const db = await dbManager.readDb();
     // Return users merged with their profiles
     const usersWithProfiles = db.users.map(u => {
       const profile = db.profiles.find(p => p.userId === u.id);
@@ -1666,7 +1668,7 @@ app.delete("/api/admin/users/:userId", authenticateAdmin, async (req, res) => {
   try {
     const adminId = (req as any).userId;
     const { userId } = req.params;
-    const db = dbManager.readDb();
+    const db = await dbManager.readDb();
 
     const user = db.users.find(u => u.id === userId);
     if (!user) {
@@ -1677,10 +1679,13 @@ app.delete("/api/admin/users/:userId", authenticateAdmin, async (req, res) => {
       return res.status(400).json({ error: "Cannot delete an administrator account!" });
     }
 
+    const photo = db.profiles.find(p => p.userId === userId)?.photo;
+
     await cancelStripeSubscriptionSafely(user);
     deleteUserData(userId, db);
     recordAudit(db, adminId, "user.delete", userId, user.email);
-    dbManager.writeDb(db);
+    await dbManager.writeDb(db);
+    await deleteImage(photo);
 
     res.json({ success: true, message: `User account ${user.email} and all associated data have been deleted.` });
   } catch (error) {
@@ -1690,11 +1695,11 @@ app.delete("/api/admin/users/:userId", authenticateAdmin, async (req, res) => {
 
 // Admin: suspend / restore an account. Suspended members cannot log in or
 // use authenticated APIs and disappear from discovery.
-app.post("/api/admin/users/:userId/suspend", authenticateAdmin, (req, res) => {
+app.post("/api/admin/users/:userId/suspend", authenticateAdmin, async (req, res) => {
   try {
     const adminId = (req as any).userId;
     const { userId } = req.params;
-    const db = dbManager.readDb();
+    const db = await dbManager.readDb();
     const user = db.users.find(u => u.id === userId);
 
     if (!user) return res.status(404).json({ error: "User not found" });
@@ -1703,25 +1708,25 @@ app.post("/api/admin/users/:userId/suspend", authenticateAdmin, (req, res) => {
     user.status = "suspended";
     db.sessions = db.sessions.filter(s => s.userId !== userId);
     recordAudit(db, adminId, "user.suspend", userId);
-    dbManager.writeDb(db);
+    await dbManager.writeDb(db);
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: "Error suspending account" });
   }
 });
 
-app.post("/api/admin/users/:userId/restore", authenticateAdmin, (req, res) => {
+app.post("/api/admin/users/:userId/restore", authenticateAdmin, async (req, res) => {
   try {
     const adminId = (req as any).userId;
     const { userId } = req.params;
-    const db = dbManager.readDb();
+    const db = await dbManager.readDb();
     const user = db.users.find(u => u.id === userId);
 
     if (!user) return res.status(404).json({ error: "User not found" });
 
     user.status = "active";
     recordAudit(db, adminId, "user.restore", userId);
-    dbManager.writeDb(db);
+    await dbManager.writeDb(db);
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: "Error restoring account" });
@@ -1733,10 +1738,10 @@ app.post("/api/admin/users/:userId/restore", authenticateAdmin, (req, res) => {
 // ----------------------------------------------------
 
 // List verification requests (defaults to pending, oldest first)
-app.get("/api/admin/verifications", authenticateAdmin, (req, res) => {
+app.get("/api/admin/verifications", authenticateAdmin, async (req, res) => {
   try {
     const statusFilter = (req.query.status as string) || "pending";
-    const db = dbManager.readDb();
+    const db = await dbManager.readDb();
 
     const list = db.profiles
       .filter(p => (statusFilter === "all" ? true : p.verificationStatus === statusFilter))
@@ -1765,11 +1770,11 @@ app.get("/api/admin/verifications", authenticateAdmin, (req, res) => {
 });
 
 // Approve a member's verification
-app.post("/api/admin/verifications/:userId/approve", authenticateAdmin, (req, res) => {
+app.post("/api/admin/verifications/:userId/approve", authenticateAdmin, async (req, res) => {
   try {
     const adminId = (req as any).userId;
     const { userId } = req.params;
-    const db = dbManager.readDb();
+    const db = await dbManager.readDb();
     const profile = db.profiles.find(p => p.userId === userId);
 
     if (!profile) return res.status(404).json({ error: "Profile not found" });
@@ -1800,7 +1805,7 @@ app.post("/api/admin/verifications/:userId/approve", authenticateAdmin, (req, re
     });
 
     recordAudit(db, adminId, "verification.approve", userId);
-    dbManager.writeDb(db);
+    await dbManager.writeDb(db);
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: "Error approving verification" });
@@ -1808,7 +1813,7 @@ app.post("/api/admin/verifications/:userId/approve", authenticateAdmin, (req, re
 });
 
 // Reject a member's verification with a member-visible reason
-app.post("/api/admin/verifications/:userId/reject", authenticateAdmin, (req, res) => {
+app.post("/api/admin/verifications/:userId/reject", authenticateAdmin, async (req, res) => {
   try {
     const adminId = (req as any).userId;
     const { userId } = req.params;
@@ -1818,7 +1823,7 @@ app.post("/api/admin/verifications/:userId/reject", authenticateAdmin, (req, res
       return res.status(400).json({ error: "A rejection reason is required" });
     }
 
-    const db = dbManager.readDb();
+    const db = await dbManager.readDb();
     const profile = db.profiles.find(p => p.userId === userId);
     if (!profile) return res.status(404).json({ error: "Profile not found" });
 
@@ -1845,7 +1850,7 @@ app.post("/api/admin/verifications/:userId/reject", authenticateAdmin, (req, res
     });
 
     recordAudit(db, adminId, "verification.reject", userId, reason.slice(0, 300));
-    dbManager.writeDb(db);
+    await dbManager.writeDb(db);
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: "Error rejecting verification" });
