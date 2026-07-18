@@ -430,23 +430,19 @@ export default function App() {
       <div className="min-h-screen text-slate-800 flex flex-col antialiased">
       
       {/* 1. TOP HEADER BANNER */}
-      <header className="bg-white/30 backdrop-blur-xl border-b border-white/40 py-3 px-4 md:px-6 sticky top-0 z-30 select-none shadow-sm">
+      <header className="bg-white/60 backdrop-blur-xl border-b border-stone-200/60 py-3 px-4 md:px-6 pt-[max(0.75rem,env(safe-area-inset-top))] sticky top-0 z-30 select-none">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           {/* Logo */}
           <div className="flex items-center gap-2.5">
             <img src="/icons/nest-192.png" alt="NEST logo" className="w-9 h-9 rounded-xl object-cover shadow-sm border border-white/50" />
             <div>
-              <span className="font-sans font-black tracking-tighter text-[#1F1E1D] text-lg uppercase">Nest</span>
-              <span className="font-mono text-[9px] font-extrabold text-[#C85B49] tracking-widest block -mt-1 uppercase">Madrid Student Net</span>
+              <span className="font-display font-semibold tracking-tight text-stone-900 text-lg lowercase">nest</span>
+              <span className="font-mono text-[9px] font-bold text-rose-600 tracking-widest block -mt-1 uppercase">Madrid</span>
             </div>
           </div>
 
-          {/* Current City indicator & Verification badge */}
+          {/* Verification status */}
           <div className="hidden sm:flex items-center gap-3">
-            <span className="bg-stone-50 border border-stone-200 text-stone-600 font-sans text-xs px-2.5 py-1 rounded-full flex items-center gap-1">
-              📍 Central Madrid 🇪🇸
-            </span>
-
             {currentUser.isVerified ? (
               <span className="bg-amber-50 text-amber-800 border border-amber-200 font-sans font-bold text-xs px-2.5 py-1 rounded-full flex items-center gap-1">
                 <ShieldCheck size={14} className="text-amber-600 fill-amber-100" />
@@ -472,10 +468,10 @@ export default function App() {
           {/* Right menu details: current user profile snippet and reset button */}
           <div className="flex items-center gap-3">
             
-            {/* Sign out and create new profile */}
-            <button 
+            {/* Sign out (non-destructive; account data is kept) */}
+            <button
               onClick={handleSignOut}
-              className="font-sans text-[10px] bg-slate-900 text-rose-400 hover:bg-slate-800 font-extrabold px-3 py-1.5 rounded-xl border border-slate-800 tracking-wider shadow-sm transition active:scale-95 flex items-center gap-1 cursor-pointer"
+              className="font-sans text-[11px] text-stone-500 hover:text-stone-900 font-bold px-2.5 py-1.5 rounded-lg transition cursor-pointer"
               title="Sign out of NEST"
             >
               Sign out
@@ -517,8 +513,8 @@ export default function App() {
         {notifications.length > 0 && (
           <div className="bg-amber-50 border border-amber-200 text-amber-800 p-3 rounded-2xl text-[11px] mb-5 font-medium flex items-center justify-between shadow-sm animate-fade-in">
             <div className="flex items-center gap-2">
-              <Bell size={14} className="text-amber-600 fill-amber-100 animate-bounce" />
-              <span><strong>NEST Notification</strong>: {notifications[0].text}</span>
+              <Bell size={14} className="text-amber-600 fill-amber-100" />
+              <span>{notifications[0].text}</span>
             </div>
             <button 
               onClick={async () => {
@@ -538,11 +534,11 @@ export default function App() {
             <div className="space-y-6">
               {/* Swipe Deck Header and Intro */}
               <div className="text-center max-w-sm mx-auto space-y-1">
-                <h2 className="font-sans font-black text-2xl text-stone-900 tracking-tight">
-                  Find Your Friends 🌸
+                <h2 className="font-display text-3xl text-stone-900">
+                  Find your people
                 </h2>
                 <p className="font-sans text-xs text-stone-500 leading-normal">
-                  Swipe right to match! We match you based on shared Activities, Music tastes, Social preferences, and Lifestyle styles.
+                  Matched by shared interests, lifestyle, and languages.
                 </p>
               </div>
 
@@ -618,7 +614,7 @@ export default function App() {
               <div className="md:col-span-4 bg-white/40 backdrop-blur-xl rounded-2xl border border-white/60 p-4 flex flex-col overflow-hidden shadow-xl">
                 <h3 className="font-sans font-black text-slate-900 text-base border-b border-rose-100 pb-2.5 flex items-center gap-2">
                   <MessageSquare size={18} className="text-rose-500" />
-                  <span>Your Bestie Matches</span>
+                  <span>Your matches</span>
                 </h3>
 
                 {/* Search Bar for matches */}
@@ -641,7 +637,7 @@ export default function App() {
                       if (filtered.length === 0) {
                         return (
                           <div className="text-center py-8 text-slate-400 font-sans text-xs">
-                            No matching besties found. 🌸
+                            No matches found.
                           </div>
                         );
                       }
@@ -688,7 +684,7 @@ export default function App() {
                     })()
                   ) : (
                     <div className="text-center py-8 text-slate-400 font-sans text-xs">
-                      No matches yet. Keep swiping! ✨
+                      No matches yet.
                     </div>
                   )}
                 </div>
@@ -783,11 +779,11 @@ export default function App() {
             </div>
 
             <div className="space-y-1.5">
-              <h3 className="font-sans font-black text-2xl text-stone-900 uppercase tracking-tight">
-                It's a NEST Match! 🎉
+              <h3 className="font-display text-3xl text-stone-900">
+                It's a match
               </h3>
               <p className="font-sans text-xs text-stone-500 leading-relaxed">
-                You and <strong className="text-stone-800">{newMatchAlert.name}</strong> swiped right on each other. Say hello and suggest a cool meetup in Madrid!
+                You and <strong className="text-stone-800">{newMatchAlert.name}</strong> liked each other. Say hola and plan something.
               </p>
             </div>
 
@@ -800,21 +796,21 @@ export default function App() {
                 }}
                 className="w-full py-2.5 bg-stone-900 hover:bg-stone-800 text-white font-sans text-xs font-black rounded-xl shadow-md transition"
               >
-                Start Direct Message Chat
+                Send a message
               </button>
               <button
                 onClick={() => setNewMatchAlert(null)}
                 className="w-full py-2.5 border border-stone-200 hover:bg-stone-50 text-stone-600 font-sans text-xs font-black rounded-xl transition"
               >
-                Keep swiping
+                Keep browsing
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* 4. BOTTOM NAVIGATION NAVIGATION BAR */}
-      <nav className="bg-white/30 backdrop-blur-xl border-t border-white/45 py-3 px-4 sticky bottom-0 z-30 select-none shadow-lg shadow-rose-100/30 shrink-0">
+      {/* 4. BOTTOM NAVIGATION BAR (safe-area aware for mobile devices) */}
+      <nav className="bg-white/70 backdrop-blur-xl border-t border-stone-200/60 pt-2.5 px-4 pb-[max(0.625rem,env(safe-area-inset-bottom))] sticky bottom-0 z-30 select-none shrink-0">
         <div className="max-w-md mx-auto flex items-center justify-between gap-1 text-center">
           
           {/* Swipe */}
@@ -825,7 +821,7 @@ export default function App() {
             }`}
           >
             <Sparkles size={18} className={activeTab === "swipe" ? "scale-110" : ""} />
-            <span className="text-[9px] font-sans">Swipes</span>
+            <span className="text-[10px] font-sans">Swipes</span>
           </button>
 
           {/* Chat */}
@@ -836,7 +832,7 @@ export default function App() {
             }`}
           >
             <MessageSquare size={18} className={activeTab === "chat" ? "scale-110" : ""} />
-            <span className="text-[9px] font-sans">DM Chat</span>
+            <span className="text-[10px] font-sans">Chat</span>
             
             {/* Active notifications indicator badge */}
             {matches.length > 0 && (
@@ -852,7 +848,7 @@ export default function App() {
             }`}
           >
             <MapPin size={18} className={activeTab === "city" ? "scale-110" : ""} />
-            <span className="text-[9px] font-sans">City Guide</span>
+            <span className="text-[10px] font-sans">City</span>
           </button>
 
           {/* Events */}
@@ -863,7 +859,7 @@ export default function App() {
             }`}
           >
             <Calendar size={18} className={activeTab === "events" ? "scale-110" : ""} />
-            <span className="text-[9px] font-sans">Events</span>
+            <span className="text-[10px] font-sans">Events</span>
           </button>
 
           {/* Profile Settings */}
@@ -874,7 +870,7 @@ export default function App() {
             }`}
           >
             <User size={18} className={activeTab === "profile" ? "scale-110" : ""} />
-            <span className="text-[9px] font-sans">Profile</span>
+            <span className="text-[10px] font-sans">Profile</span>
           </button>
 
           {/* Admin Settings */}
@@ -886,7 +882,7 @@ export default function App() {
               }`}
             >
               <ShieldCheck size={18} className={activeTab === "admin" ? "scale-110 text-rose-600 animate-pulse" : "text-slate-400"} />
-              <span className="text-[9px] font-sans font-extrabold text-rose-600">Admin</span>
+              <span className="text-[10px] font-sans font-extrabold text-rose-600">Admin</span>
             </button>
           )}
 

@@ -169,22 +169,17 @@ export default function ChatWindow({
             
             {/* Compatibility info card at start of logs */}
             <div className="bg-rose-50/70 backdrop-blur-md rounded-2xl p-4 border border-rose-100/50 max-w-sm mx-auto text-center space-y-1 shadow-sm">
-              <span className="text-[20px] select-none">✨</span>
               <h5 className="font-sans font-bold text-xs text-rose-600">
-                You matched based on {activeMatch.compatibilityRating}% Compatibility!
+                {activeMatch.compatibilityRating}% compatibility
               </h5>
-              <p className="font-sans text-[10px] text-slate-500">
-                You both share {sharedInterests.length} interests including:{" "}
-                <span className="font-semibold text-slate-700">
-                  {sharedInterests.slice(0, 3).join(", ")}
-                </span>
-                .
-              </p>
-              <div className="pt-1 select-text">
-                <span className="text-[10px] bg-rose-100 text-rose-600 px-2.5 py-0.5 rounded-full font-sans font-bold">
-                  Say hola & plan a meetup!
-                </span>
-              </div>
+              {sharedInterests.length > 0 && (
+                <p className="font-sans text-[11px] text-slate-500">
+                  You both love{" "}
+                  <span className="font-semibold text-slate-700">
+                    {sharedInterests.slice(0, 3).join(", ")}
+                  </span>
+                </p>
+              )}
             </div>
 
             {/* Individual messages mapping */}
@@ -311,24 +306,19 @@ export default function ChatWindow({
           {/* Quick replies suggestion bar */}
           {activeMatch.messages.length === 0 && (
             <div className="px-5 py-2.5 border-t border-white/20 flex gap-2 overflow-x-auto select-none grow-0 shrink-0">
-              <button
-                onClick={() => setInputText(`Hey ${activeMatch.profile.name}! Omg, we have so many overlapping interests! 💖`)}
-                className="px-3 py-1 rounded-full border border-stone-200 text-[10px] font-sans font-bold text-stone-600 bg-white hover:bg-stone-50 whitespace-nowrap shrink-0 transition"
-              >
-                "Hey! We have so many overlaps! 💖"
-              </button>
-              <button
-                onClick={() => setInputText(`Hola girl! ✨ So excited to connect! Where are you living in Madrid?`)}
-                className="px-3 py-1 rounded-full border border-white/40 text-[10px] font-sans font-bold text-slate-600 bg-white/45 hover:bg-white/70 whitespace-nowrap shrink-0 transition"
-              >
-                "Hola! Where are you living in Madrid?"
-              </button>
-              <button
-                onClick={() => setInputText(`Hey! Let's study or grab a matcha sometime soon! 🍵📚`)}
-                className="px-3 py-1 rounded-full border border-white/40 text-[10px] font-sans font-bold text-slate-600 bg-white/45 hover:bg-white/70 whitespace-nowrap shrink-0 transition"
-              >
-                "Let's grab a matcha sometime! 🍵"
-              </button>
+              {[
+                "Hola! How's Madrid treating you?",
+                "Coffee this week?",
+                "What are you studying?"
+              ].map(suggestion => (
+                <button
+                  key={suggestion}
+                  onClick={() => setInputText(suggestion)}
+                  className="px-3 py-1.5 rounded-full border border-stone-200 text-[11px] font-sans font-bold text-stone-600 bg-white hover:bg-stone-50 whitespace-nowrap shrink-0 transition"
+                >
+                  {suggestion}
+                </button>
+              ))}
             </div>
           )}
 

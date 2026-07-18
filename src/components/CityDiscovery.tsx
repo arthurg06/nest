@@ -142,11 +142,11 @@ export default function CityDiscovery({
       {/* Upper header segment */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 animate-fade-in">
         <div>
-          <h2 className="font-sans font-black text-2xl text-slate-900 tracking-tight">
-            Madrid City Discovery 🇪🇸
+          <h2 className="font-display text-3xl text-slate-900">
+            City guide
           </h2>
           <p className="font-sans text-xs text-slate-500 mt-1">
-            Explore student-curated secret spots across Madrid. Custom curated by verified student members.
+            Secret spots across Madrid, shared by verified members.
           </p>
         </div>
 
@@ -155,7 +155,7 @@ export default function CityDiscovery({
           className="flex items-center justify-center gap-1.5 bg-rose-500 text-white font-sans text-xs font-bold px-4 py-2.5 rounded-xl shadow-lg shadow-rose-200/50 hover:bg-rose-600 transition md:self-end active:scale-95 shrink-0 cursor-pointer animate-fade-in"
         >
           <Plus size={14} />
-          <span>Post recommendation</span>
+          <span>Share a spot</span>
         </button>
       </div>
 

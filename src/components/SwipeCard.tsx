@@ -72,11 +72,6 @@ export default function SwipeCard({ profile, currentUser, onSwipeLeft, onSwipeRi
             {/* Dark gradient overlay for text readability on top and bottom */}
             <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-transparent to-slate-950/30" />
 
-            {/* Pattern Accent overlay */}
-            <div className="absolute inset-0 opacity-10 font-mono text-[9px] break-all select-none pointer-events-none p-2 text-white">
-              NESTSTUDENTNET_NESTSPAIN_MADRID_STUDENT_NEST_FEMALE_SUPPORT_NEST_INTERNATIONAL_GIRLS
-            </div>
-
             {/* Banner Top Row */}
             <div className="absolute top-4 left-0 w-full px-5 flex justify-between items-start z-10">
               <span className="bg-slate-900/60 backdrop-blur-md text-white font-mono text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border border-white/10 shadow-sm">
@@ -116,10 +111,10 @@ export default function SwipeCard({ profile, currentUser, onSwipeLeft, onSwipeRi
           {/* Profile Name & Primary Info Section */}
           <div className="px-6 pt-5 md:pt-8 pb-3 border-b border-white/20 shrink-0">
             <div className="flex items-baseline gap-2 mb-1.5">
-              <h3 className="font-sans font-black text-2xl text-slate-950 tracking-tight">
+              <h3 className="font-display text-2xl text-slate-950">
                 {profile.name}
               </h3>
-              <span className="font-sans font-black text-xl text-slate-400">
+              <span className="font-display text-xl text-slate-400">
                 {profile.age}
               </span>
             </div>

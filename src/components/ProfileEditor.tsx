@@ -302,7 +302,7 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
     };
 
     onSaveProfile(updatedProfile);
-    showFeedback("Profile saved successfully! 🎉 Your bestie matches are recalculated.", "success");
+    showFeedback("Profile saved.", "success");
   };
 
   // Submit details for manual admin review — this never verifies the
@@ -358,11 +358,11 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
 
       {/* Title */}
       <div className="animate-fade-in">
-        <h2 className="font-sans font-black text-2xl text-slate-900 tracking-tight">
-          Create & Edit Your NEST Profile 🎨
+        <h2 className="font-display text-3xl text-slate-900">
+          Your profile
         </h2>
         <p className="font-sans text-xs text-slate-500 mt-1">
-          Your interests, lifestyle style, and university are analyzed by our friendship compatibility engine to match you with compatible girls in Madrid.
+          What you share here shapes your matches.
         </p>
       </div>
 

@@ -240,12 +240,12 @@ export default function OnboardingSignUp({ onAuthSuccess }: OnboardingSignUpProp
         <div className="inline-flex items-center gap-2.5 mb-1.5">
           <img src="/icons/nest-192.png" alt="NEST logo" className="w-12 h-12 rounded-2xl object-cover shadow-lg border border-white/25" />
           <div className="text-left">
-            <span className="font-sans font-black tracking-tight text-slate-900 text-2xl uppercase">Nest</span>
-            <span className="font-mono text-[9px] font-bold text-rose-500 tracking-widest block -mt-1 uppercase">Madrid Student Net</span>
+            <span className="font-display font-semibold tracking-tight text-slate-900 text-3xl lowercase">nest</span>
+            <span className="font-mono text-[9px] font-bold text-rose-600 tracking-widest block -mt-1 uppercase">Madrid</span>
           </div>
         </div>
         <p className="text-xs text-slate-500 font-sans mt-1">
-          A private, women-only social network for international students moving to Madrid 🇪🇸
+          A private club for international women studying in Madrid.
         </p>
       </div>
 
@@ -745,9 +745,9 @@ export default function OnboardingSignUp({ onAuthSuccess }: OnboardingSignUpProp
 
       {/* Safety Badge */}
       <div className="max-w-md mx-auto text-center mt-6 select-none shrink-0">
-        <div className="inline-flex items-center gap-1.5 text-rose-600 bg-rose-50 border border-rose-100/50 px-3.5 py-1.5 rounded-full text-[10px] font-bold shadow-sm">
+        <div className="inline-flex items-center gap-1.5 text-rose-700 bg-rose-50 border border-rose-100/50 px-3.5 py-1.5 rounded-full text-[10px] font-bold shadow-sm">
           <ShieldCheck size={12} className="fill-rose-100" />
-          <span>Women-Only University Verification Active • Madrid NEST Trust 🛡️</span>
+          <span>Women only · Every member verified</span>
         </div>
       </div>
     </div>

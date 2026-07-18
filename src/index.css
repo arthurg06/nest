@@ -1,18 +1,34 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900;950&family=JetBrains+Mono:wght@400;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;700;800&display=swap');
 @import "tailwindcss";
 
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
-  
-  --color-coral-50: #FFF1F2;
-  --color-coral-100: #FFE4E6;
-  --color-coral-200: #FECDD3;
-  --color-coral-300: #FDA4AF;
-  --color-coral-400: #FB7185;
-  --color-coral-500: #F43F5E;
-  --color-coral-600: #E11D48;
-  --color-coral-700: #BE123C;
+  /* Editorial serif for headings — the "premium club" voice */
+  --font-display: "Fraunces", "Georgia", serif;
+
+  /* Brand raspberry drawn from the official logo. Remapping the rose scale
+     recolors every existing rose-* utility to the calmer, deeper brand tone
+     in one place — less candy-pink, more club. */
+  --color-rose-50: #FBF3F5;
+  --color-rose-100: #F6E4E9;
+  --color-rose-200: #ECC8D2;
+  --color-rose-300: #DFA0B1;
+  --color-rose-400: #CE7089;
+  --color-rose-500: #BD4E6C;
+  --color-rose-600: #A63D59;
+  --color-rose-700: #8A3049;
+  --color-rose-800: #6E2639;
+  --color-rose-900: #521C2B;
+
+  --color-coral-50: #FBF3F5;
+  --color-coral-100: #F6E4E9;
+  --color-coral-200: #ECC8D2;
+  --color-coral-300: #DFA0B1;
+  --color-coral-400: #CE7089;
+  --color-coral-500: #BD4E6C;
+  --color-coral-600: #A63D59;
+  --color-coral-700: #8A3049;
 }
 
 /* Custom CSS Animation Keyframes for High Fidelity UX */
@@ -46,19 +62,38 @@
   animation: scaleUp 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
 
-body {
-  font-family: var(--font-sans);
-  background-color: #fdf2f8;
-  background-image: radial-gradient(at 0% 0%, #ffe4e6 0px, transparent 50%), 
-                    radial-gradient(at 100% 0%, #fbcfe8 0px, transparent 50%), 
-                    radial-gradient(at 100% 100%, #fae8ff 0px, transparent 50%), 
-                    radial-gradient(at 0% 100%, #ffe4e6 0px, transparent 50%);
-  color: #0f172a;
-  overflow-x: hidden;
-  min-height: 100vh;
+.font-display {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
-/* Custom scrollbars for elegant UI lists */
+body {
+  font-family: var(--font-sans);
+  /* Warm ivory canvas with a single whisper of blush — calm and luxurious
+     instead of the previous four-corner pink wash. */
+  background-color: #FAF7F5;
+  background-image: radial-gradient(at 85% -10%, #F6E4E9 0px, transparent 55%);
+  background-repeat: no-repeat;
+  color: #1c1917;
+  overflow-x: hidden;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Accessible, consistent keyboard focus */
+:focus-visible {
+  outline: 2px solid #BD4E6C;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+::selection {
+  background: #F6E4E9;
+  color: #521C2B;
+}
+
+/* Quiet scrollbars */
 ::-webkit-scrollbar {
   width: 5px;
   height: 5px;
@@ -69,11 +104,22 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #f472b6;
+  background: #d6d3d1;
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #db2777;
+  background: #a8a29e;
 }
 
+/* Respect users who prefer reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

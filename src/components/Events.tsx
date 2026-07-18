@@ -191,27 +191,22 @@ export default function Events({ events, onToggleRsvp, isSubscribed, subscriptio
       {/* Header text with Host Gathering Button removed, official badges only */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-fade-in">
         <div>
-          <h2 className="font-sans font-black text-2xl text-slate-900 tracking-tight">
-            Official NEST Outings 🗓️✨
+          <h2 className="font-display text-3xl text-slate-900">
+            Official outings
           </h2>
           <p className="font-sans text-xs text-slate-500 mt-1">
-            All outings are 100% curated and hosted by NEST Staff. Only active subscription accounts can RSVP/Join.
+            Curated by the NEST team. Membership unlocks RSVPs.
           </p>
         </div>
-        <div className="flex items-center gap-2.5">
-          {isAdmin && (
-            <button
-              onClick={() => setShowCreateForm(prev => !prev)}
-              className="bg-rose-500 hover:bg-rose-600 text-white font-sans text-xs font-black px-4 py-2 rounded-xl transition flex items-center gap-1 cursor-pointer"
-            >
-              <Plus size={14} />
-              <span>Publish Curated Outing</span>
-            </button>
-          )}
-          <div className="bg-slate-950 text-amber-400 font-mono text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl border border-slate-800 shadow-sm shrink-0">
-            ✨ Official NEST Curation only
-          </div>
-        </div>
+        {isAdmin && (
+          <button
+            onClick={() => setShowCreateForm(prev => !prev)}
+            className="bg-rose-500 hover:bg-rose-600 text-white font-sans text-xs font-black px-4 py-2 rounded-xl transition flex items-center gap-1 cursor-pointer shrink-0"
+          >
+            <Plus size={14} />
+            <span>Publish outing</span>
+          </button>
+        )}
       </div>
 
       {/* Admin Event Creation Panel Form */}
@@ -383,10 +378,6 @@ export default function Events({ events, onToggleRsvp, isSubscribed, subscriptio
                       : "from-emerald-100 to-teal-50"
                   } opacity-50`} />
 
-                  <div className="absolute inset-0 opacity-[0.03] select-none text-[8px] font-mono break-all leading-none p-1 pointer-events-none">
-                    NESTSTUDENTNET_NESTSPAIN_MADRID_STUDENT_NEST_FEMALE_SUPPORT_NEST_INTERNATIONAL_GIRLS
-                  </div>
-
                   <div className="z-10 text-center">
                     <span className="text-3xl block mb-1.5 select-none">{getCategoryImageEmoji(event.category)}</span>
                     <span className="bg-white/50 backdrop-blur-md border border-white/40 text-slate-800 text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full font-mono tracking-widest">
@@ -434,7 +425,7 @@ export default function Events({ events, onToggleRsvp, isSubscribed, subscriptio
               <div className="px-5 py-3.5 bg-white/30 border-t border-white/20 flex items-center justify-between select-none">
                 <div className="flex flex-col">
                   <span className="text-[10px] font-mono text-slate-600 font-bold">
-                    👤 {event.rsvpsCount}{event.maxParticipants ? ` / ${event.maxParticipants}` : ""} Girls attending
+                    {event.rsvpsCount}{event.maxParticipants ? ` / ${event.maxParticipants}` : ""} attending
                   </span>
                   {event.maxParticipants && (
                     <span className="text-[9px] font-sans text-rose-500 font-bold leading-none mt-0.5 uppercase tracking-wider">
@@ -491,10 +482,10 @@ export default function Events({ events, onToggleRsvp, isSubscribed, subscriptio
         </div>
       ) : (
         <div className="bg-white/40 backdrop-blur-xl rounded-[28px] border border-stone-200 p-8 text-center max-w-md mx-auto space-y-4 py-12 animate-fade-in">
-          <span className="text-4xl select-none block">🗓️✨</span>
-          <h3 className="font-sans font-black text-stone-800 text-base">No active outings listed yet</h3>
+          <span className="text-4xl select-none block">🗓️</span>
+          <h3 className="font-display text-lg text-stone-800">No outings scheduled yet</h3>
           <p className="font-sans text-xs text-slate-500 leading-relaxed max-w-xs mx-auto">
-            NEST is a strictly curated, safe platform. All listings are curated and published by the official NEST Board.
+            New outings from the NEST team will appear here.
           </p>
           {onSyncOfficialEvents && (
             <button
