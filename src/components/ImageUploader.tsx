@@ -134,7 +134,7 @@ export function ImageUploader({ value, onChange, onRemove, label, className = ""
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isUploading}
-                className="bg-card/90 text-foreground text-[10px] font-bold px-3 py-1.5 rounded-lg hover:bg-card hover:scale-105 transition active:scale-95 cursor-pointer shadow-sm"
+                className="bg-card/90 text-foreground text-[10px] font-bold px-3 py-2 rounded-lg hover:bg-card hover:scale-105 transition active:scale-95 cursor-pointer shadow-sm"
               >
                 Replace Photo
               </button>

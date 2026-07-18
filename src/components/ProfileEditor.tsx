@@ -443,7 +443,7 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
                 {selectedNationalities.map(nat => (
                   <span key={nat} className="bg-slate-900 text-rose-400 font-sans text-[11px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1 shadow-sm">
                     <span>{nat}</span>
-                    <button type="button" onClick={(e) => { e.stopPropagation(); handleRemoveNationality(nat); }} className="text-white hover:text-rose-300 font-extrabold text-[10px] ml-1">✕</button>
+                    <button type="button" onClick={(e) => { e.stopPropagation(); handleRemoveNationality(nat); }} className="text-white hover:text-rose-300 font-extrabold text-[10px] ml-0.5 p-2 -m-1.5 inline-flex items-center justify-center" aria-label="Remove">✕</button>
                   </span>
                 ))}
               </div>
@@ -538,7 +538,7 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
                   {languagesList.map(item => (
                     <span key={item} className="bg-primary text-primary-foreground font-sans text-[10px] font-black px-2.5 py-1 rounded-full flex items-center gap-1 shadow-sm">
                       <span>{item}</span>
-                      <button type="button" onClick={() => handleRemoveLanguage(item)} className="text-white hover:opacity-80 font-extrabold text-[9px] ml-1">✕</button>
+                      <button type="button" onClick={() => handleRemoveLanguage(item)} className="text-white hover:opacity-80 font-extrabold text-[9px] ml-0.5 p-2 -m-1.5 inline-flex items-center justify-center" aria-label="Remove">✕</button>
                     </span>
                   ))}
                 </div>
@@ -576,7 +576,7 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
                 <button
                   type="button"
                   onClick={handleAddLanguage}
-                  className="bg-primary text-primary-foreground font-sans text-xs font-bold px-2 py-1.5 rounded-lg hover:bg-primary/90 transition"
+                  className="bg-primary text-primary-foreground font-sans text-xs font-bold px-2 py-2 rounded-lg hover:bg-primary/90 transition"
                 >
                   ＋ Add Language
                 </button>

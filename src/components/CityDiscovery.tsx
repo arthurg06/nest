@@ -168,7 +168,7 @@ export default function CityDiscovery({
               <Camera size={16} className="text-primary" />
               <span>Share your Madrid Secret! 💖</span>
             </h4>
-            <button type="button" onClick={() => setShowForm(false)} className="text-xs text-muted-foreground font-bold hover:text-muted-foreground">
+            <button type="button" onClick={() => setShowForm(false)} className="text-xs text-muted-foreground font-bold hover:text-foreground p-2 -m-2">
               Cancel
             </button>
           </div>
@@ -280,7 +280,7 @@ export default function CityDiscovery({
             <button
               key={cat.id}
               onClick={() => setActiveCategory(cat.id)}
-              className={`px-3 py-1.5 rounded-xl font-sans text-xs font-bold border transition-all whitespace-nowrap flex items-center gap-1 cursor-pointer ${
+              className={`px-3 py-2 rounded-xl font-sans text-xs font-bold border transition-all whitespace-nowrap flex items-center gap-1 cursor-pointer ${
                 activeCategory === cat.id
                   ? "bg-slate-900 text-white border-slate-900 shadow-sm"
                   : "bg-card/50 text-foreground border-border/40 hover:bg-card/70"

@@ -218,7 +218,7 @@ export default function Events({ events, onToggleRsvp, isSubscribed, subscriptio
               <Sparkles size={16} className="text-primary" />
               <span>Admin: Publish Curated Outing</span>
             </h3>
-            <button type="button" onClick={() => setShowCreateForm(false)} className="text-muted-foreground hover:text-muted-foreground">
+            <button type="button" onClick={() => setShowCreateForm(false)} aria-label="Close" className="text-muted-foreground hover:text-foreground p-2 -m-2 rounded-lg">
               <X size={16} />
             </button>
           </div>
@@ -439,7 +439,7 @@ export default function Events({ events, onToggleRsvp, isSubscribed, subscriptio
                   {isAdmin && onDeleteEvent && (
                     <button
                       onClick={() => onDeleteEvent(event.id)}
-                      className="p-2 bg-accent/30 hover:bg-accent/60 text-primary rounded-xl transition"
+                      className="p-2.5 bg-accent/30 hover:bg-accent/60 text-primary rounded-xl transition"
                       title="Delete Outing (Admin only)"
                     >
                       <Trash2 size={13} />
@@ -507,7 +507,7 @@ export default function Events({ events, onToggleRsvp, isSubscribed, subscriptio
             {/* Close Button */}
             <button
               onClick={() => setShowSubscriptionModal(false)}
-              className="absolute top-4 right-4 text-muted-foreground hover:text-muted-foreground p-1.5 rounded-full hover:bg-muted transition z-10"
+              aria-label="Close" className="absolute top-3 right-3 text-muted-foreground hover:text-foreground p-2.5 rounded-full hover:bg-muted transition z-10"
             >
               <X size={18} />
             </button>

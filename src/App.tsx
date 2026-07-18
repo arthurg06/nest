@@ -449,7 +449,7 @@ export default function App() {
             {/* Sign out (non-destructive; account data is kept) */}
             <button
               onClick={handleSignOut}
-              className="font-sans text-[11px] text-muted-foreground hover:text-foreground font-bold px-2.5 py-1.5 rounded-lg transition cursor-pointer"
+              className="font-sans text-[11px] text-muted-foreground hover:text-foreground font-bold px-2.5 py-3 -my-1.5 rounded-lg transition cursor-pointer"
               title="Sign out of NEST"
             >
               Sign out

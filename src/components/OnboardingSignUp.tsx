@@ -464,7 +464,7 @@ export default function OnboardingSignUp({ onAuthSuccess }: OnboardingSignUpProp
                         {selectedNationalities.map(nat => (
                           <span key={nat} className="bg-slate-900 text-rose-400 font-sans text-[11px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1 shadow-sm">
                             <span>{nat}</span>
-                            <button type="button" onClick={(e) => { e.stopPropagation(); handleRemoveNationality(nat); }} className="text-white hover:text-rose-300 font-extrabold text-[10px] ml-1">✕</button>
+                            <button type="button" onClick={(e) => { e.stopPropagation(); handleRemoveNationality(nat); }} className="text-white hover:text-rose-300 font-extrabold text-[10px] ml-0.5 p-2 -m-1.5 inline-flex items-center justify-center" aria-label="Remove">✕</button>
                           </span>
                         ))}
                       </div>
@@ -539,7 +539,7 @@ export default function OnboardingSignUp({ onAuthSuccess }: OnboardingSignUpProp
                         {languagesList.map(item => (
                           <span key={item} className="bg-primary text-primary-foreground font-sans text-[10px] font-black px-2 py-0.5 rounded-full flex items-center gap-1">
                             <span>{item}</span>
-                            <button type="button" onClick={() => handleRemoveLanguage(item)} className="text-white font-extrabold text-[8px] ml-1">✕</button>
+                            <button type="button" onClick={() => handleRemoveLanguage(item)} className="text-white font-extrabold text-[8px] ml-0.5 p-2 -m-1.5 inline-flex items-center justify-center" aria-label="Remove">✕</button>
                           </span>
                         ))}
                       </div>

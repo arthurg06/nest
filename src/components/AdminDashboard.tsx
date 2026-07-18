@@ -368,7 +368,7 @@ export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboar
               <button
                 key={f}
                 onClick={() => setVerificationFilter(f)}
-                className={`px-3 py-1.5 rounded-lg text-[11px] font-sans font-bold capitalize transition ${
+                className={`px-3 py-2 rounded-lg text-[11px] font-sans font-bold capitalize transition ${
                   verificationFilter === f ? "bg-slate-900 text-white" : "bg-card/60 text-muted-foreground hover:bg-card"
                 }`}
               >
