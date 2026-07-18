@@ -232,9 +232,12 @@ export default function OnboardingSignUp({ onAuthSuccess }: OnboardingSignUpProp
   return (
     <div className="min-h-screen bg-slate-900/5 flex flex-col justify-between select-text px-4 py-8 relative">
       
-      {/* Decorative ambient background dots/circles */}
-      <div className="absolute top-1/4 left-1/3 w-80 h-80 rounded-full bg-rose-200/40 blur-3xl -z-10 pointer-events-none" />
-      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 rounded-full bg-orange-100/40 blur-3xl -z-10 pointer-events-none" />
+      {/* Decorative ambient glow, contained in its own clipped layer so the
+          oversized blur circles can never create horizontal page scroll */}
+      <div className="absolute inset-0 overflow-hidden -z-10 pointer-events-none" aria-hidden="true">
+        <div className="absolute top-1/4 left-1/3 w-80 h-80 rounded-full bg-rose-200/40 blur-3xl" />
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 rounded-full bg-orange-100/40 blur-3xl" />
+      </div>
 
       {/* Header logo */}
       <div className="text-center max-w-md mx-auto mb-6 shrink-0 flex flex-col items-center">
@@ -346,7 +349,12 @@ export default function OnboardingSignUp({ onAuthSuccess }: OnboardingSignUpProp
             </div>
 
             {/* Content body */}
-            <div className="py-6 grow overflow-y-auto max-h-[420px] md:max-h-[480px] pr-1">
+            {/* Scrollable step body. overflow-y:auto forces horizontal
+                clipping, so the scrollport is widened by the same amount as
+                its padding (-mx-2 + px-2): content stays aligned with the
+                header/footer while focus rings and borders keep 8px of
+                painting room instead of being cut at the edge. */}
+            <div className="py-6 grow overflow-y-auto max-h-[420px] md:max-h-[480px] -mx-2 px-2">
               {error && (
                 <div className="bg-rose-50 border border-rose-100 text-rose-600 p-3.5 rounded-2xl text-xs font-medium mb-5 animate-fade-in">
                   ⚠️ {error}
@@ -436,7 +444,13 @@ export default function OnboardingSignUp({ onAuthSuccess }: OnboardingSignUpProp
                     {/* Single Trigger Button */}
                     <button
                       type="button"
-                      onClick={() => setShowNationalityDropdown(!showNationalityDropdown)}
+                      onClick={(e) => {
+                        const opening = !showNationalityDropdown;
+                        setShowNationalityDropdown(opening);
+                        // The panel opens inside the step scroller — bring the
+                        // field to the top so the whole panel is in view.
+                        if (opening) e.currentTarget.scrollIntoView({ block: "start", behavior: "smooth" });
+                      }}
                       className="w-full bg-white/60 border border-slate-200 hover:border-slate-300 rounded-xl px-3.5 py-2.5 text-xs text-slate-700 font-medium flex items-center justify-between transition"
                     >
                       <span>Select Nationalities</span>
@@ -485,7 +499,7 @@ export default function OnboardingSignUp({ onAuthSuccess }: OnboardingSignUpProp
                         </div>
 
                         {/* Complete list of countries with flag emojis inside pop-up */}
-                        <div className="max-h-40 overflow-y-auto space-y-0.5 pr-1">
+                        <div className="max-h-40 overflow-y-auto space-y-0.5 -mx-1.5 px-1.5">
                           {searchCountries(nationalitySearch).map(opt => {
                             const formatted = `${opt.name} ${opt.flag}`;
                             const isSelected = selectedNationalities.includes(formatted);

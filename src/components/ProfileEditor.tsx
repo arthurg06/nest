@@ -478,7 +478,7 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
                 </div>
 
                 {/* Complete list of countries with flag emojis inside pop-up */}
-                <div className="max-h-40 overflow-y-auto space-y-0.5 pr-1">
+                <div className="max-h-40 overflow-y-auto space-y-0.5 -mx-1.5 px-1.5">
                   {searchCountries(nationalitySearch).map(opt => {
                     const formatted = `${opt.name} ${opt.flag}`;
                     const isSelected = selectedNationalities.includes(formatted);

@@ -63,7 +63,7 @@ export default function Communities({ communities, currentUser, onPostToCommunit
           </div>
 
           {/* Communities map */}
-          <div className="space-y-2 mt-4 overflow-y-auto max-h-[360px] select-none">
+          <div className="space-y-2 mt-4 overflow-y-auto max-h-[360px] select-none -mx-2 px-2">
             {communities.map((comm) => {
               const isActive = comm.id === activeCommunityId;
               return (

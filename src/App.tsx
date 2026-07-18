@@ -606,7 +606,7 @@ export default function App() {
                   />
                 </div>
 
-                <div className="space-y-2 mt-4 overflow-y-auto flex-1 select-none pr-1">
+                <div className="space-y-2 mt-4 overflow-y-auto flex-1 select-none -mx-2 px-2">
                   {matches.length > 0 ? (
                     (() => {
                       const filtered = matches.filter(m => 

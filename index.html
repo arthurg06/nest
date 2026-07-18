@@ -3,7 +3,9 @@
   <head>
     <meta charset="UTF-8" />
     <!-- viewport-fit=cover enables safe-area insets on notched devices -->
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <!-- maximum-scale=1 stops iOS from auto-zooming focused inputs; iOS
+         still allows user pinch-zoom regardless of this cap -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, viewport-fit=cover" />
     <title>NEST — Madrid Student Net</title>
     <meta name="description" content="A private club for international women studying in Madrid. Meet friends through shared interests, city spots, and curated outings." />
     <meta name="theme-color" content="#fff0f8" />
