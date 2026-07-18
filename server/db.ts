@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import { normalizeStoredNationalities } from "../shared/countries";
+import { normalizeStoredNationalities } from "../shared/countries.js";
 
 // Vercel's deployment filesystem is read-only; /tmp is the only writable
 // location there (ephemeral — data resets between cold starts). Self-hosted

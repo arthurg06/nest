@@ -6,12 +6,12 @@ import { User, UserProfile, Swipe, Match, Message, Recommendation, Event, EventR
 
 // Note: we can import from "./server/db.ts" but since esbuild bundles it, we can write import with relative path
 // and typescript handles resolution. In Node, with esbuild bundle, we should import './server/db' without extension or let esbuild resolve it.
-import * as dbManager from "./server/db";
-import { calculateCompatibility } from "./shared/compatibility";
-import { hashPassword, verifyPassword, isHashedPassword, generateSessionToken, generateSecureId, sniffImageType } from "./server/security";
-import { RateLimiter } from "./server/rateLimit";
-import { getStripe, isStripeConfigured, isWebhookConfigured, premiumPriceId } from "./server/stripe";
-import { PREMIUM_PLAN, PREMIUM_PRICE_LABEL } from "./shared/subscription";
+import * as dbManager from "./server/db.js";
+import { calculateCompatibility } from "./shared/compatibility.js";
+import { hashPassword, verifyPassword, isHashedPassword, generateSessionToken, generateSecureId, sniffImageType } from "./server/security.js";
+import { RateLimiter } from "./server/rateLimit.js";
+import { getStripe, isStripeConfigured, isWebhookConfigured, premiumPriceId } from "./server/stripe.js";
+import { PREMIUM_PLAN, PREMIUM_PRICE_LABEL } from "./shared/subscription.js";
 
 dotenv.config({ quiet: true });
 
