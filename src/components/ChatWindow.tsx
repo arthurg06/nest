@@ -4,26 +4,28 @@ import { MADRID_MAP_SPOTS } from "../data";
 import Map from "./Map";
 import { Send, MapPin, Calendar, Clock, Smile, Sparkles, AlertCircle, X, Check, ShieldCheck } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
+import { isOwnMessage } from "../lib/chat";
 
 interface ChatWindowProps {
   activeMatch: Match;
   currentUser: UserProfile;
+  currentUserId: string;
   onSendMessage: (matchId: string, text: string, planId?: string) => void;
   onRespondToPlan: (matchId: string, planId: string, status: "accepted" | "declined") => void;
   onSuggestPlan: (matchId: string, plan: Omit<Plan, "id" | "status" | "senderId" | "receiverId">) => void;
   plans: Plan[];
 }
 
-export default function ChatWindow({ 
-  activeMatch, 
-  currentUser, 
-  onSendMessage, 
+export default function ChatWindow({
+  activeMatch,
+  currentUser,
+  currentUserId,
+  onSendMessage,
   onRespondToPlan,
   onSuggestPlan,
-  plans 
+  plans
 }: ChatWindowProps) {
   const [inputText, setInputText] = useState("");
-  const [isTyping, setIsTyping] = useState(false);
   const [showScheduler, setShowScheduler] = useState(false);
   
   // Scheduling state
@@ -39,55 +41,16 @@ export default function ChatWindow({
   // Auto scroll to bottom of chat
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [activeMatch.messages, isTyping]);
+  }, [activeMatch.messages]);
 
-  // Handle Text message send
-  const handleSendText = async (e?: React.FormEvent) => {
+  // Send a message. Messages only ever come from real users — the other
+  // participant replies herself when she is online.
+  const handleSendText = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!inputText.trim()) return;
 
-    const userText = inputText.trim();
+    onSendMessage(activeMatch.id, inputText.trim());
     setInputText("");
-
-    // 1. Send client message
-    onSendMessage(activeMatch.id, userText);
-    
-    // 2. Trigger simulated typing
-    setIsTyping(true);
-
-    try {
-      // Assemble full message logs including the newly sent user message to pass to backend
-      const updatedHistory = [
-        ...activeMatch.messages,
-        { id: `temp-${Date.now()}`, senderId: "me", text: userText, timestamp: new Date().toISOString() }
-      ];
-
-      // 3. Request dynamic server-side Gemini character response
-      const response = await fetch("/api/chat/respond", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          profile: activeMatch.profile,
-          history: updatedHistory
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to reach Gemini proxy");
-      }
-
-      const data = await response.json();
-      
-      // 4. Send matched character's response
-      onSendMessage(activeMatch.id, data.text);
-
-    } catch (err) {
-      console.error("Failed to generate AI chat response:", err);
-      // Fallback response if API key is not configured or fails
-      onSendMessage(activeMatch.id, `Hey girl! Omg, I'm absolutely down for that! Madrid has been amazing. Let's definitely coordinate something soon! 💖`);
-    } finally {
-      setIsTyping(false);
-    }
   };
 
   // Find shared interests with the match
@@ -226,15 +189,17 @@ export default function ChatWindow({
 
             {/* Individual messages mapping */}
             {activeMatch.messages.map((msg) => {
-              const isMe = msg.senderId === "me";
-              
+              const isMe = isOwnMessage(msg.senderId, currentUserId);
+
               // Check if message references a scheduled plan invitation
               const linkedPlan = msg.planId ? plans.find(p => p.id === msg.planId) : null;
 
               return (
-                <div 
-                  key={msg.id} 
+                <div
+                  key={msg.id}
                   id={`chat-msg-${msg.id}`}
+                  role="group"
+                  aria-label={`Message from ${isMe ? "you" : activeMatch.profile.name}`}
                   className={`flex ${isMe ? "justify-end" : "justify-start"} animate-fade-in`}
                 >
                   <div className={`max-w-[80%] flex flex-col ${isMe ? "items-end" : "items-start"}`}>
@@ -295,7 +260,7 @@ export default function ChatWindow({
                             </span>
 
                             {linkedPlan.status === "pending" ? (
-                              linkedPlan.senderId === "me" ? (
+                              isOwnMessage(linkedPlan.senderId, currentUserId) ? (
                                 <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200/50">
                                   Awaiting Reply
                                 </span>
@@ -339,20 +304,6 @@ export default function ChatWindow({
                 </div>
               );
             })}
-
-            {/* Simulated typing indicator */}
-            {isTyping && (
-              <div className="flex justify-start animate-pulse">
-                <div className="bg-white/60 backdrop-blur-sm rounded-2xl rounded-tl-sm px-4 py-2 border border-white/50 flex items-center gap-1.5 text-xs font-sans text-slate-500">
-                  <span className="font-bold text-slate-700">{activeMatch.profile.name}</span> is typing
-                  <span className="flex items-center gap-0.5 mt-0.5">
-                    <span className="w-1 h-1 rounded-full bg-slate-400 animate-bounce delay-0" />
-                    <span className="w-1 h-1 rounded-full bg-slate-400 animate-bounce delay-150" />
-                    <span className="w-1 h-1 rounded-full bg-slate-400 animate-bounce delay-300" />
-                  </span>
-                </div>
-              </div>
-            )}
 
             <div ref={messagesEndRef} />
           </div>

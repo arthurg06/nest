@@ -7,6 +7,7 @@ import { User, UserProfile, Swipe, Match, Message, Recommendation, Event, EventR
 // Note: we can import from "./server/db.ts" but since esbuild bundles it, we can write import with relative path
 // and typescript handles resolution. In Node, with esbuild bundle, we should import './server/db' without extension or let esbuild resolve it.
 import * as dbManager from "./server/db";
+import { calculateCompatibility } from "./shared/compatibility";
 
 dotenv.config({ quiet: true });
 
@@ -473,43 +474,35 @@ app.get("/api/matches", authenticate, (req, res) => {
 
     const myMatches = db.matches.filter(m => m.user1Id === userId || m.user2Id === userId);
 
+    const myProfile = db.profiles.find(p => p.userId === userId);
+
     const matchesList = myMatches.map(m => {
       const otherUserId = m.user1Id === userId ? m.user2Id : m.user1Id;
       const otherProfile = db.profiles.find(p => p.userId === otherUserId);
       const messages = db.messages.filter(msg => msg.matchId === m.id);
 
-      // Simple compatibility calculation based on shared interest overlap
-      let sharedInterests: string[] = [];
-      let sharedLanguages: string[] = [];
-      let explanation = "No matching traits found, but we think you will get along great!";
-
-      const myProfile = db.profiles.find(p => p.userId === userId);
-      if (myProfile && otherProfile) {
-        sharedInterests = myProfile.interests.activities.filter(act => 
-          otherProfile.interests.activities.includes(act)
-        );
-        sharedLanguages = myProfile.languages.filter(l => 
-          otherProfile.languages.includes(l)
-        );
-
-        if (sharedInterests.length > 0) {
-          explanation = `You both love ${sharedInterests.slice(0, 2).join(" and ")}! xx`;
-        } else if (sharedLanguages.length > 0) {
-          explanation = `You both speak ${sharedLanguages.slice(0, 2).join(" and ")}!`;
-        }
-      }
+      // Stable, deterministic score using the same logic as the swipe deck
+      const report = myProfile && otherProfile
+        ? calculateCompatibility(myProfile, otherProfile)
+        : {
+            score: 75,
+            sharedInterests: [] as string[],
+            sharedLanguages: [] as string[],
+            matchingVibes: [] as string[],
+            explanation: "You are both international students in Madrid looking for friendship."
+          };
 
       return {
         id: m.id,
         otherUserId,
         profile: otherProfile,
         messages: messages.sort((a,b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()),
-        compatibilityRating: Math.floor(Math.random() * 20) + 75, // 75-95%
+        compatibilityRating: report.score,
         compatibilityReport: {
-          sharedInterests,
-          sharedLanguages,
-          matchingVibes: otherProfile ? [otherProfile.friendshipType].filter(Boolean) : [],
-          explanation
+          sharedInterests: report.sharedInterests,
+          sharedLanguages: report.sharedLanguages,
+          matchingVibes: report.matchingVibes,
+          explanation: report.explanation
         }
       };
     }).filter(m => m.profile !== undefined); // filter out deleted profiles if any
@@ -765,12 +758,12 @@ app.post("/api/events/:id/rsvp", authenticate, (req, res) => {
       return res.status(404).json({ error: "User not found" });
     }
 
-    // CHECK PREMIUM: "Users cannot RSVP or join any event unless they have an active NEST Premium subscription (€10/month)."
+    // RSVPs require an active NEST Premium membership (server-side entitlement)
     if (!user.isPremium) {
-      return res.status(403).json({ 
+      return res.status(403).json({
         error: "Premium membership required",
         requiresPremium: true,
-        message: "You need an active NEST Premium membership (€10/month) to RSVP to official events. Please join Premium first!" 
+        message: "An active NEST Premium membership is required to RSVP to official events."
       });
     }
 
@@ -807,60 +800,6 @@ app.post("/api/events/:id/rsvp", authenticate, (req, res) => {
 
   } catch (error) {
     res.status(500).json({ error: "Error processing event RSVP" });
-  }
-});
-
-// ----------------------------------------------------
-// SUBSCRIPTION ENDPOINTS (REAL BACKEND STATE)
-// ----------------------------------------------------
-
-app.post("/api/subscription/subscribe", authenticate, (req, res) => {
-  try {
-    const userId = (req as any).userId;
-    const { cardHolder, billingAddress, email } = req.body;
-
-    if (!cardHolder || !billingAddress) {
-      return res.status(400).json({ error: "Cardholder name and billing address are required for active subscription enrollment." });
-    }
-
-    const db = dbManager.readDb();
-    const userIdx = db.users.findIndex(u => u.id === userId);
-
-    if (userIdx === -1) {
-      return res.status(404).json({ error: "User not found" });
-    }
-
-    const profile = db.profiles.find(p => p.userId === userId);
-
-    // Apply real subscription logic
-    db.users[userIdx].isPremium = true;
-    db.users[userIdx].premiumExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(); // 1 month active
-
-    // Send a real receipt confirmation notification
-    db.notifications.push({
-      id: generateId(),
-      userId,
-      text: `🎉 You are now an active NEST Premium member (€10/month)! Thank you for supporting our Madrid student network. Receipt sent to ${email || db.users[userIdx].email}.`,
-      timestamp: new Date().toISOString(),
-      read: false,
-      createdAt: new Date().toISOString()
-    });
-
-    dbManager.writeDb(db);
-
-    res.json({ 
-      success: true, 
-      user: {
-        id: db.users[userIdx].id,
-        email: db.users[userIdx].email,
-        isAdmin: db.users[userIdx].isAdmin,
-        isPremium: db.users[userIdx].isPremium,
-        premiumExpiresAt: db.users[userIdx].premiumExpiresAt
-      }
-    });
-
-  } catch (error) {
-    res.status(500).json({ error: "Error enrolling in Premium subscription" });
   }
 });
 
@@ -1305,8 +1244,9 @@ async function startServer() {
 }
 
 // On Vercel the app runs as a serverless function (see api/index.ts) and
-// static assets are served by the CDN — only self-hosted runs need a listener.
-if (!process.env.VERCEL) {
+// static assets are served by the CDN — only self-hosted runs need a
+// listener. Tests import the app directly via supertest.
+if (!process.env.VERCEL && process.env.NODE_ENV !== "test") {
   startServer();
 }
 

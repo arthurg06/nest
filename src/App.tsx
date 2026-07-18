@@ -301,26 +301,6 @@ export default function App() {
     }
   };
 
-  // Subscribe enrollment on backend
-  const handleSubscribe = async (cardHolder: string, billingAddress: string) => {
-    try {
-      const res = await fetchWithAuth("/api/subscription/subscribe", {
-        method: "POST",
-        body: JSON.stringify({
-          cardHolder,
-          billingAddress,
-          email: currentUser?.email
-        })
-      });
-      if (res.ok) {
-        loadProfile();
-        loadNotifications();
-      }
-    } catch (err) {
-      console.error("Error subscribing:", err);
-    }
-  };
-
   // Admin Outing Creator
   const handleAddEvent = async (title: string, description: string, date: string, time: string, location: string, category: string, price: string, maxParticipants?: number) => {
     try {
@@ -635,9 +615,10 @@ export default function App() {
               {/* RIGHT COLUMN: Chat box messages stages */}
               <div className="md:col-span-8 h-full">
                 {activeMatch ? (
-                  <ChatWindow 
-                    activeMatch={activeMatch} 
-                    currentUser={currentUser} 
+                  <ChatWindow
+                    activeMatch={activeMatch}
+                    currentUser={currentUser}
+                    currentUserId={accountUser?.id || ""}
                     onSendMessage={(mId, txt) => handleSendMessage(mId, txt)}
                     plans={[]}
                     onRespondToPlan={() => {}}
@@ -673,11 +654,10 @@ export default function App() {
           )}
 
           {activeTab === "events" && (
-            <Events 
-              events={events} 
-              onToggleRsvp={handleToggleRsvp} 
+            <Events
+              events={events}
+              onToggleRsvp={handleToggleRsvp}
               isSubscribed={isPremiumActive}
-              onSubscribe={handleSubscribe}
               isAdmin={isAdmin}
               onAddEvent={handleAddEvent}
               onDeleteEvent={handleDeleteEvent}

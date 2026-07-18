@@ -1,22 +1,20 @@
 import React, { useState } from "react";
 import { Event } from "../types";
-import { Calendar, Clock, MapPin, Sparkles, Check, Bookmark, DollarSign, Crown, CreditCard, ShieldCheck, X, Trash2, Plus } from "lucide-react";
+import { Calendar, Clock, MapPin, Sparkles, Check, Bookmark, Crown, X, Trash2, Plus } from "lucide-react";
 
 interface EventsProps {
   events: Event[];
   onToggleRsvp: (eventId: string) => void;
   isSubscribed: boolean;
-  onSubscribe: (cardHolder: string, billingAddress: string) => void;
   onSyncOfficialEvents?: () => void;
   isAdmin: boolean;
   onAddEvent: (title: string, description: string, date: string, time: string, location: string, category: string, price: string, maxParticipants?: number) => void;
   onDeleteEvent?: (id: string) => void;
 }
 
-export default function Events({ events, onToggleRsvp, isSubscribed, onSubscribe, onSyncOfficialEvents, isAdmin, onAddEvent, onDeleteEvent }: EventsProps) {
+export default function Events({ events, onToggleRsvp, isSubscribed, onSyncOfficialEvents, isAdmin, onAddEvent, onDeleteEvent }: EventsProps) {
   const [activeTab, setActiveTab] = React.useState<string>("all");
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
-  const [pendingEventId, setPendingEventId] = useState<string | null>(null);
 
   // Admin form state
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -28,14 +26,6 @@ export default function Events({ events, onToggleRsvp, isSubscribed, onSubscribe
   const [newCategory, setNewCategory] = useState("social");
   const [newPrice, setNewPrice] = useState("Free");
   const [newMaxPart, setNewMaxPart] = useState("");
-
-  // Checkout form states
-  const [cardNumber, setCardNumber] = useState("4000 1234 5678 9010");
-  const [expiry, setExpiry] = useState("12/28");
-  const [cvc, setCvc] = useState("321");
-  const [cardName, setCardName] = useState("");
-  const [isPaying, setIsPaying] = useState(false);
-  const [paymentDone, setPaymentDone] = useState(false);
 
   const categories = [
     { id: "all", label: "All Events" },
@@ -62,30 +52,10 @@ export default function Events({ events, onToggleRsvp, isSubscribed, onSubscribe
 
   const handleRsvpClick = (eventId: string) => {
     if (!isSubscribed) {
-      setPendingEventId(eventId);
       setShowSubscriptionModal(true);
     } else {
       onToggleRsvp(eventId);
     }
-  };
-
-  const handleSubscribeSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsPaying(true);
-    setTimeout(() => {
-      setIsPaying(false);
-      setPaymentDone(true);
-      setTimeout(() => {
-        onSubscribe(cardName || "Maya Sterling", "Calle Gran Via 12, Madrid, ES");
-        setPaymentDone(false);
-        setShowSubscriptionModal(false);
-        // Automatically trigger RSVP for the event they tried to join!
-        if (pendingEventId) {
-          onToggleRsvp(pendingEventId);
-          setPendingEventId(null);
-        }
-      }, 1500);
-    }, 1500);
   };
 
   const handleCreateEventSubmit = (e: React.FormEvent) => {
@@ -142,13 +112,10 @@ export default function Events({ events, onToggleRsvp, isSubscribed, onSubscribe
 
         {!isSubscribed && (
           <button
-            onClick={() => {
-              setPendingEventId(null);
-              setShowSubscriptionModal(true);
-            }}
+            onClick={() => setShowSubscriptionModal(true)}
             className="bg-slate-900 hover:bg-slate-800 text-rose-400 border border-slate-700 font-sans text-xs font-bold px-4 py-2 rounded-xl transition"
           >
-            Join NEST Premium (€10/mo)
+            About NEST Premium
           </button>
         )}
       </div>
@@ -485,121 +452,35 @@ export default function Events({ events, onToggleRsvp, isSubscribed, onSubscribe
               <X size={18} />
             </button>
 
-            {/* Header background with crown logo */}
+            {/* Header */}
             <div className="bg-slate-950 text-white p-6 pb-8 text-center relative overflow-hidden">
-              <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#C85B49_1.5px,transparent_1.5px)] [background-size:16px_16px]" />
-              <Crown className="w-12 h-12 text-amber-400 mx-auto mb-2 animate-pulse" />
-              <h3 className="font-sans font-black text-xl tracking-tight">NEST Premium Gatherings</h3>
-              <p className="text-[10px] text-slate-400 font-mono tracking-widest uppercase mt-1">Unlock Student Outings</p>
-              
-              {/* Cost Badge */}
-              <div className="bg-rose-500 text-white px-3 py-1 rounded-full text-xs font-bold inline-block mt-3 shadow-md border border-rose-400">
-                €10.00 / Month
-              </div>
+              <Crown className="w-12 h-12 text-amber-400 mx-auto mb-2" />
+              <h3 className="font-sans font-black text-xl tracking-tight">NEST Premium</h3>
+              <p className="text-[10px] text-slate-400 font-mono tracking-widest uppercase mt-1">Unlock official outings</p>
             </div>
 
-            {/* Main Details and payment fields */}
+            {/* Membership status — payments are not live yet */}
             <div className="p-6 space-y-5">
-              {!paymentDone ? (
-                <form onSubmit={handleSubscribeSubmit} className="space-y-4">
-                  <div className="bg-rose-50/50 border border-rose-100/50 p-4 rounded-2xl text-slate-600 space-y-1 text-xs">
-                    <p className="font-semibold text-slate-800">Why a subscription?</p>
-                    <p className="text-slate-500 leading-normal">
-                      NEST hosts high-quality, verified safe student social outings, Tapas crawls, Retiro picnics, and fitness clubs. Subscribing secures your credentials, funds host organizers, and keeps the student network safe.
-                    </p>
-                  </div>
+              <div className="bg-rose-50/50 border border-rose-100/50 p-4 rounded-2xl text-slate-600 space-y-1 text-xs">
+                <p className="font-semibold text-slate-800">What Premium includes</p>
+                <p className="text-slate-500 leading-normal">
+                  RSVP access to all official NEST outings — mixers, picnics, study sessions, and wellness meetups curated by the NEST team.
+                </p>
+              </div>
 
-                  {/* Payment Details Form */}
-                  <div className="space-y-3 pt-2">
-                    <div className="flex items-center gap-1.5 text-slate-700 font-sans font-bold text-xs">
-                      <CreditCard size={14} className="text-rose-500" />
-                      <span>Credit Card / Debit Card Details</span>
-                    </div>
+              <div className="bg-amber-50 border border-amber-200 p-4 rounded-2xl text-xs text-amber-800 leading-normal">
+                <p className="font-bold mb-0.5">Premium payments are being configured</p>
+                <p>
+                  Secure checkout is not available yet. Membership will open soon — no payment details are collected in the meantime.
+                </p>
+              </div>
 
-                    {/* Cardholder Name */}
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-mono font-bold text-slate-400 uppercase block">Cardholder Name</label>
-                      <input
-                        type="text"
-                        required
-                        value={cardName}
-                        onChange={(e) => setCardName(e.target.value)}
-                        placeholder="e.g. Maya Sterling"
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-rose-300 placeholder-slate-400"
-                      />
-                    </div>
-
-                    {/* Card Number */}
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-mono font-bold text-slate-400 uppercase block">Card Number</label>
-                      <input
-                        type="text"
-                        required
-                        value={cardNumber}
-                        onChange={(e) => setCardNumber(e.target.value)}
-                        placeholder="4000 1234 5678 9010"
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-rose-300 font-mono"
-                      />
-                    </div>
-
-                    {/* Expiry and CVC */}
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-mono font-bold text-slate-400 uppercase block">Expiry Date</label>
-                        <input
-                          type="text"
-                          required
-                          value={expiry}
-                          onChange={(e) => setExpiry(e.target.value)}
-                          placeholder="MM/YY"
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-rose-300 font-mono"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-mono font-bold text-slate-400 uppercase block">CVV / CVC</label>
-                        <input
-                          type="password"
-                          required
-                          maxLength={3}
-                          value={cvc}
-                          onChange={(e) => setCvc(e.target.value)}
-                          placeholder="***"
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-rose-300 font-mono"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Submit checkout */}
-                  <button
-                    type="submit"
-                    disabled={isPaying}
-                    className="w-full bg-slate-900 hover:bg-slate-800 text-white font-sans text-xs font-bold py-3 rounded-2xl transition shadow-md flex items-center justify-center gap-2 mt-4"
-                  >
-                    {isPaying ? (
-                      <>
-                        <div className="w-4 h-4 rounded-full border-2 border-white/20 border-t-white animate-spin" />
-                        <span>Processing secure transaction...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Crown size={14} className="text-amber-400" />
-                        <span>Subscribe for €10.00/month</span>
-                      </>
-                    )}
-                  </button>
-                </form>
-              ) : (
-                <div className="text-center py-8 space-y-3 animate-fade-in">
-                  <div className="w-14 h-14 bg-emerald-100 rounded-full flex items-center justify-center mx-auto text-emerald-600">
-                    <ShieldCheck size={32} />
-                  </div>
-                  <h4 className="font-sans font-black text-slate-800 text-lg">Payment Confirmed!</h4>
-                  <p className="font-sans text-xs text-slate-500 leading-normal max-w-xs mx-auto">
-                    Your NEST Premium membership is now active. You have been successfully billed €10. You can now RSVP and join all student events!
-                  </p>
-                </div>
-              )}
+              <button
+                onClick={() => setShowSubscriptionModal(false)}
+                className="w-full bg-slate-900 hover:bg-slate-800 text-white font-sans text-xs font-bold py-3 rounded-2xl transition shadow-md"
+              >
+                Got it
+              </button>
             </div>
           </div>
         </div>
