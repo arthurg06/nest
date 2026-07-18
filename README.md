@@ -33,6 +33,9 @@ The server auto-creates an empty `db.json` on first run and migrates older recor
 | Variable | Required | Purpose |
 |---|---|---|
 | `ADMIN_EMAILS` | recommended | Bootstrap: emails granted `role: "admin"` at sign-up/login |
+| `DATABASE_URL` | production | Serverless Postgres (Neon). When set, all data persists across deploys and cold starts; without it, the JSON-file store is used |
+| `BLOB_READ_WRITE_TOKEN` | production | Vercel Blob for uploaded images (persistent, CDN-served); without it, images go to `UPLOAD_DIR` |
+| `DB_SEED` | optional | Base64 bootstrap applied once when the store is empty (see `scripts/make-db-seed.mjs`) |
 | `PORT` | no | Local server port (default 3000) |
 | `STRIPE_SECRET_KEY` | for payments | Stripe secret key (server only) |
 | `STRIPE_PREMIUM_PRICE_ID` | for payments | Recurring €20/month Price ID |
@@ -53,9 +56,17 @@ The server auto-creates an empty `db.json` on first run and migrates older recor
 
 ## Deployment
 
-**Vercel** (configured via `vercel.json`): static frontend from `dist/`, `/api/*` + `/uploads/*` through a serverless Express function, SPA fallback for direct URLs. Import the repo in Vercel, set the environment variables, deploy.
+**Vercel** (configured via `vercel.json`): static frontend from `dist/`, `/api/*` + `/uploads/*` through a serverless Express function (region `fra1`), SPA fallback for direct URLs.
 
-> ⚠️ **Vercel previews are demo environments.** The serverless filesystem is read-only, so the database and uploads live in `/tmp` and **reset between cold starts** — accounts, matches, photos, and Stripe linkage periodically disappear. Request bodies are capped (~4.5 MB), so large photo uploads fail there. Enable Deployment Protection to keep previews private. Real persistence requires the hosted-database migration below.
+**Storage** is selected by environment (`server/storage/`):
+
+- `DATABASE_URL` set → **serverless Postgres (Neon over HTTP)**. Whole-database snapshots are read per request and persisted as row-level diffs (one JSONB row per record, insertion order preserved), so concurrent instances only contend on rows they actually changed. Data survives redeploys and cold starts. An empty store is hydrated **once** from `DB_SEED` — reseeding a live database is impossible by construction.
+- `DATABASE_URL` unset → the historical JSON file (local development, tests, self-hosted). On Vercel without a database this falls back to `/tmp` and **resets between cold starts** (demo behavior).
+- `BLOB_READ_WRITE_TOKEN` set → uploads go to **Vercel Blob** (persistent, CDN-served, absolute URLs); unset → local `UPLOAD_DIR`.
+
+> Request bodies on Vercel are capped (~4.5 MB), so photo uploads near the 8 MB app limit can fail there; a direct client→Blob upload flow is the future fix.
+
+**Self-hosted** (full persistence on disk): `npm run build && npm start` on any Node 20+ host.
 
 **Self-hosted** (full persistence): `npm run build && npm start` on any Node 20+ host with a writable disk.
 
@@ -69,25 +80,27 @@ The server auto-creates an empty `db.json` on first run and migrates older recor
 │                              #   plan, countries dataset, compatibility
 ├── server.ts                  # Express API (auth, verification, matching,
 │                              #   chat, events, admin, Stripe)
-├── server/                    # db schema+migrations, security, rate limit,
-│                              #   stripe client
+├── server/                    # db schema+migrations, storage backends
+│                              #   (Postgres/file + diff engine), images
+│                              #   (Blob/local), security, rate limit, stripe
 ├── api/index.ts               # Vercel serverless entrypoint
-├── scripts/                   # Admin utilities (profile photo assignment)
-├── tests/                     # Vitest + Supertest suites (57 tests)
-└── docs/                      # STRIPE, SECURITY, ADMIN_AND_VERIFICATION, IOS
+├── scripts/                   # Admin utilities (photo assignment, DB seed)
+├── tests/                     # Vitest + Supertest suites
+└── docs/                      # STRIPE, SECURITY, ADMIN_AND_VERIFICATION,
+                               #   IOS, UX_AUDIT, PRODUCT_RESEARCH/ROADMAP
 ```
 
 ## Remaining production blockers
 
-1. **Hosted database + object storage.** `db.json` and local `uploads/` do not scale, have no concurrent-write safety, and are ephemeral on Vercel. Migrate to Postgres (Neon/Supabase) + blob storage before launch; live Stripe billing must wait for this.
+1. **Neon terms acceptance.** The storage layer, Blob store, and seed are live in code; the Postgres resource itself needs a one-time marketplace terms acceptance in the Vercel dashboard, then `vercel integration add neon --plan free --name nest-db` and a redeploy.
 2. **Stripe activation** requires account credentials and dashboard setup (docs/STRIPE.md). Until then Premium is visibly "being configured" and collects nothing.
-3. **Safety features** — reporting, blocking, community standards, privacy controls — are not yet implemented and are required before real users meet through the app (also an App Store requirement).
+3. **Safety features** — reporting, blocking, community standards, privacy controls — are not yet implemented and are required before real users meet through the app (also an App Store requirement). See docs/PRODUCT_ROADMAP.md (B1).
 4. **Email verification / password reset** flows do not exist yet.
 5. Communities and the chat outing-planner remain UI shells (no backend), unchanged from the prototype.
 
 ## Deployment checklist (production)
 
-- [ ] Hosted Postgres + blob storage migration
+- [ ] Neon Postgres provisioned (terms accepted) and `DATABASE_URL` present in all environments
 - [ ] `ADMIN_EMAILS` set; first admin account created and verified
 - [ ] Stripe live keys + webhook + Customer Portal + Apple Pay domain (docs/STRIPE.md)
 - [ ] `APP_BASE_URL` set to the production domain
