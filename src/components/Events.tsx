@@ -182,7 +182,7 @@ export default function Events({ events, onToggleRsvp, isSubscribed, subscriptio
         ) : (
           <button
             onClick={() => setShowSubscriptionModal(true)}
-            className="bg-slate-900 hover:bg-slate-800 text-rose-400 border border-slate-700 font-sans text-xs font-bold px-4 py-2 rounded-xl transition"
+            className="bg-slate-900 hover:bg-slate-800 text-rose-300 border border-slate-700 font-sans text-xs font-bold px-4 py-2 rounded-xl transition shadow-pop"
           >
             Join NEST Premium · {priceLabel}
           </button>
@@ -551,7 +551,7 @@ export default function Events({ events, onToggleRsvp, isSubscribed, subscriptio
                   <button
                     onClick={handleStartCheckout}
                     disabled={isRedirecting}
-                    className="w-full bg-slate-900 hover:bg-slate-800 text-white font-sans text-xs font-bold py-3 rounded-2xl transition shadow-md disabled:opacity-60"
+                    className="w-full bg-slate-900 hover:bg-slate-800 text-white font-sans text-xs font-bold py-3 rounded-2xl transition shadow-pop disabled:opacity-60 disabled:shadow-none"
                   >
                     {isRedirecting ? "Opening secure checkout…" : "Continue to secure checkout"}
                   </button>

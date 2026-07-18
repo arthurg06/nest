@@ -380,7 +380,7 @@ export default function CityDiscovery({
                       className="transition flex items-center gap-1 font-bold text-[10px]"
                       title="Open in Google Maps"
                     >
-                      <span className="bg-rose-50 hover:bg-rose-100 border border-rose-100 px-2 py-0.5 rounded-full text-[9px] text-[#C85B49] flex items-center gap-1 font-extrabold transition">
+                      <span className="bg-rose-50 hover:bg-rose-100 border border-rose-100 px-2 py-0.5 rounded-full text-[9px] text-rose-600 flex items-center gap-1 font-extrabold transition">
                         🗺️ Google Maps ↗
                       </span>
                     </a>

@@ -1,34 +1,224 @@
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;700;800&display=swap');
 @import "tailwindcss";
 
+/* ---------------------------------------------------------------------------
+   NEST design tokens — supplied brand theme (bright, girly, luxurious).
+   Raw values live on :root / .dark; Tailwind consumes them via `@theme
+   inline` below so utilities like bg-background/text-foreground flip with
+   the theme class. Fonts are loaded from index.html (<link>, display=swap).
+
+   Technical corrections vs. the supplied snippet (values preserved):
+   - font tokens exposed as --font-sans/--font-serif/--font-mono (the
+     supplied --color-font-* names would not be consumed by Tailwind)
+   - fallback stacks added to the font tokens
+   - shadow parts composed into a usable `--shadow-pop` token (hard offset,
+     no blur) instead of ineffective --color-shadow-* declarations
+   - dark-mode --font-sans unified to Poppins (supplied Quicksand would
+     change typography between themes with no product reason; documented)
+   - semantic success tokens added for verification status (green must stay
+     distinct from the pink primary)
+--------------------------------------------------------------------------- */
+
+:root {
+  --background: #fff0f8;
+  --foreground: #91185c;
+  --card: #fff7fc;
+  --card-foreground: #91185c;
+  --popover: #fff7fc;
+  --popover-foreground: #91185c;
+  --primary: #e6067a;
+  --primary-foreground: #ffffff;
+  --secondary: #ffd6ff;
+  --secondary-foreground: #91185c;
+  --muted: #ffe3f2;
+  --muted-foreground: #c04283;
+  --accent: #ffc1e3;
+  --accent-foreground: #91185c;
+  --destructive: #d13869;
+  --destructive-foreground: #ffffff;
+  --border: #ffc7e6;
+  --input: #ffd6ff;
+  --ring: #e6067a;
+  --radius: 0.5rem;
+  --chart-1: #e6067a;
+  --chart-2: #c44b97;
+  --chart-3: #9969b6;
+  --chart-4: #7371bf;
+  --chart-5: #5e84ff;
+  --sidebar: #ffedf6;
+  --sidebar-foreground: #91185c;
+  --sidebar-primary: #e6067a;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #ffc1e3;
+  --sidebar-accent-foreground: #91185c;
+  --sidebar-border: #ffddf0;
+  --sidebar-ring: #e6067a;
+  --shadow-color: hsl(330 70% 30% / 0.12);
+
+  /* Verification / success status (distinct from pink primary) */
+  --success: #177a45;
+  --success-foreground: #ffffff;
+  --success-muted: #e2f7eb;
+  --success-border: #b5e6c9;
+
+  --font-sans: "Poppins", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Playfair Display", "Georgia", serif;
+  --font-mono: "Space Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+.dark {
+  --background: #1a0922;
+  --foreground: #ffb3ff;
+  --card: #2a1435;
+  --card-foreground: #ffb3ff;
+  --popover: #2a1435;
+  --popover-foreground: #ffb3ff;
+  --primary: #ff6bef;
+  --primary-foreground: #180518;
+  --secondary: #46204f;
+  --secondary-foreground: #ffb3ff;
+  --muted: #331941;
+  --muted-foreground: #d67ad6;
+  --accent: #5a1f5d;
+  --accent-foreground: #ffb3ff;
+  --destructive: #ff2876;
+  --destructive-foreground: #f9f9f9;
+  --border: #4a1b5f;
+  --input: #46204f;
+  --ring: #ff6bef;
+  --chart-1: #ff6bef;
+  --chart-2: #c359e3;
+  --chart-3: #9161ff;
+  --chart-4: #6f73e2;
+  --chart-5: #547aff;
+  --sidebar: #1c0d25;
+  --sidebar-foreground: #ffb3ff;
+  --sidebar-primary: #ff6bef;
+  --sidebar-primary-foreground: #180518;
+  --sidebar-accent: #5a1f5d;
+  --sidebar-accent-foreground: #ffb3ff;
+  --sidebar-border: #4a1b5f;
+  --sidebar-ring: #ff6bef;
+  --shadow-color: hsl(300 80% 50% / 0.25);
+
+  --success: #3ddc8b;
+  --success-foreground: #06281a;
+  --success-muted: #143526;
+  --success-border: #1e5c40;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-success-muted: var(--success-muted);
+  --color-success-border: var(--success-border);
+
+  --font-sans: var(--font-sans);
+  --font-serif: var(--font-serif);
+  --font-mono: var(--font-mono);
+
+  /* Signature hard shadow: no blur, vertical offset, brand shadow color.
+     Use selectively (primary CTAs, hero cards) via `shadow-pop`. */
+  --shadow-pop: 0px 3px 0px 0px var(--shadow-color);
+  --shadow-pop-lg: 0px 5px 0px 0px var(--shadow-color);
+}
+
+/* ---------------------------------------------------------------------------
+   Legacy utility-scale remaps. The components are written with rose/stone/
+   slate/red utilities; remapping those scales onto the new palette applies
+   the theme cohesively everywhere without a thousand class edits.
+   (Static values — dark mode requires the semantic-token migration.)
+   - rose-*  → primary magenta ramp
+   - stone-* / slate-* → plum-tinted neutrals (text, borders, dark surfaces)
+   - red-*   → destructive berry ramp
+   - amber/emerald stay default (gold premium accents, green success)
+--------------------------------------------------------------------------- */
 @theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
-  /* Editorial serif for headings — the "premium club" voice */
-  --font-display: "Fraunces", "Georgia", serif;
+  --color-rose-50: #ffedf6;
+  --color-rose-100: #ffd9ec;
+  --color-rose-200: #ffc1e3;
+  --color-rose-300: #ff9ed1;
+  --color-rose-400: #f45ba6;
+  --color-rose-500: #e6067a;
+  --color-rose-600: #c40568;
+  --color-rose-700: #a10555;
+  --color-rose-800: #7d0443;
+  --color-rose-900: #5c0332;
 
-  /* Brand raspberry drawn from the official logo. Remapping the rose scale
-     recolors every existing rose-* utility to the calmer, deeper brand tone
-     in one place — less candy-pink, more club. */
-  --color-rose-50: #FBF3F5;
-  --color-rose-100: #F6E4E9;
-  --color-rose-200: #ECC8D2;
-  --color-rose-300: #DFA0B1;
-  --color-rose-400: #CE7089;
-  --color-rose-500: #BD4E6C;
-  --color-rose-600: #A63D59;
-  --color-rose-700: #8A3049;
-  --color-rose-800: #6E2639;
-  --color-rose-900: #521C2B;
+  --color-coral-50: #ffedf6;
+  --color-coral-100: #ffd9ec;
+  --color-coral-200: #ffc1e3;
+  --color-coral-300: #ff9ed1;
+  --color-coral-400: #f45ba6;
+  --color-coral-500: #e6067a;
+  --color-coral-600: #c40568;
+  --color-coral-700: #a10555;
 
-  --color-coral-50: #FBF3F5;
-  --color-coral-100: #F6E4E9;
-  --color-coral-200: #ECC8D2;
-  --color-coral-300: #DFA0B1;
-  --color-coral-400: #CE7089;
-  --color-coral-500: #BD4E6C;
-  --color-coral-600: #A63D59;
-  --color-coral-700: #8A3049;
+  --color-stone-50: #fff7fc;
+  --color-stone-100: #ffe9f5;
+  --color-stone-200: #ffc7e6;
+  --color-stone-300: #f0aad2;
+  --color-stone-400: #bd4585;
+  --color-stone-500: #a83273;
+  --color-stone-600: #962a66;
+  --color-stone-700: #7f1c56;
+  --color-stone-800: #6b1247;
+  --color-stone-900: #570e3a;
+  --color-stone-950: #45082d;
+
+  --color-slate-50: #fff7fc;
+  --color-slate-100: #ffe9f5;
+  --color-slate-200: #ffc7e6;
+  --color-slate-300: #f0aad2;
+  --color-slate-400: #bd4585;
+  --color-slate-500: #a83273;
+  --color-slate-600: #962a66;
+  --color-slate-700: #7f1c56;
+  --color-slate-800: #6b1247;
+  --color-slate-900: #570e3a;
+  --color-slate-950: #45082d;
+
+  --color-red-50: #ffeaf0;
+  --color-red-100: #ffd6e2;
+  --color-red-200: #ffb3c9;
+  --color-red-300: #f78bab;
+  --color-red-400: #e75f8d;
+  --color-red-500: #d13869;
+  --color-red-600: #b52b58;
+  --color-red-700: #971f48;
+  --color-red-800: #7a1739;
+  --color-red-900: #5e102b;
 }
 
 /* Custom CSS Animation Keyframes for High Fidelity UX */
@@ -62,20 +252,26 @@
   animation: scaleUp 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
 
+/* Editorial serif for headings — luxury voice (Playfair Display) */
 .font-display {
-  font-family: var(--font-display);
+  font-family: var(--font-serif);
   font-weight: 600;
   letter-spacing: -0.01em;
 }
 
+html {
+  background-color: var(--background);
+}
+
 body {
   font-family: var(--font-sans);
-  /* Warm ivory canvas with a single whisper of blush — calm and luxurious
-     instead of the previous four-corner pink wash. */
-  background-color: #FAF7F5;
-  background-image: radial-gradient(at 85% -10%, #F6E4E9 0px, transparent 55%);
+  /* Bright blush canvas with soft candy accents */
+  background-color: var(--background);
+  background-image:
+    radial-gradient(at 88% -12%, #ffd6ff 0px, transparent 50%),
+    radial-gradient(at -10% 100%, #ffe3f2 0px, transparent 45%);
   background-repeat: no-repeat;
-  color: #1c1917;
+  color: var(--foreground);
   overflow-x: hidden;
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
@@ -83,17 +279,17 @@ body {
 
 /* Accessible, consistent keyboard focus */
 :focus-visible {
-  outline: 2px solid #BD4E6C;
+  outline: 2px solid var(--ring);
   outline-offset: 2px;
   border-radius: 4px;
 }
 
 ::selection {
-  background: #F6E4E9;
-  color: #521C2B;
+  background: var(--accent);
+  color: var(--accent-foreground);
 }
 
-/* Quiet scrollbars */
+/* Quiet scrollbars in brand tones */
 ::-webkit-scrollbar {
   width: 5px;
   height: 5px;
@@ -104,12 +300,12 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #d6d3d1;
+  background: #f0aad2;
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #a8a29e;
+  background: #e6067a;
 }
 
 /* Respect users who prefer reduced motion */

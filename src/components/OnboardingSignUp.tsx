@@ -305,7 +305,7 @@ export default function OnboardingSignUp({ onAuthSuccess }: OnboardingSignUpProp
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-rose-500 hover:bg-rose-600 disabled:bg-rose-300 text-white font-sans text-xs font-black py-3 rounded-xl transition shadow-lg shadow-rose-200/50 flex items-center justify-center gap-1.5 cursor-pointer"
+                className="w-full bg-rose-500 hover:bg-rose-600 disabled:bg-rose-300 disabled:shadow-none text-white font-sans text-xs font-black py-3 rounded-xl transition shadow-pop flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 {loading ? "Authenticating..." : "Log In to NEST"}
                 <ArrowRight size={13} />
@@ -722,7 +722,7 @@ export default function OnboardingSignUp({ onAuthSuccess }: OnboardingSignUpProp
                 <button
                   type="button"
                   onClick={handleNextStep}
-                  className="bg-slate-900 hover:bg-slate-800 text-rose-400 font-sans text-xs font-black px-5 py-2.5 rounded-xl transition shadow flex items-center gap-1.5 cursor-pointer"
+                  className="bg-slate-900 hover:bg-slate-800 text-rose-300 font-sans text-xs font-black px-5 py-2.5 rounded-xl transition shadow-pop flex items-center gap-1.5 cursor-pointer"
                 >
                   <span>Continue</span>
                   <ArrowRight size={13} />
@@ -732,7 +732,7 @@ export default function OnboardingSignUp({ onAuthSuccess }: OnboardingSignUpProp
                   type="button"
                   onClick={handleSubmitSignUp}
                   disabled={loading}
-                  className="bg-rose-500 hover:bg-rose-600 disabled:bg-rose-300 text-white font-sans text-xs font-black px-6 py-2.5 rounded-xl transition shadow-lg shadow-rose-200/50 flex items-center gap-1.5 cursor-pointer"
+                  className="bg-rose-500 hover:bg-rose-600 disabled:bg-rose-300 disabled:shadow-none text-white font-sans text-xs font-black px-6 py-2.5 rounded-xl transition shadow-pop flex items-center gap-1.5 cursor-pointer"
                 >
                   <ShieldCheck size={14} />
                   <span>{loading ? "Registering account..." : "Complete Student Sign Up"}</span>
