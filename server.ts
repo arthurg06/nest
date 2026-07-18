@@ -8,6 +8,8 @@ import { User, UserProfile, Swipe, Match, Message, Recommendation, Event, EventR
 // and typescript handles resolution. In Node, with esbuild bundle, we should import './server/db' without extension or let esbuild resolve it.
 import * as dbManager from "./server/db";
 import { calculateCompatibility } from "./shared/compatibility";
+import { hashPassword, verifyPassword, isHashedPassword, generateSessionToken, generateSecureId, sniffImageType } from "./server/security";
+import { RateLimiter } from "./server/rateLimit";
 
 dotenv.config({ quiet: true });
 
@@ -29,11 +31,28 @@ const UPLOAD_DIR =
   process.env.UPLOAD_DIR ||
   (process.env.VERCEL ? "/tmp/uploads" : path.join(process.cwd(), "uploads"));
 
-app.use(express.json({ limit: "15mb" }));
+// 12 MB accommodates the 8 MB image cap after base64 encoding (~10.7 MB).
+app.use(express.json({ limit: "12mb" }));
 app.use("/uploads", express.static(UPLOAD_DIR));
 
-// Helper to generate IDs
-const generateId = () => Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+// Cryptographically secure entity IDs
+const generateId = () => generateSecureId();
+
+// ----------------------------------------------------
+// RATE LIMITING (disabled in tests for determinism)
+// ----------------------------------------------------
+const isTestEnv = process.env.NODE_ENV === "test";
+const loginLimiter = new RateLimiter(10, 15 * 60 * 1000);   // 10 attempts / 15 min / IP+email
+const signupLimiter = new RateLimiter(10, 60 * 60 * 1000);  // 10 accounts / hour / IP
+const uploadLimiter = new RateLimiter(30, 60 * 60 * 1000);  // 30 uploads / hour / IP
+
+function clientIp(req: express.Request): string {
+  const forwarded = req.headers["x-forwarded-for"];
+  if (typeof forwarded === "string" && forwarded.length > 0) {
+    return forwarded.split(",")[0].trim();
+  }
+  return req.socket.remoteAddress || "unknown";
+}
 
 // Authentication Middleware
 function authenticate(req: express.Request, res: express.Response, next: express.NextFunction) {
@@ -78,12 +97,20 @@ function authenticateAdmin(req: express.Request, res: express.Response, next: ex
 // ----------------------------------------------------
 
 // Sign Up
-app.post("/api/auth/signup", (req, res) => {
+app.post("/api/auth/signup", async (req, res) => {
   try {
     const { email, password, name, age, nationality, university, currentCity, languages, personalityType, friendshipType, bio, photo, tiktok, instagram, otherSocial, interests } = req.body;
-    
+
     if (!email || !password || !name) {
       return res.status(400).json({ error: "Email, password, and name are required" });
+    }
+
+    if (typeof password !== "string" || password.length < 6) {
+      return res.status(400).json({ error: "Password must be at least 6 characters" });
+    }
+
+    if (!isTestEnv && !signupLimiter.check(clientIp(req))) {
+      return res.status(429).json({ error: "Too many sign-up attempts. Please try again later." });
     }
 
     const db = dbManager.readDb();
@@ -101,7 +128,7 @@ app.post("/api/auth/signup", (req, res) => {
     const newUser: User = {
       id: userId,
       email: email.toLowerCase(),
-      passwordHash: password, // Simple plain text or basic hash for local DB
+      passwordHash: await hashPassword(password),
       isAdmin: isAdmin,
       isPremium: false,
       createdAt: new Date().toISOString()
@@ -142,9 +169,9 @@ app.post("/api/auth/signup", (req, res) => {
     db.profiles.push(newProfile);
 
     // Create session
-    const token = generateId();
+    const token = generateSessionToken();
     const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(); // 30 days
-    
+
     db.sessions.push({
       token,
       userId,
@@ -171,19 +198,29 @@ app.post("/api/auth/signup", (req, res) => {
 });
 
 // Login
-app.post("/api/auth/login", (req, res) => {
+app.post("/api/auth/login", async (req, res) => {
   try {
     const { email, password } = req.body;
-    
+
     if (!email || !password) {
       return res.status(400).json({ error: "Email and password are required" });
+    }
+
+    if (!isTestEnv && !loginLimiter.check(`${clientIp(req)}:${String(email).toLowerCase()}`)) {
+      return res.status(429).json({ error: "Too many login attempts. Please try again in a few minutes." });
     }
 
     const db = dbManager.readDb();
     const user = db.users.find(u => u.email.toLowerCase() === email.toLowerCase());
 
-    if (!user || user.passwordHash !== password) {
+    if (!user || !(await verifyPassword(password, user.passwordHash))) {
       return res.status(401).json({ error: "Invalid email or password" });
+    }
+
+    // Transparent migration: re-hash legacy plain-text records on first
+    // successful login so plain text disappears from the database.
+    if (!isHashedPassword(user.passwordHash)) {
+      user.passwordHash = await hashPassword(password);
     }
 
     const profile = db.profiles.find(p => p.userId === user.id);
@@ -193,10 +230,13 @@ app.post("/api/auth/login", (req, res) => {
       user.isAdmin = true;
     }
 
-    // Create session
-    const token = generateId();
-    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(); // 30 days
-    
+    // Session hygiene: drop expired sessions, then create a fresh one
+    const now = Date.now();
+    db.sessions = db.sessions.filter(s => new Date(s.expiresAt).getTime() > now);
+
+    const token = generateSessionToken();
+    const expiresAt = new Date(now + 30 * 24 * 60 * 60 * 1000).toISOString(); // 30 days
+
     db.sessions.push({
       token,
       userId: user.id,
@@ -316,27 +356,35 @@ app.post("/api/profiles/verify", authenticate, (req, res) => {
   }
 });
 
-// Real Device Image Uploading
+// Image upload. Intentionally unauthenticated because onboarding uploads the
+// profile photo before the account exists; hardened instead with rate
+// limiting, an allowlist, a size cap, content sniffing, and server-generated
+// filenames. A deferred-upload flow (upload after signup) would allow full
+// authentication and is noted in docs/SECURITY.md.
+const ALLOWED_IMAGE_MIME = new Set(["image/png", "image/jpeg", "image/webp"]);
+
 app.post("/api/upload", (req, res) => {
   try {
-    const { fileData, fileName } = req.body;
-    if (!fileData) {
+    if (!isTestEnv && !uploadLimiter.check(clientIp(req))) {
+      return res.status(429).json({ error: "Too many uploads. Please try again later." });
+    }
+
+    const { fileData } = req.body;
+    if (!fileData || typeof fileData !== "string") {
       return res.status(400).json({ error: "Missing file data" });
     }
 
-    // Ensure uploads directory exists
-    const uploadDir = UPLOAD_DIR;
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-
-    // Parse base64
+    // Parse base64 data URL
     const matches = fileData.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
     if (!matches || matches.length !== 3) {
       return res.status(400).json({ error: "Invalid image format" });
     }
 
-    const mimeType = matches[1];
+    const declaredMime = matches[1].toLowerCase();
+    if (!ALLOWED_IMAGE_MIME.has(declaredMime)) {
+      return res.status(400).json({ error: "Only JPEG, PNG, and WEBP images are supported" });
+    }
+
     const buffer = Buffer.from(matches[2], "base64");
 
     // Check size (8MB max)
@@ -344,16 +392,19 @@ app.post("/api/upload", (req, res) => {
       return res.status(400).json({ error: "Image size exceeds the 8MB limit" });
     }
 
-    let ext = "png";
-    if (mimeType === "image/jpeg") ext = "jpg";
-    else if (mimeType === "image/webp") ext = "webp";
-    else if (mimeType === "image/png") ext = "png";
+    // Trust file content, not the declared MIME type
+    const sniffed = sniffImageType(buffer);
+    if (!sniffed) {
+      return res.status(400).json({ error: "File content is not a valid JPEG, PNG, or WEBP image" });
+    }
 
-    const uniqueId = Math.random().toString(36).substring(2, 10);
-    const finalFileName = `${Date.now()}_${uniqueId}.${ext}`;
-    const filePath = path.join(uploadDir, finalFileName);
+    if (!fs.existsSync(UPLOAD_DIR)) {
+      fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+    }
 
-    fs.writeFileSync(filePath, buffer);
+    // Server-generated random filename (no client input in the path)
+    const finalFileName = `${Date.now()}_${generateSecureId()}.${sniffed}`;
+    fs.writeFileSync(path.join(UPLOAD_DIR, finalFileName), buffer);
 
     res.json({ url: `/uploads/${finalFileName}` });
   } catch (error) {
