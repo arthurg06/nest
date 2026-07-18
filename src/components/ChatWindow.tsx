@@ -118,9 +118,9 @@ export default function ChatWindow({
   };
 
   return (
-    <div className="flex flex-col h-full bg-white/40 backdrop-blur-xl rounded-[28px] border border-white/60 shadow-2xl overflow-hidden relative">
+    <div className="flex flex-col h-full bg-card/40 backdrop-blur-xl rounded-[28px] border border-border/60 shadow-2xl overflow-hidden relative">
       {/* Chat Window Header */}
-      <div className="px-5 py-3.5 border-b border-white/30 flex items-center justify-between bg-white/30 shrink-0">
+      <div className="px-5 py-3.5 border-b border-border/30 flex items-center justify-between bg-card/30 shrink-0">
         <div className="flex items-center gap-3">
           {/* Avatar Icon */}
           <div className={`w-10 h-10 rounded-xl bg-gradient-to-tr ${activeMatch.profile.avatarColor} flex items-center justify-center text-white font-extrabold shadow-sm`}>
@@ -128,12 +128,12 @@ export default function ChatWindow({
           </div>
           <div>
             <div className="flex items-center gap-1.5 flex-wrap">
-              <h4 className="font-sans font-bold text-sm text-slate-900 leading-none">
+              <h4 className="font-sans font-bold text-sm text-foreground leading-none">
                 {activeMatch.profile.name}
               </h4>
               <VerifiedBadge profile={activeMatch.profile} />
             </div>
-            <p className="text-[10px] text-slate-400 font-mono leading-tight mt-0.5">
+            <p className="text-[10px] text-muted-foreground font-mono leading-tight mt-0.5">
               {activeMatch.profile.university} • {activeMatch.profile.nationality}
             </p>
           </div>
@@ -150,8 +150,8 @@ export default function ChatWindow({
           }}
           className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl font-sans text-xs font-bold transition-all border ${
             showScheduler 
-              ? "bg-rose-500 text-white border-rose-400 shadow-md shadow-rose-200/45" 
-              : "bg-white/60 text-rose-600 border-white/70 hover:bg-white/80 shadow-sm"
+              ? "bg-primary text-primary-foreground border-rose-400 shadow-md shadow-rose-200/45" 
+              : "bg-card/60 text-primary border-border/70 hover:bg-card/80 shadow-sm"
           }`}
         >
           <Calendar size={13} />
@@ -163,18 +163,18 @@ export default function ChatWindow({
       <div className="flex flex-1 overflow-hidden relative">
         
         {/* TEXT LOG */}
-        <div className="flex-1 flex flex-col justify-between overflow-hidden bg-white/10 backdrop-blur-sm">
+        <div className="flex-1 flex flex-col justify-between overflow-hidden bg-card/10 backdrop-blur-sm">
           <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
             
             {/* Compatibility info card at start of logs */}
-            <div className="bg-rose-50/70 backdrop-blur-md rounded-2xl p-4 border border-rose-100/50 max-w-sm mx-auto text-center space-y-1 shadow-sm">
-              <h5 className="font-sans font-bold text-xs text-rose-600">
+            <div className="bg-accent/70 backdrop-blur-md rounded-2xl p-4 border border-border/50 max-w-sm mx-auto text-center space-y-1 shadow-sm">
+              <h5 className="font-sans font-bold text-xs text-primary">
                 {activeMatch.compatibilityRating}% compatibility
               </h5>
               {sharedInterests.length > 0 && (
-                <p className="font-sans text-[11px] text-slate-500">
+                <p className="font-sans text-[11px] text-muted-foreground">
                   You both love{" "}
-                  <span className="font-semibold text-slate-700">
+                  <span className="font-semibold text-foreground">
                     {sharedInterests.slice(0, 3).join(", ")}
                   </span>
                 </p>
@@ -203,15 +203,15 @@ export default function ChatWindow({
                       <div className={`px-4 py-2.5 rounded-2xl text-xs font-sans shadow-sm leading-relaxed ${
                         isMe 
                           ? "bg-slate-900 text-white rounded-tr-sm" 
-                          : "bg-white/80 backdrop-blur-sm text-slate-800 rounded-tl-sm border border-white/60"
+                          : "bg-card/80 backdrop-blur-sm text-foreground rounded-tl-sm border border-border/60"
                       }`}>
                         {msg.text}
                       </div>
                     ) : (
                       /* PLAN CARD COMPONENT */
-                      <div className="bg-white/70 backdrop-blur-md rounded-2xl border border-white/70 shadow-lg overflow-hidden w-64 md:w-72">
+                      <div className="bg-card/70 backdrop-blur-md rounded-2xl border border-border/70 shadow-lg overflow-hidden w-64 md:w-72">
                         <div className="bg-gradient-to-tr from-rose-400 to-rose-600 text-white p-3.5">
-                          <span className="text-[9px] font-mono uppercase tracking-widest font-extrabold bg-white/20 px-2 py-0.5 rounded-full">
+                          <span className="text-[9px] font-mono uppercase tracking-widest font-extrabold bg-card/20 px-2 py-0.5 rounded-full">
                             ✨ NEST OUTING PROPOSAL
                           </span>
                           <h5 className="font-sans font-black text-sm mt-1.5 leading-tight">
@@ -221,19 +221,19 @@ export default function ChatWindow({
 
                         <div className="p-3.5 space-y-2 text-xs font-sans">
                           {/* DateTime */}
-                          <div className="flex items-center gap-1.5 text-slate-700">
-                            <Clock size={13} className="text-rose-500 shrink-0" />
+                          <div className="flex items-center gap-1.5 text-foreground">
+                            <Clock size={13} className="text-primary shrink-0" />
                             <span className="font-semibold text-[11px]">
                               {linkedPlan.date} @ {linkedPlan.time}
                             </span>
                           </div>
 
                           {/* Location */}
-                          <div className="flex items-start gap-1.5 text-slate-700">
-                            <MapPin size={13} className="text-rose-500 shrink-0 mt-0.5" />
+                          <div className="flex items-start gap-1.5 text-foreground">
+                            <MapPin size={13} className="text-primary shrink-0 mt-0.5" />
                             <div className="leading-tight">
                               <span className="font-bold text-[11px] block">{linkedPlan.locationName}</span>
-                              <span className="text-[9px] text-slate-400 font-mono block mt-0.5">
+                              <span className="text-[9px] text-muted-foreground font-mono block mt-0.5">
                                 {linkedPlan.locationAddress}
                               </span>
                             </div>
@@ -241,15 +241,15 @@ export default function ChatWindow({
 
                           {/* Notes */}
                           {linkedPlan.notes && (
-                            <div className="bg-white/50 rounded-xl p-2.5 text-[10px] text-slate-600 border border-white/40">
-                              <span className="font-bold text-slate-500 block mb-0.5">Notes:</span>
+                            <div className="bg-card/50 rounded-xl p-2.5 text-[10px] text-muted-foreground border border-border/40">
+                              <span className="font-bold text-muted-foreground block mb-0.5">Notes:</span>
                               "{linkedPlan.notes}"
                             </div>
                           )}
 
                           {/* STATUS LABELS */}
-                          <div className="pt-2.5 border-t border-white/30 flex items-center justify-between">
-                            <span className="text-[9px] font-mono uppercase tracking-wider font-extrabold text-slate-400">
+                          <div className="pt-2.5 border-t border-border/30 flex items-center justify-between">
+                            <span className="text-[9px] font-mono uppercase tracking-wider font-extrabold text-muted-foreground">
                               Status:
                             </span>
 
@@ -262,7 +262,7 @@ export default function ChatWindow({
                                 <div className="flex gap-1.5">
                                   <button
                                     onClick={() => onRespondToPlan(activeMatch.id, linkedPlan.id, "declined")}
-                                    className="p-1 rounded-full bg-white/60 text-slate-500 hover:bg-white/80 border border-white/40 transition shadow-sm"
+                                    className="p-1 rounded-full bg-card/60 text-muted-foreground hover:bg-card/80 border border-border/40 transition shadow-sm"
                                   >
                                     <X size={14} />
                                   </button>
@@ -281,7 +281,7 @@ export default function ChatWindow({
                                 <span>Accepted!</span>
                               </span>
                             ) : (
-                              <span className="text-[10px] font-bold text-slate-500 bg-white/50 px-2.5 py-0.5 rounded-full border border-white/40">
+                              <span className="text-[10px] font-bold text-muted-foreground bg-card/50 px-2.5 py-0.5 rounded-full border border-border/40">
                                 Declined
                               </span>
                             )}
@@ -291,7 +291,7 @@ export default function ChatWindow({
                     )}
 
                     {/* Timestamp label */}
-                    <span className="text-[9px] text-slate-400 font-mono mt-1 px-1">
+                    <span className="text-[9px] text-muted-foreground font-mono mt-1 px-1">
                       {msg.timestamp}
                     </span>
                   </div>
@@ -304,7 +304,7 @@ export default function ChatWindow({
 
           {/* Quick replies suggestion bar */}
           {activeMatch.messages.length === 0 && (
-            <div className="px-5 py-2.5 border-t border-white/20 flex gap-2 overflow-x-auto select-none grow-0 shrink-0">
+            <div className="px-5 py-2.5 border-t border-border/20 flex gap-2 overflow-x-auto select-none grow-0 shrink-0">
               {[
                 "Hola! How's Madrid treating you?",
                 "Coffee this week?",
@@ -313,7 +313,7 @@ export default function ChatWindow({
                 <button
                   key={suggestion}
                   onClick={() => setInputText(suggestion)}
-                  className="px-3 py-1.5 rounded-full border border-stone-200 text-[11px] font-sans font-bold text-stone-600 bg-white hover:bg-stone-50 whitespace-nowrap shrink-0 transition"
+                  className="px-3 py-1.5 rounded-full border border-border text-[11px] font-sans font-bold text-muted-foreground bg-card hover:bg-card whitespace-nowrap shrink-0 transition"
                 >
                   {suggestion}
                 </button>
@@ -322,17 +322,17 @@ export default function ChatWindow({
           )}
 
           {/* Message input field */}
-          <form onSubmit={handleSendText} className="px-5 py-3.5 border-t border-white/30 flex items-center gap-2 bg-white/30 backdrop-blur-md grow-0 shrink-0">
+          <form onSubmit={handleSendText} className="px-5 py-3.5 border-t border-border/30 flex items-center gap-2 bg-card/30 backdrop-blur-md grow-0 shrink-0">
             <input
               type="text"
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               placeholder={`Text ${activeMatch.profile.name.split(" ")[0]}...`}
-              className="flex-1 bg-white/40 border border-white/50 rounded-xl px-4 py-2 text-xs font-sans text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-rose-300"
+              className="flex-1 bg-card/40 border border-border/50 rounded-xl px-4 py-2 text-xs font-sans text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             />
             <button
               type="submit"
-              className="p-2.5 bg-rose-500 text-white rounded-xl hover:bg-rose-600 transition active:scale-95 shrink-0 shadow-md shadow-rose-200/50"
+              className="p-2.5 bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 transition active:scale-95 shrink-0 shadow-md shadow-rose-200/50"
             >
               <Send size={15} />
             </button>
@@ -347,19 +347,19 @@ export default function ChatWindow({
               animate={{ x: 0, opacity: 1 }}
               exit={{ x: 400, opacity: 0 }}
               transition={{ duration: 0.25, ease: "easeOut" }}
-              className="absolute md:relative inset-y-0 right-0 w-full md:w-[380px] bg-white/75 backdrop-blur-xl border-l border-white/40 flex flex-col z-15 shadow-2xl md:shadow-none overflow-hidden"
+              className="absolute md:relative inset-y-0 right-0 w-full md:w-[380px] bg-card/75 backdrop-blur-xl border-l border-border/40 flex flex-col z-15 shadow-2xl md:shadow-none overflow-hidden"
             >
               {/* Scheduler Header */}
-              <div className="px-4 py-3 border-b border-white/30 bg-white/30 flex items-center justify-between shrink-0">
+              <div className="px-4 py-3 border-b border-border/30 bg-card/30 flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-1.5">
-                  <Sparkles size={14} className="text-rose-500" />
-                  <span className="font-sans font-black text-xs text-slate-800 uppercase tracking-wider">
+                  <Sparkles size={14} className="text-primary" />
+                  <span className="font-sans font-black text-xs text-foreground uppercase tracking-wider">
                     Outing Planner
                   </span>
                 </div>
                 <button
                   onClick={() => setShowScheduler(false)}
-                  className="p-1 rounded-full hover:bg-white/40 text-slate-400"
+                  className="p-1 rounded-full hover:bg-card/40 text-muted-foreground"
                 >
                   <X size={16} />
                 </button>
@@ -370,7 +370,7 @@ export default function ChatWindow({
                 
                 {/* 1. Map selection */}
                 <div className="space-y-1.5">
-                  <label className="text-[10px] uppercase font-mono font-black text-slate-400 tracking-widest block">
+                  <label className="text-[10px] uppercase font-mono font-black text-muted-foreground tracking-widest block">
                     1. Select venue on Madrid Map
                   </label>
                   
@@ -383,7 +383,7 @@ export default function ChatWindow({
                   
                   {/* Suggestions Carousel based on interests */}
                   <div className="pt-2">
-                    <span className="text-[9px] font-sans font-bold text-rose-600 block mb-1">
+                    <span className="text-[9px] font-sans font-bold text-primary block mb-1">
                       📍 Suggested Venues Based on your Shared Interests:
                     </span>
                     <div className="flex gap-1.5 overflow-x-auto pb-1">
@@ -395,7 +395,7 @@ export default function ChatWindow({
                           className={`px-2.5 py-1 rounded-lg border text-[10px] font-sans font-bold transition whitespace-nowrap shrink-0 ${
                             selectedSpot?.id === spot.id
                               ? "bg-slate-900 text-white border-slate-900 shadow-sm"
-                              : "bg-rose-50/50 text-rose-600 border-rose-200/50 hover:bg-rose-100/30"
+                              : "bg-accent/50 text-primary border-border/50 hover:bg-accent/30"
                           }`}
                         >
                           {spot.name}
@@ -407,10 +407,10 @@ export default function ChatWindow({
 
                 {/* Selected spot details */}
                 {selectedSpot && (
-                  <div className="bg-white/50 backdrop-blur-sm rounded-xl p-3 border border-white/55 text-xs shadow-sm">
-                    <div className="font-bold text-slate-800 mb-0.5">📍 {selectedSpot.name}</div>
-                    <div className="text-[10px] text-slate-400 font-mono mb-1">{selectedSpot.address}</div>
-                    <div className="text-[10px] text-slate-500 leading-normal bg-white/40 p-1.5 rounded border border-white/50">
+                  <div className="bg-card/50 backdrop-blur-sm rounded-xl p-3 border border-border/55 text-xs shadow-sm">
+                    <div className="font-bold text-foreground mb-0.5">📍 {selectedSpot.name}</div>
+                    <div className="text-[10px] text-muted-foreground font-mono mb-1">{selectedSpot.address}</div>
+                    <div className="text-[10px] text-muted-foreground leading-normal bg-card/40 p-1.5 rounded border border-border/50">
                       Best for: {selectedSpot.bestFor.join(", ")}
                     </div>
                   </div>
@@ -418,60 +418,60 @@ export default function ChatWindow({
 
                 {/* Outing info */}
                 <div className="space-y-3 pt-2">
-                  <label className="text-[10px] uppercase font-mono font-black text-slate-400 tracking-widest block">
+                  <label className="text-[10px] uppercase font-mono font-black text-muted-foreground tracking-widest block">
                     2. Proposal Details
                   </label>
 
                   {/* Outing Title */}
                   <div className="space-y-1">
-                    <span className="text-[10px] font-sans font-bold text-slate-600 block">Outing Title</span>
+                    <span className="text-[10px] font-sans font-bold text-muted-foreground block">Outing Title</span>
                     <input
                       type="text"
                       value={planTitle}
                       onChange={(e) => setPlanTitle(e.target.value)}
                       placeholder="e.g. Sourdough pastries & study session!"
-                      className="w-full bg-white/50 border border-white/50 rounded-lg px-3 py-1.5 text-xs font-sans text-slate-800 focus:outline-none focus:ring-1 focus:ring-rose-400"
+                      className="w-full bg-card/50 border border-border/50 rounded-lg px-3 py-1.5 text-xs font-sans text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                     />
                   </div>
 
                   {/* Date & Time Row */}
                   <div className="grid grid-cols-2 gap-2">
                     <div className="space-y-1">
-                      <span className="text-[10px] font-sans font-bold text-slate-600 block">Date</span>
+                      <span className="text-[10px] font-sans font-bold text-muted-foreground block">Date</span>
                       <input
                         type="date"
                         value={planDate}
                         onChange={(e) => setPlanDate(e.target.value)}
-                        className="w-full bg-white/50 border border-white/50 rounded-lg px-3 py-1.5 text-xs font-sans text-slate-800 focus:outline-none focus:ring-1 focus:ring-rose-400"
+                        className="w-full bg-card/50 border border-border/50 rounded-lg px-3 py-1.5 text-xs font-sans text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                       />
                     </div>
                     <div className="space-y-1">
-                      <span className="text-[10px] font-sans font-bold text-slate-600 block">Time</span>
+                      <span className="text-[10px] font-sans font-bold text-muted-foreground block">Time</span>
                       <input
                         type="time"
                         value={planTime}
                         onChange={(e) => setPlanTime(e.target.value)}
-                        className="w-full bg-white/50 border border-white/50 rounded-lg px-3 py-1.5 text-xs font-sans text-slate-800 focus:outline-none focus:ring-1 focus:ring-rose-400"
+                        className="w-full bg-card/50 border border-border/50 rounded-lg px-3 py-1.5 text-xs font-sans text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                       />
                     </div>
                   </div>
 
                   {/* Notes */}
                   <div className="space-y-1">
-                    <span className="text-[10px] font-sans font-bold text-slate-600 block">Add a cute message</span>
+                    <span className="text-[10px] font-sans font-bold text-muted-foreground block">Add a cute message</span>
                     <textarea
                       value={planNotes}
                       onChange={(e) => setPlanNotes(e.target.value)}
                       placeholder="e.g. Let's do some pilates first and then treat ourselves! What do you think?"
                       rows={2}
-                      className="w-full bg-white/50 border border-white/50 rounded-lg p-2 text-xs font-sans text-slate-800 focus:outline-none focus:ring-1 focus:ring-rose-400 resize-none"
+                      className="w-full bg-card/50 border border-border/50 rounded-lg p-2 text-xs font-sans text-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-none"
                     />
                   </div>
                 </div>
 
                 {/* Error Box */}
                 {schedulerError && (
-                  <div className="bg-rose-50 text-rose-700 p-2.5 rounded-lg border border-rose-100 flex items-start gap-1.5 text-[10px] font-sans">
+                  <div className="bg-accent/30 text-primary p-2.5 rounded-lg border border-border/70 flex items-start gap-1.5 text-[10px] font-sans">
                     <AlertCircle size={14} className="shrink-0 mt-0.5" />
                     <span>{schedulerError}</span>
                   </div>
@@ -480,7 +480,7 @@ export default function ChatWindow({
                 {/* Submit Outing */}
                 <button
                   type="submit"
-                  className="w-full py-2.5 bg-rose-500 text-white font-sans text-xs font-bold rounded-xl shadow-lg shadow-rose-200/50 hover:bg-rose-600 transition flex items-center justify-center gap-1.5 mt-2"
+                  className="w-full py-2.5 bg-primary text-primary-foreground font-sans text-xs font-bold rounded-xl shadow-lg shadow-rose-200/50 hover:bg-primary/90 transition flex items-center justify-center gap-1.5 mt-2"
                 >
                   <Calendar size={14} />
                   <span>Send Outing Proposal</span>

@@ -3,6 +3,7 @@ import { UserProfile, Interests } from "../types";
 import { PREDEFINED_INTEREST_OPTIONS } from "../data";
 import { ShieldCheck, User, Sparkles, Languages, Check, Mail, Upload, FileText, Globe, Search, Trash2, Edit, MapPin, ExternalLink, ShieldAlert } from "lucide-react";
 import { ImageUploader } from "./ImageUploader";
+import { ThemeToggle } from "./ThemeToggle";
 import { searchCountries } from "../../shared/countries";
 import { apiUrl } from "../lib/api";
 import VerifiedBadge from "./VerifiedBadge";
@@ -351,7 +352,7 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
         <div className={`p-4 rounded-2xl border text-xs font-sans font-bold shadow-lg animate-fade-in flex items-center justify-between ${
           toast.type === "success"
             ? "bg-emerald-500/90 backdrop-blur-md border-emerald-400 text-white"
-            : "bg-rose-500/90 backdrop-blur-md border-rose-400 text-white"
+            : "bg-primary/90 backdrop-blur-md border-ring text-primary-foreground"
         }`}>
           <span>{toast.message}</span>
           <button onClick={() => setToast({ message: "", type: null })} className="text-white hover:opacity-80 text-sm font-extrabold px-1.5 py-0.5">✕</button>
@@ -361,12 +362,12 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
       {/* Title — own identity row with verification badge beside the name */}
       <div className="animate-fade-in">
         <div className="flex items-center gap-2.5 flex-wrap">
-          <h2 className="font-display text-3xl text-slate-900">
+          <h2 className="font-display text-3xl text-foreground">
             Your profile
           </h2>
           <VerifiedBadge profile={currentUser} />
         </div>
-        <p className="font-sans text-xs text-slate-500 mt-1">
+        <p className="font-sans text-xs text-muted-foreground mt-1">
           What you share here shapes your matches.
         </p>
       </div>
@@ -374,16 +375,16 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
       <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-start">
         
         {/* LEFT COLUMN: Main Form details */}
-        <div className="md:col-span-8 space-y-6 bg-white/40 backdrop-blur-xl p-5 md:p-6 rounded-[28px] border border-white/60 shadow-xl animate-fade-in">
+        <div className="md:col-span-8 space-y-6 bg-card/40 backdrop-blur-xl p-5 md:p-6 rounded-[28px] border border-border/60 shadow-xl animate-fade-in">
           
-          <div className="border-b border-white/30 pb-3 flex items-center gap-1.5 text-slate-800">
-            <User size={16} className="text-rose-500" />
+          <div className="border-b border-border/30 pb-3 flex items-center gap-1.5 text-foreground">
+            <User size={16} className="text-primary" />
             <h3 className="font-sans font-bold text-sm">Primary Information</h3>
           </div>
 
           {/* Profile Photo selector */}
-          <div className="space-y-3 bg-rose-50/50 p-4 rounded-2xl border border-rose-100/50">
-            <span className="text-[10px] font-sans font-extrabold text-slate-500 uppercase tracking-wider block">
+          <div className="space-y-3 bg-accent/50 p-4 rounded-2xl border border-border/50">
+            <span className="text-[10px] font-sans font-extrabold text-muted-foreground uppercase tracking-wider block">
               Profile Portrait Photo (Mandatory) 📸
             </span>
             <div className="max-w-md">
@@ -399,30 +400,30 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Name */}
             <div className="space-y-1">
-              <span className="text-[10px] font-sans font-extrabold text-slate-500 block">Your Name</span>
+              <span className="text-[10px] font-sans font-extrabold text-muted-foreground block">Your Name</span>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full bg-white/40 border border-white/50 rounded-xl px-3.5 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-rose-300"
+                className="w-full bg-card/40 border border-border/50 rounded-xl px-3.5 py-2 text-xs text-foreground placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
               />
             </div>
 
             {/* Age */}
             <div className="space-y-1">
-              <span className="text-[10px] font-sans font-extrabold text-rose-500 block">Your Age</span>
+              <span className="text-[10px] font-sans font-extrabold text-primary block">Your Age</span>
               <input
                 type="number"
                 value={age}
                 onChange={(e) => setAge(Number(e.target.value))}
-                className="w-full bg-white/40 border border-white/50 rounded-xl px-3.5 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-rose-300"
+                className="w-full bg-card/40 border border-border/50 rounded-xl px-3.5 py-2 text-xs text-foreground placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
               />
             </div>
           </div>
 
           {/* Multiple Nationalities Selector */}
-          <div className="space-y-2 bg-white/30 p-4 rounded-2xl border border-white/40 relative">
-            <span className="text-[10px] font-sans font-extrabold text-slate-500 uppercase tracking-wider block">
+          <div className="space-y-2 bg-card/30 p-4 rounded-2xl border border-border/40 relative">
+            <span className="text-[10px] font-sans font-extrabold text-muted-foreground uppercase tracking-wider block">
               Nationalities 🗺️
             </span>
             
@@ -430,10 +431,10 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
             <button
               type="button"
               onClick={() => setShowNationalityDropdown(!showNationalityDropdown)}
-              className="w-full bg-white/60 border border-slate-200 hover:border-slate-300 rounded-xl px-3.5 py-2.5 text-xs text-slate-700 font-medium flex items-center justify-between transition"
+              className="w-full bg-card/60 border border-border hover:border-border rounded-xl px-3.5 py-2.5 text-xs text-foreground font-medium flex items-center justify-between transition"
             >
               <span>Select Nationalities</span>
-              <Globe size={14} className="text-slate-400" />
+              <Globe size={14} className="text-muted-foreground" />
             </button>
 
             {/* Selected Nationalities badges */}
@@ -450,16 +451,16 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
 
             {/* Searchable Pop-up / Modal / Dropdown */}
             {showNationalityDropdown && (
-              <div className="absolute z-30 left-4 right-4 mt-1 bg-white border border-slate-200 rounded-2xl shadow-xl p-3.5 space-y-2 animate-fade-in">
-                <div className="flex items-center justify-between pb-1.5 border-b border-slate-100">
-                  <span className="text-[10px] font-mono font-bold text-slate-400 uppercase">Search Countries</span>
+              <div className="absolute z-30 left-4 right-4 mt-1 bg-card border border-border rounded-2xl shadow-xl p-3.5 space-y-2 animate-fade-in">
+                <div className="flex items-center justify-between pb-1.5 border-b border-border/60">
+                  <span className="text-[10px] font-mono font-bold text-muted-foreground uppercase">Search Countries</span>
                   <button
                     type="button"
                     onClick={() => {
                       setShowNationalityDropdown(false);
                       setNationalitySearch("");
                     }}
-                    className="text-[10px] font-extrabold text-rose-500 hover:text-rose-600 uppercase"
+                    className="text-[10px] font-extrabold text-primary hover:text-primary uppercase"
                   >
                     Close
                   </button>
@@ -472,9 +473,9 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
                     placeholder="Type to search country..."
                     value={nationalitySearch}
                     onChange={(e) => setNationalitySearch(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-2.5 py-1.5 text-xs focus:outline-none"
+                    className="w-full bg-card border border-border rounded-lg pl-8 pr-2.5 py-1.5 text-xs focus:outline-none"
                   />
-                  <Search size={12} className="text-slate-400 absolute left-2.5 top-2.5" />
+                  <Search size={12} className="text-muted-foreground absolute left-2.5 top-2.5" />
                 </div>
 
                 {/* Complete list of countries with flag emojis inside pop-up */}
@@ -495,15 +496,15 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
                         }}
                         className={`w-full text-left py-1.5 px-2.5 rounded-lg text-xs font-medium flex items-center justify-between transition ${
                           isSelected 
-                            ? "bg-rose-50 text-rose-600 font-bold" 
-                            : "hover:bg-slate-50 text-slate-700"
+                            ? "bg-accent/30 text-primary font-bold" 
+                            : "hover:bg-muted/60 text-foreground"
                         }`}
                       >
                         <span className="flex items-center gap-1.5">
                           <span>{opt.flag}</span>
                           <span>{opt.name}</span>
                         </span>
-                        {isSelected && <Check size={12} className="text-rose-500" />}
+                        {isSelected && <Check size={12} className="text-primary" />}
                       </button>
                     );
                   })}
@@ -515,19 +516,19 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
           <div className="grid grid-cols-1 gap-4">
             {/* University */}
             <div className="space-y-1">
-              <span className="text-[10px] font-sans font-extrabold text-slate-500 block">University in Madrid</span>
+              <span className="text-[10px] font-sans font-extrabold text-muted-foreground block">University in Madrid</span>
               <input
                 type="text"
                 value={university}
                 onChange={(e) => setUniversity(e.target.value)}
                 placeholder="e.g. IE University, Complutense"
-                className="w-full bg-white/40 border border-white/50 rounded-xl px-3.5 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-rose-300"
+                className="w-full bg-card/40 border border-border/50 rounded-xl px-3.5 py-2 text-xs text-foreground placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
               />
             </div>
 
             {/* Languages you speak & fluency level builder */}
-            <div className="space-y-2 bg-rose-50/30 p-4 rounded-2xl border border-rose-100/40">
-              <span className="text-[10px] font-sans font-extrabold text-slate-500 uppercase tracking-wider block">
+            <div className="space-y-2 bg-accent/30 p-4 rounded-2xl border border-border/40">
+              <span className="text-[10px] font-sans font-extrabold text-muted-foreground uppercase tracking-wider block">
                 Languages you speak & Fluency Levels 🗣️
               </span>
 
@@ -535,14 +536,14 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
               {languagesList.length > 0 ? (
                 <div className="flex flex-wrap gap-1.5 mb-2">
                   {languagesList.map(item => (
-                    <span key={item} className="bg-rose-500 text-white font-sans text-[10px] font-black px-2.5 py-1 rounded-full flex items-center gap-1 shadow-sm">
+                    <span key={item} className="bg-primary text-primary-foreground font-sans text-[10px] font-black px-2.5 py-1 rounded-full flex items-center gap-1 shadow-sm">
                       <span>{item}</span>
                       <button type="button" onClick={() => handleRemoveLanguage(item)} className="text-white hover:opacity-80 font-extrabold text-[9px] ml-1">✕</button>
                     </span>
                   ))}
                 </div>
               ) : (
-                <span className="text-[10px] text-slate-400 font-sans italic block mb-2">No languages added yet. Add at least one!</span>
+                <span className="text-[10px] text-muted-foreground font-sans italic block mb-2">No languages added yet. Add at least one!</span>
               )}
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
@@ -553,7 +554,7 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
                     setSelectedLanguage(e.target.value);
                     setCustomLanguage("");
                   }}
-                  className="bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-xs text-slate-800 focus:outline-none"
+                  className="bg-card border border-border rounded-lg px-2 py-1.5 text-xs text-foreground focus:outline-none"
                 >
                   {COMMON_LANGUAGES.map(lang => (
                     <option key={lang} value={lang}>{lang}</option>
@@ -564,7 +565,7 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
                 <select
                   value={selectedFluency}
                   onChange={(e) => setSelectedFluency(e.target.value)}
-                  className="bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-xs text-slate-800 focus:outline-none"
+                  className="bg-card border border-border rounded-lg px-2 py-1.5 text-xs text-foreground focus:outline-none"
                 >
                   {FLUENCY_LEVELS.map(f => (
                     <option key={f} value={f}>{f}</option>
@@ -575,7 +576,7 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
                 <button
                   type="button"
                   onClick={handleAddLanguage}
-                  className="bg-rose-500 text-white font-sans text-xs font-bold px-2 py-1.5 rounded-lg hover:bg-rose-600 transition"
+                  className="bg-primary text-primary-foreground font-sans text-xs font-bold px-2 py-1.5 rounded-lg hover:bg-primary/90 transition"
                 >
                   ＋ Add Language
                 </button>
@@ -587,20 +588,20 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
                 placeholder="Or type custom language (e.g. Swedish)..."
                 value={customLanguage}
                 onChange={(e) => setCustomLanguage(e.target.value)}
-                className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-[10px] text-slate-800 mt-1.5 focus:outline-none"
+                className="w-full bg-card border border-border rounded-lg px-2.5 py-1.5 text-[10px] text-foreground mt-1.5 focus:outline-none"
               />
             </div>
           </div>
 
           {/* Friendship style */}
           <div className="space-y-1">
-            <span className="text-[10px] font-sans font-extrabold text-slate-500 block">Friendship style you're looking for</span>
+            <span className="text-[10px] font-sans font-extrabold text-muted-foreground block">Friendship style you're looking for</span>
             <input
               type="text"
               value={friendshipType}
               onChange={(e) => setFriendshipType(e.target.value)}
               placeholder="e.g. Travel companion, pilates & brunch buddy"
-              className="w-full bg-white/40 border border-white/50 rounded-xl px-3.5 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-rose-300"
+              className="w-full bg-card/40 border border-border/50 rounded-xl px-3.5 py-2 text-xs text-foreground placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
             />
           </div>
 
@@ -608,30 +609,30 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* TikTok Handle */}
             <div className="space-y-1">
-              <span className="text-[10px] font-sans font-extrabold text-slate-500 block">TikTok Handle (Optional) 🎵</span>
+              <span className="text-[10px] font-sans font-extrabold text-muted-foreground block">TikTok Handle (Optional) 🎵</span>
               <div className="relative">
-                <span className="absolute left-3.5 top-2 text-xs text-slate-400 font-bold">@</span>
+                <span className="absolute left-3.5 top-2 text-xs text-muted-foreground font-bold">@</span>
                 <input
                   type="text"
                   placeholder="username"
                   value={tiktok}
                   onChange={(e) => setTiktok(e.target.value)}
-                  className="w-full bg-white/40 border border-white/50 rounded-xl pl-8 pr-3.5 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-rose-300"
+                  className="w-full bg-card/40 border border-border/50 rounded-xl pl-8 pr-3.5 py-2 text-xs text-foreground placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                 />
               </div>
             </div>
 
             {/* Instagram Handle */}
             <div className="space-y-1">
-              <span className="text-[10px] font-sans font-extrabold text-slate-500 block">Instagram Handle (Optional) 📸</span>
+              <span className="text-[10px] font-sans font-extrabold text-muted-foreground block">Instagram Handle (Optional) 📸</span>
               <div className="relative">
-                <span className="absolute left-3.5 top-2 text-xs text-slate-400 font-bold">@</span>
+                <span className="absolute left-3.5 top-2 text-xs text-muted-foreground font-bold">@</span>
                 <input
                   type="text"
                   placeholder="username"
                   value={instagram}
                   onChange={(e) => setInstagram(e.target.value)}
-                  className="w-full bg-white/40 border border-white/50 rounded-xl pl-8 pr-3.5 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-rose-300"
+                  className="w-full bg-card/40 border border-border/50 rounded-xl pl-8 pr-3.5 py-2 text-xs text-foreground placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                 />
               </div>
             </div>
@@ -639,39 +640,39 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
 
           {/* Other Social Handles */}
           <div className="space-y-1">
-            <span className="text-[10px] font-sans font-extrabold text-slate-500 block">Other Social Handles (Optional, e.g. Snapchat, Twitter) 🔗</span>
+            <span className="text-[10px] font-sans font-extrabold text-muted-foreground block">Other Social Handles (Optional, e.g. Snapchat, Twitter) 🔗</span>
             <input
               type="text"
               placeholder="e.g. Snapchat: maya_madrid"
               value={otherSocial}
               onChange={(e) => setOtherSocial(e.target.value)}
-              className="w-full bg-white/40 border border-white/50 rounded-xl px-3.5 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-rose-300"
+              className="w-full bg-card/40 border border-border/50 rounded-xl px-3.5 py-2 text-xs text-foreground placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
             />
           </div>
 
           {/* Bio */}
           <div className="space-y-1">
-            <span className="text-[10px] font-sans font-extrabold text-slate-500 block">Introduce yourself! (Bio)</span>
+            <span className="text-[10px] font-sans font-extrabold text-muted-foreground block">Introduce yourself! (Bio)</span>
             <textarea
               value={bio}
               onChange={(e) => setBio(e.target.value)}
               rows={3}
               placeholder="Tell girls who you are, when you're moving, what you love to do etc..."
-              className="w-full bg-white/40 border border-white/50 rounded-xl p-3 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-rose-300 resize-none"
+              className="w-full bg-card/40 border border-border/50 rounded-xl p-3 text-xs text-foreground placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-none"
             />
           </div>
 
           {/* TAXONOMY INTERESTS PICKER SECTIONS */}
-          <div className="pt-4 border-t border-white/30 space-y-6">
+          <div className="pt-4 border-t border-border/30 space-y-6">
             
-            <div className="flex items-center gap-1 text-slate-800">
+            <div className="flex items-center gap-1 text-foreground">
               <Sparkles size={16} className="text-amber-500" />
               <h3 className="font-sans font-bold text-sm">Predefined Friendship Interests</h3>
             </div>
 
             {/* Activities checkboxes */}
             <div className="space-y-2">
-              <span className="text-[10px] font-mono font-extrabold uppercase text-slate-400 tracking-widest block">
+              <span className="text-[10px] font-mono font-extrabold uppercase text-muted-foreground tracking-widest block">
                 Activities & Hobbies
               </span>
               <div className="flex flex-wrap gap-1.5 select-none">
@@ -685,7 +686,7 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
                       className={`px-3 py-1 rounded-full text-xs font-sans border font-semibold transition ${
                         selected
                           ? "bg-slate-900 text-rose-400 border-slate-900 shadow-sm"
-                          : "bg-white/40 text-slate-600 border-white/40 hover:bg-white/60"
+                          : "bg-card/40 text-muted-foreground border-border/40 hover:bg-card/60"
                       }`}
                     >
                       {act}
@@ -697,7 +698,7 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
 
             {/* Social Preferences */}
             <div className="space-y-2">
-              <span className="text-[10px] font-mono font-extrabold uppercase text-slate-400 tracking-widest block">
+              <span className="text-[10px] font-mono font-extrabold uppercase text-muted-foreground tracking-widest block">
                 Social Plans
               </span>
               <div className="flex flex-wrap gap-1.5 select-none">
@@ -711,7 +712,7 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
                       className={`px-3 py-1 rounded-full text-xs font-sans border font-semibold transition ${
                         selected
                           ? "bg-slate-900 text-rose-400 border-slate-900 shadow-sm"
-                          : "bg-white/40 text-slate-600 border-white/40 hover:bg-white/60"
+                          : "bg-card/40 text-muted-foreground border-border/40 hover:bg-card/60"
                       }`}
                     >
                       {soc}
@@ -723,7 +724,7 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
 
             {/* Music preferences */}
             <div className="space-y-2">
-              <span className="text-[10px] font-mono font-extrabold uppercase text-slate-400 tracking-widest block">
+              <span className="text-[10px] font-mono font-extrabold uppercase text-muted-foreground tracking-widest block">
                 Music Taste
               </span>
               <div className="flex flex-wrap gap-1.5 select-none">
@@ -737,7 +738,7 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
                       className={`px-3 py-1 rounded-full text-xs font-sans border font-semibold transition ${
                         selected
                           ? "bg-slate-900 text-rose-400 border-slate-900 shadow-sm"
-                          : "bg-white/40 text-slate-600 border-white/40 hover:bg-white/60"
+                          : "bg-card/40 text-muted-foreground border-border/40 hover:bg-card/60"
                       }`}
                     >
                       {mus}
@@ -749,7 +750,7 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
 
             {/* Lifestyle preferences */}
             <div className="space-y-2">
-              <span className="text-[10px] font-mono font-extrabold uppercase text-slate-400 tracking-widest block">
+              <span className="text-[10px] font-mono font-extrabold uppercase text-muted-foreground tracking-widest block">
                 Lifestyle & Energy
               </span>
               <div className="flex flex-wrap gap-1.5 select-none">
@@ -763,7 +764,7 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
                       className={`px-3 py-1 rounded-full text-xs font-sans border font-semibold transition ${
                         selected
                           ? "bg-slate-900 text-rose-400 border-slate-900 shadow-sm"
-                          : "bg-white/40 text-slate-600 border-white/40 hover:bg-white/60"
+                          : "bg-card/40 text-muted-foreground border-border/40 hover:bg-card/60"
                       }`}
                     >
                       {life}
@@ -774,8 +775,8 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
             </div>
 
             {/* Spending Style preferences (Radio) */}
-            <div className="space-y-2 pt-1 border-t border-white/30">
-              <span className="text-[10px] font-mono font-extrabold uppercase text-slate-400 tracking-widest block">
+            <div className="space-y-2 pt-1 border-t border-border/30">
+              <span className="text-[10px] font-mono font-extrabold uppercase text-muted-foreground tracking-widest block">
                 Spending Style Preference
               </span>
               <div className="flex flex-wrap gap-2 select-none pt-1">
@@ -788,8 +789,8 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
                       onClick={() => setSpendingStyle(style)}
                       className={`px-4 py-1.5 rounded-xl text-xs font-sans border font-black transition ${
                         selected
-                          ? "bg-rose-500 text-white border-rose-500 shadow-md"
-                          : "bg-white/40 text-slate-600 border-white/40 hover:bg-white/60"
+                          ? "bg-primary text-primary-foreground border-rose-500 shadow-md"
+                          : "bg-card/40 text-muted-foreground border-border/40 hover:bg-card/60"
                       }`}
                     >
                       👑 {style}
@@ -802,42 +803,42 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
           </div>
 
           {/* PERSONAL RECOMMENDATIONS SECTION */}
-          <div className="bg-white/40 backdrop-blur-xl p-5 rounded-[28px] border border-white/60 shadow-xl space-y-4 mt-6">
-            <div className="flex items-center justify-between pb-2 border-b border-white/30">
+          <div className="bg-card/40 backdrop-blur-xl p-5 rounded-[28px] border border-border/60 shadow-xl space-y-4 mt-6">
+            <div className="flex items-center justify-between pb-2 border-b border-border/30">
               <div className="flex items-center gap-1.5">
-                <MapPin size={18} className="text-rose-500" />
-                <h3 className="font-sans font-black text-xs text-slate-800 uppercase tracking-wider">
+                <MapPin size={18} className="text-primary" />
+                <h3 className="font-sans font-black text-xs text-foreground uppercase tracking-wider">
                   My Secret Spots ({myRecs.length})
                 </h3>
               </div>
               <button
                 type="button"
                 onClick={fetchMyRecommendations}
-                className="text-[9px] font-mono text-rose-500 font-extrabold hover:underline"
+                className="text-[9px] font-mono text-primary font-extrabold hover:underline"
               >
                 Refresh ↺
               </button>
             </div>
 
             {isLoadingMyRecs ? (
-              <p className="text-[10px] text-slate-400 font-sans italic py-2">Loading your spots...</p>
+              <p className="text-[10px] text-muted-foreground font-sans italic py-2">Loading your spots...</p>
             ) : myRecs.length === 0 ? (
-              <p className="text-[10px] text-slate-400 font-sans italic leading-relaxed">
+              <p className="text-[10px] text-muted-foreground font-sans italic leading-relaxed">
                 You haven't posted any secret spots yet. Head to the City Guide tab to share your favorite Madrid locations!
               </p>
             ) : (
               <div className="space-y-2 select-none">
                 {myRecs.map((rec) => (
-                  <div key={rec.id} className="bg-white/65 p-3 rounded-xl border border-white/50 flex items-start justify-between gap-3 shadow-sm">
+                  <div key={rec.id} className="bg-card/65 p-3 rounded-xl border border-border/50 flex items-start justify-between gap-3 shadow-sm">
                     <div className="flex-1 truncate">
-                      <h4 className="font-bold text-xs text-slate-800 truncate">{rec.name}</h4>
-                      <p className="text-[9px] text-slate-400 font-mono truncate">📍 {rec.address}</p>
+                      <h4 className="font-bold text-xs text-foreground truncate">{rec.name}</h4>
+                      <p className="text-[9px] text-muted-foreground font-mono truncate">📍 {rec.address}</p>
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
                       <button
                         type="button"
                         onClick={() => handleStartEdit(rec)}
-                        className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-white rounded transition cursor-pointer"
+                        className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-card rounded transition cursor-pointer"
                         title="Edit spot"
                       >
                         <Edit size={12} />
@@ -858,10 +859,10 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
           </div>
 
           {/* Save */}
-          <div className="pt-4 border-t border-white/30 flex justify-end">
+          <div className="pt-4 border-t border-border/30 flex justify-end">
             <button
               onClick={handleSave}
-              className="w-full sm:w-auto bg-rose-500 text-white font-sans text-xs font-black px-6 py-3 rounded-xl shadow-pop hover:bg-rose-600 transition active:scale-95 cursor-pointer"
+              className="w-full sm:w-auto bg-primary text-primary-foreground font-sans text-xs font-black px-6 py-3 rounded-xl shadow-pop hover:bg-primary/90 transition active:scale-95 cursor-pointer"
             >
               Save profile
             </button>
@@ -869,31 +870,43 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
 
           {/* ACCOUNT ACTIONS — sign out is non-destructive; deletion is
               explicit, typed, and clearly separated */}
-          <div className="mt-6 bg-white/40 backdrop-blur-md rounded-2xl border border-white/60 p-5 space-y-4">
-            <h4 className="font-sans font-bold text-sm text-slate-800">Account</h4>
+          <div className="mt-6 bg-card/40 backdrop-blur-md rounded-2xl border border-border/60 p-5 space-y-4">
+            <h4 className="font-sans font-bold text-sm text-foreground">Account</h4>
+
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-bold text-foreground">Appearance</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  Follows your device setting until you choose one.
+                </p>
+              </div>
+              <ThemeToggle />
+            </div>
+
+            <div className="border-t border-border/60" />
 
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                <p className="text-xs font-bold text-slate-700">Sign out</p>
-                <p className="text-[11px] text-slate-500 mt-0.5">
+                <p className="text-xs font-bold text-foreground">Sign out</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
                   Ends this session on this device. Your profile, matches, and messages stay intact.
                 </p>
               </div>
               <button
                 type="button"
                 onClick={onSignOut}
-                className="w-full sm:w-auto shrink-0 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-sans text-xs font-bold px-5 py-2.5 rounded-xl transition cursor-pointer text-center"
+                className="w-full sm:w-auto shrink-0 bg-card border border-border hover:bg-muted/60 text-foreground font-sans text-xs font-bold px-5 py-2.5 rounded-xl transition cursor-pointer text-center"
               >
                 Sign out
               </button>
             </div>
 
-            <div className="border-t border-slate-200/60" />
+            <div className="border-t border-border/60" />
 
             <div className="space-y-3">
               <div>
                 <p className="text-xs font-bold text-red-700">Delete account</p>
-                <p className="text-[11px] text-slate-500 mt-0.5">
+                <p className="text-[11px] text-muted-foreground mt-0.5">
                   Permanently removes your account, profile, matches, messages, posts, and RSVPs. This cannot be undone.
                 </p>
               </div>
@@ -909,7 +922,7 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
                     onChange={(e) => setDeleteConfirmText(e.target.value)}
                     placeholder="DELETE"
                     autoComplete="off"
-                    className="w-full bg-white border border-red-200 rounded-lg px-3 py-2 text-xs font-mono text-slate-800 focus:outline-none focus:ring-1 focus:ring-red-400"
+                    className="w-full bg-card border border-red-200 rounded-lg px-3 py-2 text-xs font-mono text-foreground focus:outline-none focus:ring-1 focus:ring-red-400"
                   />
                   <div className="flex gap-2 justify-end">
                     <button
@@ -918,7 +931,7 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
                         setShowDeleteConfirm(false);
                         setDeleteConfirmText("");
                       }}
-                      className="bg-white border border-slate-200 px-3.5 py-2 rounded-lg text-[11px] font-bold text-slate-700 hover:bg-slate-50 transition cursor-pointer"
+                      className="bg-card border border-border px-3.5 py-2 rounded-lg text-[11px] font-bold text-foreground hover:bg-muted/60 transition cursor-pointer"
                     >
                       Cancel
                     </button>
@@ -947,52 +960,52 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
           {/* EDIT SPOT MODAL OVERLAY */}
           {editingRec && (
             <div className="fixed inset-0 bg-stone-950/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in select-text">
-              <div className="bg-white rounded-[28px] border border-stone-200/50 p-6 max-w-md w-full space-y-4 shadow-2xl relative">
-                <h3 className="font-sans font-black text-sm text-slate-900 uppercase tracking-tight">
+              <div className="bg-card rounded-[28px] border border-border/50 p-6 max-w-md w-full space-y-4 shadow-2xl relative">
+                <h3 className="font-sans font-black text-sm text-foreground uppercase tracking-tight">
                   Edit Secret Spot
                 </h3>
-                <p className="text-[10px] text-slate-500">
+                <p className="text-[10px] text-muted-foreground">
                   Update the details for your shared spot. They will be updated instantly on the City Guide map and boards.
                 </p>
 
                 <div className="space-y-3">
                   <div className="space-y-1">
-                    <span className="text-[9px] font-sans font-black text-slate-400 uppercase">Spot Name</span>
+                    <span className="text-[9px] font-sans font-black text-muted-foreground uppercase">Spot Name</span>
                     <input
                       type="text"
                       value={editName}
                       onChange={(e) => setEditName(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none"
+                      className="w-full bg-card border border-border rounded-xl px-3 py-2 text-xs text-foreground focus:outline-none"
                     />
                   </div>
 
                   <div className="space-y-1">
-                    <span className="text-[9px] font-sans font-black text-slate-400 uppercase">Address / Neighborhood</span>
+                    <span className="text-[9px] font-sans font-black text-muted-foreground uppercase">Address / Neighborhood</span>
                     <input
                       type="text"
                       value={editAddress}
                       onChange={(e) => setEditAddress(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none"
+                      className="w-full bg-card border border-border rounded-xl px-3 py-2 text-xs text-foreground focus:outline-none"
                     />
                   </div>
 
                   <div className="space-y-1">
-                    <span className="text-[9px] font-sans font-black text-slate-400 uppercase">Google Maps URL Link</span>
+                    <span className="text-[9px] font-sans font-black text-muted-foreground uppercase">Google Maps URL Link</span>
                     <input
                       type="text"
                       value={editGoogleMapsUrl}
                       onChange={(e) => setEditGoogleMapsUrl(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none"
+                      className="w-full bg-card border border-border rounded-xl px-3 py-2 text-xs text-foreground focus:outline-none"
                     />
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
-                      <span className="text-[9px] font-sans font-black text-slate-400 uppercase">Category</span>
+                      <span className="text-[9px] font-sans font-black text-muted-foreground uppercase">Category</span>
                       <select
                         value={editCategory}
                         onChange={(e) => setEditCategory(e.target.value as any)}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none"
+                        className="w-full bg-card border border-border rounded-xl px-3 py-2 text-xs text-foreground focus:outline-none"
                       >
                         <option value="cafe">Café</option>
                         <option value="restaurant">Restaurant</option>
@@ -1002,23 +1015,23 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
                       </select>
                     </div>
                     <div className="space-y-1">
-                      <span className="text-[9px] font-sans font-black text-slate-400 uppercase">Tags</span>
+                      <span className="text-[9px] font-sans font-black text-muted-foreground uppercase">Tags</span>
                       <input
                         type="text"
                         value={editTags}
                         onChange={(e) => setEditTags(e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none"
+                        className="w-full bg-card border border-border rounded-xl px-3 py-2 text-xs text-foreground focus:outline-none"
                       />
                     </div>
                   </div>
 
                   <div className="space-y-1">
-                    <span className="text-[9px] font-sans font-black text-slate-400 uppercase">Description</span>
+                    <span className="text-[9px] font-sans font-black text-muted-foreground uppercase">Description</span>
                     <textarea
                       value={editDesc}
                       onChange={(e) => setEditDesc(e.target.value)}
                       rows={3}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none resize-none"
+                      className="w-full bg-card border border-border rounded-xl px-3 py-2 text-xs text-foreground focus:outline-none resize-none"
                     />
                   </div>
                 </div>
@@ -1027,14 +1040,14 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
                   <button
                     type="button"
                     onClick={() => setEditingRec(null)}
-                    className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-sans text-xs font-bold px-4 py-2 rounded-xl transition cursor-pointer"
+                    className="bg-muted hover:bg-muted text-foreground font-sans text-xs font-bold px-4 py-2 rounded-xl transition cursor-pointer"
                   >
                     Cancel
                   </button>
                   <button
                     type="button"
                     onClick={handleSaveEdit}
-                    className="bg-rose-500 text-white font-sans text-xs font-black px-4 py-2 rounded-xl shadow-md hover:bg-rose-600 transition cursor-pointer"
+                    className="bg-primary text-primary-foreground font-sans text-xs font-black px-4 py-2 rounded-xl shadow-md hover:bg-primary/90 transition cursor-pointer"
                   >
                     Save Changes
                   </button>
@@ -1049,15 +1062,15 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
         <div className="md:col-span-4 space-y-6">
           
           {/* VERIFICATION PANEL */}
-          <div className="bg-white/40 backdrop-blur-xl p-5 rounded-[28px] border border-white/60 shadow-xl space-y-4 animate-fade-in">
-            <div className="flex items-center gap-1.5 pb-2 border-b border-white/30">
+          <div className="bg-card/40 backdrop-blur-xl p-5 rounded-[28px] border border-border/60 shadow-xl space-y-4 animate-fade-in">
+            <div className="flex items-center gap-1.5 pb-2 border-b border-border/30">
               <ShieldCheck size={18} className="text-amber-500 fill-amber-100" />
-              <h3 className="font-sans font-black text-xs text-slate-800 uppercase tracking-wider">
+              <h3 className="font-sans font-black text-xs text-foreground uppercase tracking-wider">
                 Student Verification
               </h3>
             </div>
 
-            <p className="font-sans text-[11px] text-slate-500 leading-relaxed">
+            <p className="font-sans text-[11px] text-muted-foreground leading-relaxed">
               Every member is reviewed by the NEST team before she can match. Submit your university details below.
             </p>
 
@@ -1070,35 +1083,35 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
                 </p>
               </div>
             ) : verificationStatus === "pending" ? (
-              <div className="bg-stone-50 text-stone-700 p-3.5 rounded-xl border border-stone-200 text-center space-y-1.5 select-none">
+              <div className="bg-card text-foreground p-3.5 rounded-xl border border-border text-center space-y-1.5 select-none">
                 <span className="text-2xl block">⏳</span>
                 <h4 className="font-sans font-bold text-xs">Under review</h4>
-                <p className="font-sans text-[10px] text-stone-500 leading-normal">
+                <p className="font-sans text-[10px] text-muted-foreground leading-normal">
                   Submitted {currentUser.verification?.submittedAt ? new Date(currentUser.verification.submittedAt).toLocaleDateString() : "recently"}. We'll notify you once an admin has reviewed it.
                 </p>
               </div>
             ) : (
               <form onSubmit={handleVerify} className="space-y-3">
                 {verificationStatus === "rejected" && (
-                  <div className="bg-rose-50 border border-rose-100 text-rose-700 p-3 rounded-xl text-[11px] leading-normal">
+                  <div className="bg-destructive/10 border border-destructive/25 text-destructive p-3 rounded-xl text-[11px] leading-normal">
                     <span className="font-bold block mb-0.5">Not approved</span>
                     {currentUser.verification?.rejectionReason || "Please review your details and resubmit."}
                   </div>
                 )}
 
                 <div className="space-y-1">
-                  <span className="text-[10px] font-sans font-bold text-slate-600 block">University</span>
+                  <span className="text-[10px] font-sans font-bold text-muted-foreground block">University</span>
                   <input
                     type="text"
                     placeholder="e.g. IE University"
                     value={verUniversity}
                     onChange={(e) => setVerUniversity(e.target.value)}
-                    className="w-full bg-white/40 border border-white/50 rounded-lg p-2 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-rose-300"
+                    className="w-full bg-card/40 border border-border/50 rounded-lg p-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <span className="text-[10px] font-sans font-bold text-slate-600 flex items-center gap-1">
+                  <span className="text-[10px] font-sans font-bold text-muted-foreground flex items-center gap-1">
                     <Mail size={12} />
                     <span>University email</span>
                   </span>
@@ -1107,28 +1120,28 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
                     placeholder="e.g. name@student.ie.edu"
                     value={verEmail}
                     onChange={(e) => setVerEmail(e.target.value)}
-                    className="w-full bg-white/40 border border-white/50 rounded-lg p-2 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-rose-300"
+                    className="w-full bg-card/40 border border-border/50 rounded-lg p-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                   />
-                  <p className="text-[10px] text-slate-400 leading-normal">
+                  <p className="text-[10px] text-muted-foreground leading-normal">
                     Used only to verify your student status. This won't change your NEST login email.
                   </p>
                 </div>
 
                 <div className="space-y-1">
-                  <span className="text-[10px] font-sans font-bold text-slate-600 block">Anything else we should know? (optional)</span>
+                  <span className="text-[10px] font-sans font-bold text-muted-foreground block">Anything else we should know? (optional)</span>
                   <textarea
                     rows={2}
                     placeholder="e.g. Exchange student, arriving in September"
                     value={verNote}
                     onChange={(e) => setVerNote(e.target.value)}
-                    className="w-full bg-white/40 border border-white/50 rounded-lg p-2 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-rose-300 resize-none"
+                    className="w-full bg-card/40 border border-border/50 rounded-lg p-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-none"
                   />
                 </div>
 
                 <button
                   type="submit"
                   disabled={isSubmittingVerification}
-                  className="w-full py-2 bg-amber-500 text-slate-950 font-sans text-xs font-extrabold rounded-lg shadow-md shadow-amber-200/30 hover:bg-amber-600 transition flex items-center justify-center gap-1 cursor-pointer disabled:opacity-50"
+                  className="w-full py-2 bg-amber-500 text-foreground font-sans text-xs font-extrabold rounded-lg shadow-md shadow-amber-200/30 hover:bg-amber-600 transition flex items-center justify-center gap-1 cursor-pointer disabled:opacity-50"
                 >
                   {isSubmittingVerification ? (
                     <span>Submitting…</span>
@@ -1140,7 +1153,7 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
                   )}
                 </button>
 
-                <p className="text-[10px] text-slate-400 leading-normal">
+                <p className="text-[10px] text-muted-foreground leading-normal">
                   Reviews are manual and usually quick. You'll keep signing in with your personal email.
                 </p>
               </form>
@@ -1156,7 +1169,7 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
               </h3>
             </div>
 
-            <p className="font-sans text-[11px] text-slate-400 leading-relaxed select-text">
+            <p className="font-sans text-[11px] text-muted-foreground leading-relaxed select-text">
               NEST is designed around a single guiding focus: ensuring moving abroad is safe, inclusive, and empowering.
             </p>
 

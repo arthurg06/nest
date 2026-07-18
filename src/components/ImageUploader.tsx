@@ -96,13 +96,13 @@ export function ImageUploader({ value, onChange, onRemove, label, className = ""
   return (
     <div className={`space-y-2 ${className}`}>
       {label && (
-        <span className="text-[10px] font-sans font-extrabold text-slate-500 uppercase tracking-wider block">
+        <span className="text-[10px] font-sans font-extrabold text-muted-foreground uppercase tracking-wider block">
           {label}
         </span>
       )}
 
       {error && (
-        <div className="flex items-start gap-1.5 p-2.5 bg-rose-50 border border-rose-100 text-rose-600 rounded-xl text-[10px] font-sans font-semibold animate-fade-in">
+        <div className="flex items-start gap-1.5 p-2.5 bg-destructive/10 border border-destructive/25 text-destructive rounded-xl text-[10px] font-sans font-semibold animate-fade-in">
           <AlertCircle size={14} className="shrink-0 mt-0.5" />
           <span>{error}</span>
         </div>
@@ -122,7 +122,7 @@ export function ImageUploader({ value, onChange, onRemove, label, className = ""
         />
 
         {value ? (
-          <div className="relative rounded-2xl overflow-hidden border border-slate-200/80 bg-slate-50 aspect-video max-h-56 flex items-center justify-center group shadow-sm transition">
+          <div className="relative rounded-2xl overflow-hidden border border-border/80 bg-card aspect-video max-h-56 flex items-center justify-center group shadow-sm transition">
             <img
               src={value}
               alt="Uploaded preview"
@@ -134,7 +134,7 @@ export function ImageUploader({ value, onChange, onRemove, label, className = ""
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isUploading}
-                className="bg-white/90 text-slate-800 text-[10px] font-bold px-3 py-1.5 rounded-lg hover:bg-white hover:scale-105 transition active:scale-95 cursor-pointer shadow-sm"
+                className="bg-card/90 text-foreground text-[10px] font-bold px-3 py-1.5 rounded-lg hover:bg-card hover:scale-105 transition active:scale-95 cursor-pointer shadow-sm"
               >
                 Replace Photo
               </button>
@@ -143,7 +143,7 @@ export function ImageUploader({ value, onChange, onRemove, label, className = ""
                   type="button"
                   onClick={onRemove}
                   disabled={isUploading}
-                  className="bg-rose-500/90 text-white text-[10px] font-bold px-3 py-1.5 rounded-lg hover:bg-rose-600 hover:scale-105 transition active:scale-95 cursor-pointer shadow-sm"
+                  className="bg-primary/90 text-primary-foreground text-[10px] font-bold px-3 py-1.5 rounded-lg hover:bg-primary/90 hover:scale-105 transition active:scale-95 cursor-pointer shadow-sm"
                 >
                   Remove
                 </button>
@@ -157,19 +157,19 @@ export function ImageUploader({ value, onChange, onRemove, label, className = ""
             disabled={isUploading}
             className={`w-full py-6 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center gap-1.5 transition ${
               isUploading
-                ? "bg-rose-50/25 border-rose-200 text-rose-400"
-                : "bg-white/30 border-white/40 text-slate-400 hover:bg-white/40 hover:border-rose-300 hover:text-rose-400"
+                ? "bg-accent/25 border-border text-rose-400"
+                : "bg-card/30 border-border/40 text-muted-foreground hover:bg-card/40 hover:border-rose-300 hover:text-rose-400"
             }`}
           >
             {isUploading ? (
-              <Loader2 size={24} className="animate-spin text-rose-500" />
+              <Loader2 size={24} className="animate-spin text-primary" />
             ) : (
               <Upload size={24} className="group-hover:scale-110 transition" />
             )}
             <span className="text-[10px] font-sans font-bold">
               {isUploading ? "Uploading file..." : "Drop file here or tap to upload from gallery"}
             </span>
-            <span className="text-[8px] text-slate-400">
+            <span className="text-[8px] text-muted-foreground">
               Supports JPG, PNG, WEBP (Max 8MB)
             </span>
           </button>
@@ -259,13 +259,13 @@ export function MultiImageUploader({ values = [], onChange, maxImages = 5, label
   return (
     <div className="space-y-2">
       {label && (
-        <span className="text-[10px] font-sans font-extrabold text-slate-500 uppercase tracking-wider block">
+        <span className="text-[10px] font-sans font-extrabold text-muted-foreground uppercase tracking-wider block">
           {label}
         </span>
       )}
 
       {error && (
-        <div className="flex items-start gap-1.5 p-2.5 bg-rose-50 border border-rose-100 text-rose-600 rounded-xl text-[10px] font-sans font-semibold animate-fade-in">
+        <div className="flex items-start gap-1.5 p-2.5 bg-destructive/10 border border-destructive/25 text-destructive rounded-xl text-[10px] font-sans font-semibold animate-fade-in">
           <AlertCircle size={14} className="shrink-0 mt-0.5" />
           <span>{error}</span>
         </div>
@@ -281,12 +281,12 @@ export function MultiImageUploader({ values = [], onChange, maxImages = 5, label
 
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
         {values.map((url, idx) => (
-          <div key={idx} className="relative rounded-xl overflow-hidden aspect-video border border-slate-200 bg-slate-50 shadow-sm group">
+          <div key={idx} className="relative rounded-xl overflow-hidden aspect-video border border-border bg-card shadow-sm group">
             <img src={url} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
             <button
               type="button"
               onClick={() => removeImage(idx)}
-              className="absolute top-1 right-1 bg-rose-600 text-white rounded-full p-1 shadow hover:bg-rose-700 transition"
+              className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1 shadow hover:bg-destructive/90 transition"
             >
               <X size={12} />
             </button>
@@ -298,10 +298,10 @@ export function MultiImageUploader({ values = [], onChange, maxImages = 5, label
             type="button"
             onClick={() => fileInputRef.current?.click()}
             disabled={isUploading}
-            className="rounded-xl border-2 border-dashed border-slate-200 hover:border-rose-300 flex flex-col items-center justify-center aspect-video text-slate-400 hover:text-rose-400 bg-white/30 hover:bg-white/40 transition cursor-pointer"
+            className="rounded-xl border-2 border-dashed border-border hover:border-rose-300 flex flex-col items-center justify-center aspect-video text-muted-foreground hover:text-rose-400 bg-card/30 hover:bg-card/40 transition cursor-pointer"
           >
             {isUploading ? (
-              <Loader2 size={16} className="animate-spin text-rose-500" />
+              <Loader2 size={16} className="animate-spin text-primary" />
             ) : (
               <Upload size={16} />
             )}

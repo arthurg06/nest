@@ -40,9 +40,9 @@ export default function Communities({ communities, currentUser, onPostToCommunit
 
   const getCategoryIcon = (category: string) => {
     switch (category) {
-      case "university": return <BookOpen size={14} className="text-stone-500" />;
-      case "interests": return <Users size={14} className="text-stone-500" />;
-      default: return <Globe size={14} className="text-stone-500" />;
+      case "university": return <BookOpen size={14} className="text-muted-foreground" />;
+      case "interests": return <Users size={14} className="text-muted-foreground" />;
+      default: return <Globe size={14} className="text-muted-foreground" />;
     }
   };
 
@@ -50,14 +50,14 @@ export default function Communities({ communities, currentUser, onPostToCommunit
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 h-[560px] md:h-[620px] max-w-5xl mx-auto">
       
       {/* LEFT COLUMN: Channels List */}
-      <div className="lg:col-span-4 bg-white/40 backdrop-blur-xl rounded-[28px] border border-white/60 p-5 flex flex-col justify-between overflow-hidden shadow-xl animate-fade-in">
+      <div className="lg:col-span-4 bg-card/40 backdrop-blur-xl rounded-[28px] border border-border/60 p-5 flex flex-col justify-between overflow-hidden shadow-xl animate-fade-in">
         <div>
-          <div className="pb-3 border-b border-white/30">
-            <h3 className="font-sans font-black text-lg text-slate-900 tracking-tight flex items-center gap-1.5">
-              <Users size={18} className="text-rose-500" />
+          <div className="pb-3 border-b border-border/30">
+            <h3 className="font-sans font-black text-lg text-foreground tracking-tight flex items-center gap-1.5">
+              <Users size={18} className="text-primary" />
               <span>NEST Communities</span>
             </h3>
-            <p className="text-[10px] text-slate-500 mt-1 leading-normal font-sans">
+            <p className="text-[10px] text-muted-foreground mt-1 leading-normal font-sans">
               Connect with fellow female students at your uni, neighborhood, or shared social circles in Madrid.
             </p>
           </div>
@@ -72,23 +72,23 @@ export default function Communities({ communities, currentUser, onPostToCommunit
                   onClick={() => setActiveCommunityId(comm.id)}
                   className={`w-full p-3 rounded-xl border font-sans text-left transition-all ${
                     isActive
-                      ? "bg-white/80 border-rose-400 shadow-md shadow-rose-100/40 ring-1 ring-rose-400"
-                      : "bg-white/30 border-white/40 hover:bg-white/50 text-slate-700"
+                      ? "bg-card/80 border-rose-400 shadow-md shadow-rose-100/40 ring-1 ring-ring"
+                      : "bg-card/30 border-border/40 hover:bg-card/50 text-foreground"
                   }`}
                 >
                   <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-[9px] uppercase tracking-wider font-mono font-extrabold text-slate-400">
+                    <span className="text-[9px] uppercase tracking-wider font-mono font-extrabold text-muted-foreground">
                       {comm.category}
                     </span>
-                    <span className="text-[9px] font-mono text-slate-400 flex items-center gap-0.5">
+                    <span className="text-[9px] font-mono text-muted-foreground flex items-center gap-0.5">
                       👤 {comm.membersCount}
                     </span>
                   </div>
-                  <h4 className="font-bold text-xs text-slate-800 leading-snug">
+                  <h4 className="font-bold text-xs text-foreground leading-snug">
                     {comm.name}
                   </h4>
                   {comm.lastMessageText && (
-                    <p className="text-[10px] text-slate-400 truncate mt-1">
+                    <p className="text-[10px] text-muted-foreground truncate mt-1">
                       {comm.lastMessageText}
                     </p>
                   )}
@@ -99,28 +99,28 @@ export default function Communities({ communities, currentUser, onPostToCommunit
         </div>
 
         {/* Safety Guidelines micro tip */}
-        <div className="bg-rose-50/60 backdrop-blur-sm p-3.5 rounded-xl border border-rose-100/45 text-[10px] font-sans text-rose-700 leading-normal flex items-start gap-1.5 mt-3 shadow-sm">
-          <ShieldCheck size={14} className="text-rose-600 shrink-0 mt-0.5" />
+        <div className="bg-accent/60 backdrop-blur-sm p-3.5 rounded-xl border border-border/45 text-[10px] font-sans text-primary leading-normal flex items-start gap-1.5 mt-3 shadow-sm">
+          <ShieldCheck size={14} className="text-primary shrink-0 mt-0.5" />
           <span>NEST groups are strictly female-only, verified university spaces. Keep details and meetups friendly & secure!</span>
         </div>
       </div>
 
       {/* RIGHT COLUMN: Active Community Group Chat Room */}
-      <div className="lg:col-span-8 bg-white/40 backdrop-blur-xl rounded-[28px] border border-white/60 flex flex-col overflow-hidden relative shadow-xl animate-fade-in">
+      <div className="lg:col-span-8 bg-card/40 backdrop-blur-xl rounded-[28px] border border-border/60 flex flex-col overflow-hidden relative shadow-xl animate-fade-in">
         {activeCommunity ? (
           <>
             {/* Header */}
-            <div className="px-5 py-3.5 border-b border-white/30 bg-white/30 shrink-0">
+            <div className="px-5 py-3.5 border-b border-border/30 bg-card/30 shrink-0">
               <div className="flex items-start justify-between">
                 <div>
-                  <h4 className="font-sans font-black text-sm text-slate-900 leading-tight">
+                  <h4 className="font-sans font-black text-sm text-foreground leading-tight">
                     {activeCommunity.name}
                   </h4>
-                  <p className="font-sans text-[10px] text-slate-500 mt-0.5 leading-snug">
+                  <p className="font-sans text-[10px] text-muted-foreground mt-0.5 leading-snug">
                     {activeCommunity.description}
                   </p>
                 </div>
-                <span className="text-[10px] bg-white/50 border border-white/55 px-2.5 py-1 rounded-full font-sans font-bold text-slate-600 shrink-0 shadow-sm">
+                <span className="text-[10px] bg-card/50 border border-border/55 px-2.5 py-1 rounded-full font-sans font-bold text-muted-foreground shrink-0 shadow-sm">
                   {activeCommunity.membersCount} members
                 </span>
               </div>
@@ -145,10 +145,10 @@ export default function Communities({ communities, currentUser, onPostToCommunit
                     <div className={`max-w-[75%] flex flex-col ${isMe ? "items-end" : "items-start"}`}>
                       {/* Name and Uni */}
                       <div className="flex items-baseline gap-1.5 mb-1">
-                        <span className="font-sans font-extrabold text-[11px] text-slate-800">
+                        <span className="font-sans font-extrabold text-[11px] text-foreground">
                           {cmsg.senderName}
                         </span>
-                        <span className="font-mono text-[9px] text-slate-400">
+                        <span className="font-mono text-[9px] text-muted-foreground">
                           {cmsg.senderUni}
                         </span>
                       </div>
@@ -157,13 +157,13 @@ export default function Communities({ communities, currentUser, onPostToCommunit
                       <div className={`px-3.5 py-2 rounded-xl text-xs font-sans shadow-sm leading-relaxed select-text ${
                         isMe
                           ? "bg-slate-900 text-white rounded-tr-none"
-                          : "bg-white/80 backdrop-blur-sm text-slate-800 rounded-tl-none border border-white/60"
+                          : "bg-card/80 backdrop-blur-sm text-foreground rounded-tl-none border border-border/60"
                       }`}>
                         {cmsg.text}
                       </div>
 
                       {/* Time */}
-                      <span className="text-[8px] text-slate-400 font-mono mt-1 px-1">
+                      <span className="text-[8px] text-muted-foreground font-mono mt-1 px-1">
                         {cmsg.timestamp}
                       </span>
                     </div>
@@ -174,24 +174,24 @@ export default function Communities({ communities, currentUser, onPostToCommunit
             </div>
 
             {/* Input form */}
-            <form onSubmit={handleSendGroupMessage} className="p-3.5 border-t border-white/30 flex gap-2 items-center shrink-0 bg-white/30 backdrop-blur-md">
+            <form onSubmit={handleSendGroupMessage} className="p-3.5 border-t border-border/30 flex gap-2 items-center shrink-0 bg-card/30 backdrop-blur-md">
               <input
                 type="text"
                 placeholder={`Post to ${activeCommunity.name.split(" ")[0]}...`}
                 value={groupInputText}
                 onChange={(e) => setGroupInputText(e.target.value)}
-                className="flex-1 bg-white/40 border border-white/50 rounded-xl px-4 py-2 text-xs font-sans text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-rose-300"
+                className="flex-1 bg-card/40 border border-border/50 rounded-xl px-4 py-2 text-xs font-sans text-foreground placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
               />
               <button
                 type="submit"
-                className="p-2.5 bg-rose-500 text-white rounded-xl hover:bg-rose-600 transition active:scale-95 shadow-md shadow-rose-200/50"
+                className="p-2.5 bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 transition active:scale-95 shadow-md shadow-rose-200/50"
               >
                 <Send size={15} />
               </button>
             </form>
           </>
         ) : (
-          <div className="flex flex-col items-center justify-center h-full text-center p-6 text-slate-400">
+          <div className="flex flex-col items-center justify-center h-full text-center p-6 text-muted-foreground">
             <MessageSquare size={36} className="mb-2 text-slate-300" />
             <p className="text-xs font-sans">Select a community circle to join the group conversation</p>
           </div>

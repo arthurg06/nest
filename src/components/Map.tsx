@@ -21,7 +21,7 @@ export default function Map({ selectedSpotId, onSelectSpot, highlightedSpots = [
       case "activity":
         return "bg-coral-500 text-white border-coral-200";
       case "hidden_gem":
-        return "bg-rose-500 text-white border-rose-200";
+        return "bg-primary text-primary-foreground border-border";
       case "landmark":
         return "bg-sky-500 text-white border-sky-200";
       default:
@@ -47,7 +47,7 @@ export default function Map({ selectedSpotId, onSelectSpot, highlightedSpots = [
   };
 
   return (
-    <div className="relative w-full h-[320px] md:h-[400px] bg-card rounded-2xl border border-stone-200 overflow-hidden shadow-inner">
+    <div className="relative w-full h-[320px] md:h-[400px] bg-card rounded-2xl border border-border overflow-hidden shadow-inner">
       {/* Grid background to represent map vibes */}
       <div className="absolute inset-0 opacity-20 pointer-events-none" 
         style={{ 
@@ -76,25 +76,25 @@ export default function Map({ selectedSpotId, onSelectSpot, highlightedSpots = [
       </svg>
 
       {/* Neighborhood Labels */}
-      <div className="absolute top-10 left-[42%] text-stone-400 text-xs font-bold font-mono tracking-widest uppercase pointer-events-none select-none">
+      <div className="absolute top-10 left-[42%] text-muted-foreground text-xs font-bold font-mono tracking-widest uppercase pointer-events-none select-none">
         Chueca
       </div>
-      <div className="absolute top-8 left-[22%] text-stone-400 text-xs font-bold font-mono tracking-widest uppercase pointer-events-none select-none">
+      <div className="absolute top-8 left-[22%] text-muted-foreground text-xs font-bold font-mono tracking-widest uppercase pointer-events-none select-none">
         Malasaña
       </div>
-      <div className="absolute top-[48%] left-[10%] text-stone-400 text-xs font-bold font-mono tracking-widest uppercase pointer-events-none select-none">
+      <div className="absolute top-[48%] left-[10%] text-muted-foreground text-xs font-bold font-mono tracking-widest uppercase pointer-events-none select-none">
         Palacio
       </div>
-      <div className="absolute top-[43%] left-[42%] text-stone-400 text-xs font-bold font-mono tracking-widest uppercase pointer-events-none select-none bg-card/80 px-2.5 py-0.5 rounded-full shadow-sm border border-stone-200/50">
+      <div className="absolute top-[43%] left-[42%] text-muted-foreground text-xs font-bold font-mono tracking-widest uppercase pointer-events-none select-none bg-card/80 px-2.5 py-0.5 rounded-full shadow-sm border border-border/50">
         Puerta del Sol
       </div>
-      <div className="absolute top-[68%] left-[24%] text-stone-400 text-xs font-bold font-mono tracking-widest uppercase pointer-events-none select-none">
+      <div className="absolute top-[68%] left-[24%] text-muted-foreground text-xs font-bold font-mono tracking-widest uppercase pointer-events-none select-none">
         La Latina
       </div>
-      <div className="absolute top-[78%] left-[45%] text-stone-400 text-xs font-bold font-mono tracking-widest uppercase pointer-events-none select-none">
+      <div className="absolute top-[78%] left-[45%] text-muted-foreground text-xs font-bold font-mono tracking-widest uppercase pointer-events-none select-none">
         Lavapiés
       </div>
-      <div className="absolute top-[40%] right-[10%] text-stone-400 text-xs font-bold font-mono tracking-widest uppercase pointer-events-none select-none bg-emerald-50 text-emerald-700/70 border border-emerald-100 px-3 py-1 rounded-full shadow-sm">
+      <div className="absolute top-[40%] right-[10%] text-muted-foreground text-xs font-bold font-mono tracking-widest uppercase pointer-events-none select-none bg-emerald-50 text-emerald-700/70 border border-emerald-100 px-3 py-1 rounded-full shadow-sm">
         Retiro Park
       </div>
 
@@ -127,7 +127,7 @@ export default function Map({ selectedSpotId, onSelectSpot, highlightedSpots = [
 
             {/* Main Pin Container */}
             <div className={`p-2 rounded-full shadow-md border-2 ${markerColor} ${
-              isSelected ? "scale-110 ring-4 ring-rose-300/40 shadow-lg" : ""
+              isSelected ? "scale-110 ring-4 ring-ring/40 shadow-lg" : ""
             }`}>
               {getCategoryIcon(spot.category, 14)}
             </div>
@@ -144,19 +144,19 @@ export default function Map({ selectedSpotId, onSelectSpot, highlightedSpots = [
 
       {/* Hover Information Overlay */}
       {hoveredSpot && (
-        <div className="absolute bottom-3 left-3 right-3 md:left-4 md:right-auto md:w-80 bg-white/95 backdrop-blur-md p-3 rounded-xl border border-stone-200 shadow-xl z-20 transition-all duration-300 animate-fade-in">
+        <div className="absolute bottom-3 left-3 right-3 md:left-4 md:right-auto md:w-80 bg-card/95 backdrop-blur-md p-3 rounded-xl border border-border shadow-xl z-20 transition-all duration-300 animate-fade-in">
           <div className="flex items-center gap-2 mb-1">
             <span className={`p-1.5 rounded-lg ${getCategoryColor(hoveredSpot.category)}`}>
               {getCategoryIcon(hoveredSpot.category, 12)}
             </span>
-            <h4 className="font-sans font-bold text-sm text-stone-800 leading-tight">
+            <h4 className="font-sans font-bold text-sm text-foreground leading-tight">
               {hoveredSpot.name}
             </h4>
           </div>
-          <p className="font-sans text-xs text-stone-600 line-clamp-2">
+          <p className="font-sans text-xs text-muted-foreground line-clamp-2">
             {hoveredSpot.description}
           </p>
-          <div className="mt-1.5 text-[10px] font-mono text-stone-400">
+          <div className="mt-1.5 text-[10px] font-mono text-muted-foreground">
             📍 {hoveredSpot.address}
           </div>
         </div>
@@ -167,22 +167,22 @@ export default function Map({ selectedSpotId, onSelectSpot, highlightedSpots = [
         const spot = MADRID_MAP_SPOTS.find(s => s.id === selectedSpotId);
         if (!spot) return null;
         return (
-          <div className="absolute bottom-3 right-3 left-3 md:left-auto md:right-4 md:w-80 bg-white p-3.5 rounded-xl border border-stone-200 shadow-xl z-20">
+          <div className="absolute bottom-3 right-3 left-3 md:left-auto md:right-4 md:w-80 bg-card p-3.5 rounded-xl border border-border shadow-xl z-20">
             <div className="flex items-center justify-between mb-1.5">
               <span className="text-[10px] uppercase font-mono tracking-widest font-extrabold text-coral-600">
                 Selected Destination
               </span>
-              <span className="text-[9px] px-2 py-0.5 bg-stone-100 text-stone-500 font-bold rounded-full">
+              <span className="text-[9px] px-2 py-0.5 bg-muted text-muted-foreground font-bold rounded-full">
                 {spot.category.replace("_", " ")}
               </span>
             </div>
-            <h4 className="font-sans font-extrabold text-stone-900 text-sm mb-1">
+            <h4 className="font-sans font-extrabold text-foreground text-sm mb-1">
               {spot.name}
             </h4>
-            <p className="font-sans text-xs text-stone-600 mb-2">
+            <p className="font-sans text-xs text-muted-foreground mb-2">
               {spot.description}
             </p>
-            <div className="text-[10px] font-mono text-stone-500 flex items-center gap-1">
+            <div className="text-[10px] font-mono text-muted-foreground flex items-center gap-1">
               <span>📍 {spot.address}</span>
             </div>
           </div>
@@ -190,7 +190,7 @@ export default function Map({ selectedSpotId, onSelectSpot, highlightedSpots = [
       })()}
 
       {/* Map Legend */}
-      <div className="absolute top-3 right-3 bg-white/90 backdrop-blur px-2.5 py-1.5 rounded-lg border border-stone-200/80 shadow-sm flex flex-col gap-1 text-[9px] font-mono font-medium text-stone-600">
+      <div className="absolute top-3 right-3 bg-card/90 backdrop-blur px-2.5 py-1.5 rounded-lg border border-border/80 shadow-sm flex flex-col gap-1 text-[9px] font-mono font-medium text-muted-foreground">
         <div className="flex items-center gap-1.5">
           <span className="w-2.5 h-2.5 rounded-full bg-amber-500 block" /> Cafés
         </div>
@@ -201,7 +201,7 @@ export default function Map({ selectedSpotId, onSelectSpot, highlightedSpots = [
           <span className="w-2.5 h-2.5 rounded-full bg-coral-500 block" /> Parks/Activities
         </div>
         <div className="flex items-center gap-1.5">
-          <span className="w-2.5 h-2.5 rounded-full bg-rose-500 block" /> Hidden Gems
+          <span className="w-2.5 h-2.5 rounded-full bg-primary block" /> Hidden Gems
         </div>
       </div>
     </div>

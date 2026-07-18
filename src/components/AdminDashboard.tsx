@@ -57,8 +57,8 @@ const authHeaders = () => ({ "Authorization": `Bearer ${localStorage.getItem("ne
 const VERIFICATION_BADGE: Record<string, string> = {
   approved: "bg-success-muted text-success border-success-border",
   pending: "bg-sky-50 text-sky-700 border-sky-200/50",
-  rejected: "bg-rose-50 text-rose-700 border-rose-200/50",
-  unsubmitted: "bg-slate-100 text-slate-500 border-slate-200"
+  rejected: "bg-accent/30 text-primary border-border/50",
+  unsubmitted: "bg-muted text-muted-foreground border-border"
 };
 
 export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboardProps) {
@@ -290,32 +290,32 @@ export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboar
 
       {/* Header */}
       <div className="bg-slate-900 text-white rounded-[28px] p-6 shadow-xl border border-slate-800 relative overflow-hidden">
-        <div className="absolute right-0 top-0 translate-x-12 -translate-y-12 w-64 h-64 bg-rose-500/10 rounded-full blur-2xl" />
+        <div className="absolute right-0 top-0 translate-x-12 -translate-y-12 w-64 h-64 bg-primary/10 rounded-full blur-2xl" />
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 relative z-10">
           <div>
-            <div className="inline-flex items-center gap-1.5 bg-rose-500/20 text-rose-400 px-3 py-1 rounded-full text-[10px] font-sans font-black uppercase tracking-wider border border-rose-500/30">
+            <div className="inline-flex items-center gap-1.5 bg-primary/20 text-rose-400 px-3 py-1 rounded-full text-[10px] font-sans font-black uppercase tracking-wider border border-rose-500/30">
               <ShieldCheck size={12} />
               <span>NEST Administration</span>
             </div>
             <h2 className="font-sans font-black text-2xl tracking-tight mt-2 text-white">
               Platform Dashboard
             </h2>
-            <p className="text-slate-400 text-xs mt-1 leading-normal font-sans max-w-xl">
+            <p className="text-muted-foreground text-xs mt-1 leading-normal font-sans max-w-xl">
               Member management, verification review, and content moderation.
             </p>
           </div>
 
           <div className="flex gap-3">
             <div className="bg-slate-800/80 border border-slate-700/50 px-4 py-2.5 rounded-2xl text-center">
-              <span className="text-[10px] text-slate-400 uppercase font-bold tracking-widest font-mono block">Members</span>
+              <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest font-mono block">Members</span>
               <strong className="text-xl font-sans text-rose-400 font-black">{users.length}</strong>
             </div>
             <div className="bg-slate-800/80 border border-slate-700/50 px-4 py-2.5 rounded-2xl text-center">
-              <span className="text-[10px] text-slate-400 uppercase font-bold tracking-widest font-mono block">Pending review</span>
+              <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest font-mono block">Pending review</span>
               <strong className="text-xl font-sans text-sky-400 font-black">{pendingCount}</strong>
             </div>
             <div className="bg-slate-800/80 border border-slate-700/50 px-4 py-2.5 rounded-2xl text-center">
-              <span className="text-[10px] text-slate-400 uppercase font-bold tracking-widest font-mono block">Spots</span>
+              <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest font-mono block">Spots</span>
               <strong className="text-xl font-sans text-amber-400 font-black">{recs.length}</strong>
             </div>
           </div>
@@ -330,11 +330,11 @@ export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboar
       )}
 
       {/* Tabs */}
-      <div className="flex items-center gap-2 border-b border-white/40 pb-2 overflow-x-auto">
+      <div className="flex items-center gap-2 border-b border-border/40 pb-2 overflow-x-auto">
         <button
           onClick={() => setActiveSubTab("verifications")}
           className={`px-4 py-2 rounded-xl text-xs font-sans font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
-            activeSubTab === "verifications" ? "bg-slate-900 text-white shadow-md" : "bg-white/40 text-slate-600 hover:bg-white/75"
+            activeSubTab === "verifications" ? "bg-slate-900 text-white shadow-md" : "bg-card/40 text-muted-foreground hover:bg-card/75"
           }`}
         >
           <BadgeCheck size={14} />
@@ -343,7 +343,7 @@ export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboar
         <button
           onClick={() => setActiveSubTab("users")}
           className={`px-4 py-2 rounded-xl text-xs font-sans font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
-            activeSubTab === "users" ? "bg-slate-900 text-white shadow-md" : "bg-white/40 text-slate-600 hover:bg-white/75"
+            activeSubTab === "users" ? "bg-slate-900 text-white shadow-md" : "bg-card/40 text-muted-foreground hover:bg-card/75"
           }`}
         >
           <Users size={14} />
@@ -352,7 +352,7 @@ export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboar
         <button
           onClick={() => setActiveSubTab("spots")}
           className={`px-4 py-2 rounded-xl text-xs font-sans font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
-            activeSubTab === "spots" ? "bg-slate-900 text-white shadow-md" : "bg-white/40 text-slate-600 hover:bg-white/75"
+            activeSubTab === "spots" ? "bg-slate-900 text-white shadow-md" : "bg-card/40 text-muted-foreground hover:bg-card/75"
           }`}
         >
           <MapPin size={14} />
@@ -362,14 +362,14 @@ export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboar
 
       {/* VERIFICATION REVIEW */}
       {activeSubTab === "verifications" && (
-        <div className="bg-white/40 backdrop-blur-xl rounded-[28px] border border-white/60 p-5 shadow-xl space-y-4">
+        <div className="bg-card/40 backdrop-blur-xl rounded-[28px] border border-border/60 p-5 shadow-xl space-y-4">
           <div className="flex items-center gap-1.5 flex-wrap">
             {["pending", "rejected", "approved", "all"].map(f => (
               <button
                 key={f}
                 onClick={() => setVerificationFilter(f)}
                 className={`px-3 py-1.5 rounded-lg text-[11px] font-sans font-bold capitalize transition ${
-                  verificationFilter === f ? "bg-slate-900 text-white" : "bg-white/60 text-slate-600 hover:bg-white"
+                  verificationFilter === f ? "bg-slate-900 text-white" : "bg-card/60 text-muted-foreground hover:bg-card"
                 }`}
               >
                 {f}
@@ -378,46 +378,46 @@ export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboar
           </div>
 
           {isLoadingVerifications ? (
-            <div className="text-center py-10 text-slate-500 font-sans text-xs">Loading verification requests…</div>
+            <div className="text-center py-10 text-muted-foreground font-sans text-xs">Loading verification requests…</div>
           ) : verifications.length === 0 ? (
-            <div className="text-center py-10 text-slate-400 text-xs font-sans border border-dashed border-slate-200 rounded-2xl bg-white/25">
+            <div className="text-center py-10 text-muted-foreground text-xs font-sans border border-dashed border-border rounded-2xl bg-card/25">
               {verificationFilter === "pending" ? "No requests waiting for review." : `No ${verificationFilter} requests.`}
             </div>
           ) : (
             <div className="space-y-3">
               {verifications.map(v => (
-                <div key={v.userId} className="bg-white/80 rounded-2xl border border-white/60 p-4 shadow-sm">
+                <div key={v.userId} className="bg-card/80 rounded-2xl border border-border/60 p-4 shadow-sm">
                   <div className="flex flex-col md:flex-row md:items-start justify-between gap-3">
                     <div className="flex items-start gap-3 min-w-0">
                       {v.photo ? (
-                        <img src={v.photo} alt={v.name} referrerPolicy="no-referrer" className="w-11 h-11 rounded-xl object-cover border border-white/80 shadow-sm shrink-0" />
+                        <img src={v.photo} alt={v.name} referrerPolicy="no-referrer" className="w-11 h-11 rounded-xl object-cover border border-border/80 shadow-sm shrink-0" />
                       ) : (
-                        <div className="w-11 h-11 rounded-xl bg-slate-200 text-slate-500 flex items-center justify-center font-bold text-xs shrink-0">
+                        <div className="w-11 h-11 rounded-xl bg-border text-muted-foreground flex items-center justify-center font-bold text-xs shrink-0">
                           {(v.name || "?")[0]}
                         </div>
                       )}
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <h4 className="font-sans font-bold text-sm text-slate-900">{v.name}, {v.age}</h4>
+                          <h4 className="font-sans font-bold text-sm text-foreground">{v.name}, {v.age}</h4>
                           <span className={`text-[9px] px-2 py-0.5 rounded-full font-sans font-extrabold uppercase border ${VERIFICATION_BADGE[v.verificationStatus] || VERIFICATION_BADGE.unsubmitted}`}>
                             {v.verificationStatus}
                           </span>
                         </div>
-                        <div className="text-[11px] text-slate-600 mt-1.5 space-y-0.5">
+                        <div className="text-[11px] text-muted-foreground mt-1.5 space-y-0.5">
                           <p><span className="font-bold">Account email:</span> <span className="font-mono">{v.email}</span></p>
                           <p><span className="font-bold">University:</span> {v.verification.university || v.university || "—"}</p>
                           <p><span className="font-bold">University email:</span> <span className="font-mono">{v.verification.universityEmail || "—"}</span></p>
                           {v.verification.userNote && (
-                            <p className="text-slate-500 italic">“{v.verification.userNote}”</p>
+                            <p className="text-muted-foreground italic">“{v.verification.userNote}”</p>
                           )}
                           {v.verification.submittedAt && (
-                            <p className="text-[10px] text-slate-400">
+                            <p className="text-[10px] text-muted-foreground">
                               Submitted {new Date(v.verification.submittedAt).toLocaleString()}
                               {v.verification.reviewedAt && ` · Reviewed ${new Date(v.verification.reviewedAt).toLocaleString()}`}
                             </p>
                           )}
                           {v.verificationStatus === "rejected" && v.verification.rejectionReason && (
-                            <p className="text-[10px] text-rose-500">Rejected: {v.verification.rejectionReason}</p>
+                            <p className="text-[10px] text-primary">Rejected: {v.verification.rejectionReason}</p>
                           )}
                         </div>
                       </div>
@@ -440,7 +440,7 @@ export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboar
                               setRejectReason("");
                             }}
                             disabled={busyUserId !== null}
-                            className="bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 text-[11px] font-bold px-3.5 py-2 rounded-xl transition flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                            className="bg-accent/30 hover:bg-accent/60 text-primary border border-border text-[11px] font-bold px-3.5 py-2 rounded-xl transition flex items-center gap-1 cursor-pointer disabled:opacity-50"
                           >
                             <XCircle size={13} />
                             <span>Reject</span>
@@ -451,8 +451,8 @@ export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboar
                   </div>
 
                   {rejectingUserId === v.userId && (
-                    <div className="mt-3 bg-rose-50/60 border border-rose-100 rounded-xl p-3 space-y-2">
-                      <label className="text-[10px] font-sans font-bold text-rose-700 block">
+                    <div className="mt-3 bg-accent/60 border border-border/70 rounded-xl p-3 space-y-2">
+                      <label className="text-[10px] font-sans font-bold text-primary block">
                         Reason (shown to the member)
                       </label>
                       <input
@@ -460,19 +460,19 @@ export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboar
                         value={rejectReason}
                         onChange={(e) => setRejectReason(e.target.value)}
                         placeholder="e.g. The email provided is not a university address."
-                        className="w-full bg-white border border-rose-200 rounded-lg px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-rose-300"
+                        className="w-full bg-card border border-border rounded-lg px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                       />
                       <div className="flex justify-end gap-2">
                         <button
                           onClick={() => setRejectingUserId(null)}
-                          className="text-[11px] font-bold text-slate-500 px-3 py-1.5 hover:text-slate-700"
+                          className="text-[11px] font-bold text-muted-foreground px-3 py-1.5 hover:text-foreground"
                         >
                           Cancel
                         </button>
                         <button
                           onClick={() => handleReject(v.userId, v.name)}
                           disabled={busyUserId !== null || !rejectReason.trim()}
-                          className="bg-rose-600 hover:bg-rose-700 text-white text-[11px] font-black px-3.5 py-1.5 rounded-lg transition disabled:opacity-40"
+                          className="bg-destructive hover:bg-destructive/90 text-destructive-foreground text-[11px] font-black px-3.5 py-1.5 rounded-lg transition disabled:opacity-40"
                         >
                           Confirm rejection
                         </button>
@@ -488,22 +488,22 @@ export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboar
 
       {/* MEMBERS */}
       {activeSubTab === "users" && (
-        <div className="bg-white/40 backdrop-blur-xl rounded-[28px] border border-white/60 p-5 shadow-xl space-y-4">
+        <div className="bg-card/40 backdrop-blur-xl rounded-[28px] border border-border/60 p-5 shadow-xl space-y-4">
           <div className="flex flex-col md:flex-row md:items-center gap-3">
-            <div className="flex items-center gap-2 bg-white/60 border border-white/80 rounded-xl px-3 py-1.5 max-w-sm w-full">
-              <Search size={14} className="text-slate-400" />
+            <div className="flex items-center gap-2 bg-card/60 border border-border/80 rounded-xl px-3 py-1.5 max-w-sm w-full">
+              <Search size={14} className="text-muted-foreground" />
               <input
                 type="text"
                 placeholder="Search by name, email, or university…"
                 value={userSearch}
                 onChange={(e) => setUserSearch(e.target.value)}
-                className="bg-transparent text-xs text-slate-800 placeholder-slate-400 focus:outline-none w-full"
+                className="bg-transparent text-xs text-foreground placeholder-muted-foreground focus:outline-none w-full"
               />
             </div>
             <select
               value={userStatusFilter}
               onChange={(e) => setUserStatusFilter(e.target.value)}
-              className="bg-white/60 border border-white/80 rounded-xl px-3 py-2 text-xs text-slate-700 font-bold focus:outline-none"
+              className="bg-card/60 border border-border/80 rounded-xl px-3 py-2 text-xs text-foreground font-bold focus:outline-none"
             >
               <option value="all">All members</option>
               <option value="pending">Verification pending</option>
@@ -517,16 +517,16 @@ export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboar
           </div>
 
           {isLoadingUsers ? (
-            <div className="text-center py-10 text-slate-500 font-sans text-xs">Loading members…</div>
+            <div className="text-center py-10 text-muted-foreground font-sans text-xs">Loading members…</div>
           ) : filteredUsers.length === 0 ? (
-            <div className="text-center py-10 text-slate-400 text-xs font-sans border border-dashed border-slate-200 rounded-2xl bg-white/25">
+            <div className="text-center py-10 text-muted-foreground text-xs font-sans border border-dashed border-border rounded-2xl bg-card/25">
               No members match this search or filter.
             </div>
           ) : (
-            <div className="overflow-x-auto rounded-2xl border border-white/50 shadow-sm bg-white/20">
+            <div className="overflow-x-auto rounded-2xl border border-border/50 shadow-sm bg-card/20">
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
-                  <tr className="bg-slate-100/80 border-b border-slate-200 text-slate-600 font-sans font-bold">
+                  <tr className="bg-muted/80 border-b border-border text-muted-foreground font-sans font-bold">
                     <th className="p-3.5">Member</th>
                     <th className="p-3.5">Email</th>
                     <th className="p-3.5">University</th>
@@ -537,9 +537,9 @@ export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboar
                     <th className="p-3.5 text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-border/60">
                   {filteredUsers.map((u) => (
-                    <tr key={u.id} className={`hover:bg-white/40 transition ${u.status === "suspended" ? "opacity-60" : ""}`}>
+                    <tr key={u.id} className={`hover:bg-card/40 transition ${u.status === "suspended" ? "opacity-60" : ""}`}>
                       <td className="p-3.5">
                         <div className="flex items-center gap-3">
                           {u.profile?.photo ? (
@@ -547,29 +547,29 @@ export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboar
                               src={u.profile.photo}
                               alt={u.profile.name}
                               referrerPolicy="no-referrer"
-                              className="w-8 h-8 rounded-lg object-cover border border-white/80 shadow-sm shrink-0"
+                              className="w-8 h-8 rounded-lg object-cover border border-border/80 shadow-sm shrink-0"
                             />
                           ) : (
-                            <div className="w-8 h-8 rounded-lg bg-slate-200 text-slate-500 flex items-center justify-center font-bold text-[10px] shrink-0">
+                            <div className="w-8 h-8 rounded-lg bg-border text-muted-foreground flex items-center justify-center font-bold text-[10px] shrink-0">
                               {(u.profile?.name || "U")[0].toUpperCase()}
                             </div>
                           )}
                           <div>
-                            <h4 className="font-sans font-bold text-slate-900">{u.profile?.name || "Unfinished profile"}</h4>
-                            <span className="text-[10px] text-slate-400 font-sans">
+                            <h4 className="font-sans font-bold text-foreground">{u.profile?.name || "Unfinished profile"}</h4>
+                            <span className="text-[10px] text-muted-foreground font-sans">
                               {u.profile ? `Age ${u.profile.age}` : ""}{u.isPremium ? " · Premium" : ""}{u.role === "admin" ? " · Admin" : ""}
                             </span>
                           </div>
                         </div>
                       </td>
-                      <td className="p-3.5 font-mono text-[11px] text-slate-600 select-text">{u.email}</td>
-                      <td className="p-3.5 font-sans font-semibold text-slate-700 capitalize">
-                        {u.profile?.university || <span className="text-stone-400 font-normal">—</span>}
+                      <td className="p-3.5 font-mono text-[11px] text-muted-foreground select-text">{u.email}</td>
+                      <td className="p-3.5 font-sans font-semibold text-foreground capitalize">
+                        {u.profile?.university || <span className="text-muted-foreground font-normal">—</span>}
                       </td>
-                      <td className="p-3.5 font-mono text-[10px] text-slate-500">
+                      <td className="p-3.5 font-mono text-[10px] text-muted-foreground">
                         {new Date(u.createdAt).toLocaleDateString()}
                       </td>
-                      <td className="p-3.5 font-mono text-[10px] text-slate-500">
+                      <td className="p-3.5 font-mono text-[10px] text-muted-foreground">
                         {u.lastActiveAt ? new Date(u.lastActiveAt).toLocaleDateString() : "—"}
                       </td>
                       <td className="p-3.5 text-center">
@@ -579,14 +579,14 @@ export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboar
                       </td>
                       <td className="p-3.5 text-center">
                         <span className={`text-[9px] px-2 py-0.5 rounded-full font-sans font-extrabold uppercase border inline-block ${
-                          u.status === "suspended" ? "bg-rose-50 text-rose-600 border-rose-200" : "bg-emerald-50 text-emerald-700 border-emerald-200/60"
+                          u.status === "suspended" ? "bg-accent/30 text-primary border-border" : "bg-emerald-50 text-emerald-700 border-emerald-200/60"
                         }`}>
                           {u.status}
                         </span>
                       </td>
                       <td className="p-3.5 text-right">
                         {u.role === "admin" ? (
-                          <span className="text-[10px] text-slate-400 italic font-sans pr-2">Admin</span>
+                          <span className="text-[10px] text-muted-foreground italic font-sans pr-2">Admin</span>
                         ) : (
                           <div className="flex items-center justify-end gap-1.5">
                             <button
@@ -623,31 +623,31 @@ export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboar
 
       {/* SPOTS */}
       {activeSubTab === "spots" && (
-        <div className="bg-white/40 backdrop-blur-xl rounded-[28px] border border-white/60 p-5 shadow-xl space-y-4">
-          <div className="flex items-center gap-2 bg-white/60 border border-white/80 rounded-xl px-3 py-1.5 max-w-sm">
-            <Search size={14} className="text-slate-400" />
+        <div className="bg-card/40 backdrop-blur-xl rounded-[28px] border border-border/60 p-5 shadow-xl space-y-4">
+          <div className="flex items-center gap-2 bg-card/60 border border-border/80 rounded-xl px-3 py-1.5 max-w-sm">
+            <Search size={14} className="text-muted-foreground" />
             <input
               type="text"
               placeholder="Search spots by name, description, address…"
               value={recSearch}
               onChange={(e) => setRecSearch(e.target.value)}
-              className="bg-transparent text-xs text-slate-800 placeholder-slate-400 focus:outline-none w-full"
+              className="bg-transparent text-xs text-foreground placeholder-muted-foreground focus:outline-none w-full"
             />
           </div>
 
           {isLoadingRecs ? (
-            <div className="text-center py-10 text-slate-500 font-sans text-xs">Loading spots…</div>
+            <div className="text-center py-10 text-muted-foreground font-sans text-xs">Loading spots…</div>
           ) : filteredRecs.length === 0 ? (
-            <div className="text-center py-10 text-slate-400 text-xs font-sans border border-dashed border-slate-200 rounded-2xl bg-white/25">
+            <div className="text-center py-10 text-muted-foreground text-xs font-sans border border-dashed border-border rounded-2xl bg-card/25">
               No recommendations found.
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {filteredRecs.map((rec) => (
-                <div key={rec.id} className="bg-white/80 backdrop-blur-sm rounded-2xl border border-white/60 p-4 shadow-sm flex flex-col justify-between hover:shadow-md transition">
+                <div key={rec.id} className="bg-card/80 backdrop-blur-sm rounded-2xl border border-border/60 p-4 shadow-sm flex flex-col justify-between hover:shadow-md transition">
                   <div>
                     <div className="flex justify-between items-start gap-2 mb-2">
-                      <span className="text-[9px] uppercase tracking-wider bg-rose-50 text-rose-700 border border-rose-100 px-2 py-0.5 rounded font-bold font-mono">
+                      <span className="text-[9px] uppercase tracking-wider bg-accent/30 text-primary border border-border/70 px-2 py-0.5 rounded font-bold font-mono">
                         {rec.category}
                       </span>
                       {rec.googleMapsUrl && (
@@ -655,7 +655,7 @@ export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboar
                           href={rec.googleMapsUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-slate-500 hover:text-slate-800 transition p-1"
+                          className="text-muted-foreground hover:text-foreground transition p-1"
                           title="Open in Google Maps"
                         >
                           <ExternalLink size={12} />
@@ -663,18 +663,18 @@ export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboar
                       )}
                     </div>
 
-                    <h4 className="font-bold text-sm text-slate-900 leading-tight mb-1">{rec.name}</h4>
-                    <p className="text-[11px] text-slate-500 mb-2 truncate" title={rec.address}>
+                    <h4 className="font-bold text-sm text-foreground leading-tight mb-1">{rec.name}</h4>
+                    <p className="text-[11px] text-muted-foreground mb-2 truncate" title={rec.address}>
                       📍 {rec.address}
                     </p>
-                    <p className="text-xs text-slate-600 line-clamp-3 leading-relaxed bg-slate-50/50 p-2.5 rounded-xl border border-slate-100 mb-3">
+                    <p className="text-xs text-muted-foreground line-clamp-3 leading-relaxed bg-muted/40 p-2.5 rounded-xl border border-border/60 mb-3">
                       “{rec.description}”
                     </p>
                   </div>
 
-                  <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
-                    <span className="text-[10px] text-slate-400 font-sans">
-                      By: <strong className="text-slate-700">{rec.authorName}</strong>
+                  <div className="pt-3 border-t border-border/60 flex items-center justify-between">
+                    <span className="text-[10px] text-muted-foreground font-sans">
+                      By: <strong className="text-foreground">{rec.authorName}</strong>
                     </span>
                     <button
                       onClick={() => handleDeleteRec(rec.id, rec.name)}

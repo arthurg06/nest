@@ -19,6 +19,7 @@
 --------------------------------------------------------------------------- */
 
 :root {
+  color-scheme: light;
   --background: #fff0f8;
   --foreground: #91185c;
   --card: #fff7fc;
@@ -66,6 +67,7 @@
 }
 
 .dark {
+  color-scheme: dark;
   --background: #1a0922;
   --foreground: #ffb3ff;
   --card: #2a1435;
@@ -81,7 +83,10 @@
   --accent: #5a1f5d;
   --accent-foreground: #ffb3ff;
   --destructive: #ff2876;
-  --destructive-foreground: #f9f9f9;
+  /* Corrected from the supplied #f9f9f9: white on this bright berry measures
+     3.4:1 (below AA). Dark text mirrors the dark primary-foreground pairing
+     and measures ~5.3:1. */
+  --destructive-foreground: #2b040f;
   --border: #4a1b5f;
   --input: #46204f;
   --ring: #ff6bef;
@@ -265,11 +270,12 @@ html {
 
 body {
   font-family: var(--font-sans);
-  /* Bright blush canvas with soft candy accents */
+  /* Bright blush canvas with soft candy accents (token-driven so the
+     ambient glow follows the theme) */
   background-color: var(--background);
   background-image:
-    radial-gradient(at 88% -12%, #ffd6ff 0px, transparent 50%),
-    radial-gradient(at -10% 100%, #ffe3f2 0px, transparent 45%);
+    radial-gradient(at 88% -12%, var(--secondary) 0px, transparent 50%),
+    radial-gradient(at -10% 100%, var(--muted) 0px, transparent 45%);
   background-repeat: no-repeat;
   color: var(--foreground);
   overflow-x: hidden;
@@ -300,12 +306,12 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #f0aad2;
+  background: var(--border);
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #e6067a;
+  background: var(--primary);
 }
 
 /* Respect users who prefer reduced motion */

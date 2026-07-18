@@ -9,6 +9,21 @@
     <title>NEST — Madrid Student Net</title>
     <meta name="description" content="A private club for international women studying in Madrid. Meet friends through shared interests, city spots, and curated outings." />
     <meta name="theme-color" content="#fff0f8" />
+    <!-- Pre-paint theme resolution: mirrors src/lib/theme.ts so the wrong
+         theme never flashes before React loads -->
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem("nest_theme");
+          var dark =
+            stored === "dark" ||
+            (stored !== "light" && matchMedia("(prefers-color-scheme: dark)").matches);
+          if (dark) document.documentElement.classList.add("dark");
+          var meta = document.querySelector('meta[name="theme-color"]');
+          if (meta) meta.setAttribute("content", dark ? "#1a0922" : "#fff0f8");
+        } catch (e) {}
+      })();
+    </script>
 
     <!-- Brand fonts: linked (not @import) with swap to minimize layout shift -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />

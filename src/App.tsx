@@ -411,7 +411,7 @@ export default function App() {
           alt="NEST logo"
           className="w-24 h-24 rounded-[28px] shadow-xl animate-pulse"
         />
-        <span className="font-mono text-[10px] uppercase tracking-widest text-stone-400">
+        <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
           Madrid Student Net
         </span>
       </div>
@@ -428,7 +428,7 @@ export default function App() {
   const isAdmin = accountUser?.isAdmin || false;
 
   return (
-      <div className="min-h-screen text-slate-800 flex flex-col antialiased">
+      <div className="min-h-screen text-foreground flex flex-col antialiased">
       
       {/* 1. TOP HEADER BANNER — brand identity only; personal status lives
           beside the member's name on her profile, not in the global header */}
@@ -436,10 +436,10 @@ export default function App() {
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           {/* Logo */}
           <div className="flex items-center gap-2.5">
-            <img src="/icons/nest-192.png" alt="NEST logo" className="w-9 h-9 rounded-xl object-cover shadow-sm border border-white/50" />
+            <img src="/icons/nest-192.png" alt="NEST logo" className="w-9 h-9 rounded-xl object-cover shadow-sm border border-border/50" />
             <div>
-              <span className="font-display font-semibold tracking-tight text-stone-900 text-lg lowercase">nest</span>
-              <span className="font-mono text-[9px] font-bold text-rose-600 tracking-widest block -mt-1 uppercase">Madrid</span>
+              <span className="font-display font-semibold tracking-tight text-foreground text-lg lowercase">nest</span>
+              <span className="font-mono text-[9px] font-bold text-primary tracking-widest block -mt-1 uppercase">Madrid</span>
             </div>
           </div>
 
@@ -449,7 +449,7 @@ export default function App() {
             {/* Sign out (non-destructive; account data is kept) */}
             <button
               onClick={handleSignOut}
-              className="font-sans text-[11px] text-stone-500 hover:text-stone-900 font-bold px-2.5 py-1.5 rounded-lg transition cursor-pointer"
+              className="font-sans text-[11px] text-muted-foreground hover:text-foreground font-bold px-2.5 py-1.5 rounded-lg transition cursor-pointer"
               title="Sign out of NEST"
             >
               Sign out
@@ -458,12 +458,12 @@ export default function App() {
             {/* Profile Avatar Trigger */}
             <button 
               onClick={() => setActiveTab("profile")}
-              className={`flex items-center gap-2 text-left bg-stone-50 p-1.5 rounded-xl border border-stone-200/50 hover:bg-stone-100/50 transition`}
+              className={`flex items-center gap-2 text-left bg-card p-1.5 rounded-xl border border-border/50 hover:bg-muted/50 transition`}
             >
               <div className={`w-7 h-7 rounded-lg bg-gradient-to-tr ${currentUser.avatarColor || "from-rose-400 to-rose-600"} flex items-center justify-center text-white text-[11px] font-extrabold`}>
                 {currentUser.name[0]}
               </div>
-              <span className="hidden md:inline font-sans font-black text-xs text-stone-700">
+              <span className="hidden md:inline font-sans font-black text-xs text-foreground">
                 {currentUser.name.split(" ")[0]}
               </span>
             </button>
@@ -476,11 +476,11 @@ export default function App() {
         
         {/* Checkout return banner */}
         {checkoutBanner && (
-          <div className="bg-stone-50 border border-stone-200 text-stone-700 p-3 rounded-2xl text-[11px] mb-5 font-medium flex items-center justify-between shadow-sm animate-fade-in">
+          <div className="bg-card border border-border text-foreground p-3 rounded-2xl text-[11px] mb-5 font-medium flex items-center justify-between shadow-sm animate-fade-in">
             <span>{checkoutBanner}</span>
             <button
               onClick={() => setCheckoutBanner("")}
-              className="text-stone-500 hover:text-stone-800 font-bold text-[10px] ml-3"
+              className="text-muted-foreground hover:text-foreground font-bold text-[10px] ml-3"
             >
               Dismiss
             </button>
@@ -512,36 +512,36 @@ export default function App() {
             <div className="space-y-6">
               {/* Swipe Deck Header and Intro */}
               <div className="text-center max-w-sm mx-auto space-y-1">
-                <h2 className="font-display text-3xl text-stone-900">
+                <h2 className="font-display text-3xl text-foreground">
                   Find your people
                 </h2>
-                <p className="font-sans text-xs text-stone-500 leading-normal">
+                <p className="font-sans text-xs text-muted-foreground leading-normal">
                   Matched by shared interests, lifestyle, and languages.
                 </p>
               </div>
 
               {!currentUser.isVerified ? (
-                <div className="bg-white/40 backdrop-blur-xl rounded-[32px] border border-stone-200 p-8 shadow-xl text-center max-w-md mx-auto space-y-4 py-12 animate-fade-in">
+                <div className="bg-card/40 backdrop-blur-xl rounded-[32px] border border-border p-8 shadow-xl text-center max-w-md mx-auto space-y-4 py-12 animate-fade-in">
                   {currentUser.verificationStatus === "pending" ? (
                     <>
                       <span className="text-5xl select-none block">⏳</span>
-                      <h3 className="font-sans font-black text-slate-800 text-base">Verification under review</h3>
-                      <p className="font-sans text-xs text-slate-500 leading-relaxed max-w-xs mx-auto">
+                      <h3 className="font-sans font-black text-foreground text-base">Verification under review</h3>
+                      <p className="font-sans text-xs text-muted-foreground leading-relaxed max-w-xs mx-auto">
                         Our team reviews every member to keep NEST a safe, women-only community. We'll notify you once you're approved.
                       </p>
                     </>
                   ) : currentUser.verificationStatus === "rejected" ? (
                     <>
                       <span className="text-5xl select-none block">🛡️</span>
-                      <h3 className="font-sans font-black text-slate-800 text-base">Verification not approved</h3>
+                      <h3 className="font-sans font-black text-foreground text-base">Verification not approved</h3>
                       {currentUser.verification?.rejectionReason && (
-                        <p className="font-sans text-xs text-slate-600 leading-relaxed max-w-xs mx-auto bg-rose-50 border border-rose-100 rounded-xl p-3">
+                        <p className="font-sans text-xs text-muted-foreground leading-relaxed max-w-xs mx-auto bg-accent/30 border border-border/70 rounded-xl p-3">
                           {currentUser.verification.rejectionReason}
                         </p>
                       )}
                       <button
                         onClick={() => setActiveTab("profile")}
-                        className="bg-rose-500 hover:bg-rose-600 text-white font-sans text-xs font-black px-6 py-2.5 rounded-xl shadow-pop transition"
+                        className="bg-primary hover:bg-primary/90 text-primary-foreground font-sans text-xs font-black px-6 py-2.5 rounded-xl shadow-pop transition"
                       >
                         Update &amp; resubmit
                       </button>
@@ -549,13 +549,13 @@ export default function App() {
                   ) : (
                     <>
                       <span className="text-5xl select-none block">🛡️</span>
-                      <h3 className="font-sans font-black text-slate-800 text-base">Verify your student status</h3>
-                      <p className="font-sans text-xs text-slate-500 leading-relaxed max-w-xs mx-auto">
+                      <h3 className="font-sans font-black text-foreground text-base">Verify your student status</h3>
+                      <p className="font-sans text-xs text-muted-foreground leading-relaxed max-w-xs mx-auto">
                         Matching opens once an administrator approves your student verification.
                       </p>
                       <button
                         onClick={() => setActiveTab("profile")}
-                        className="bg-rose-500 hover:bg-rose-600 text-white font-sans text-xs font-black px-6 py-2.5 rounded-xl shadow-pop transition"
+                        className="bg-primary hover:bg-primary/90 text-primary-foreground font-sans text-xs font-black px-6 py-2.5 rounded-xl shadow-pop transition"
                       >
                         Start verification
                       </button>
@@ -570,13 +570,13 @@ export default function App() {
                   onSwipeRight={handleSwipeRight}
                 />
               ) : (
-                <div className="bg-white/40 backdrop-blur-xl rounded-[32px] border border-white/60 p-6 md:p-8 shadow-xl text-center max-w-md mx-auto space-y-6 py-10 animate-fade-in select-text">
+                <div className="bg-card/40 backdrop-blur-xl rounded-[32px] border border-border/60 p-6 md:p-8 shadow-xl text-center max-w-md mx-auto space-y-6 py-10 animate-fade-in select-text">
                   <span className="text-5xl select-none block animate-pulse">✨🌸</span>
                   <div className="space-y-1">
-                    <h3 className="font-sans font-black text-slate-800 text-base leading-snug">
+                    <h3 className="font-sans font-black text-foreground text-base leading-snug">
                       You're all caught up
                     </h3>
-                    <p className="font-sans text-xs text-slate-500 leading-relaxed max-w-xs mx-auto">
+                    <p className="font-sans text-xs text-muted-foreground leading-relaxed max-w-xs mx-auto">
                       New members appear here as soon as their student verification is approved. Check back soon.
                     </p>
                   </div>
@@ -589,9 +589,9 @@ export default function App() {
             <div className="grid grid-cols-1 md:grid-cols-12 gap-5 h-[560px] md:h-[620px]">
               
               {/* LEFT COLUMN: Matches inbox lists */}
-              <div className="md:col-span-4 bg-white/40 backdrop-blur-xl rounded-2xl border border-white/60 p-4 flex flex-col overflow-hidden shadow-xl">
-                <h3 className="font-sans font-black text-slate-900 text-base border-b border-rose-100 pb-2.5 flex items-center gap-2">
-                  <MessageSquare size={18} className="text-rose-500" />
+              <div className="md:col-span-4 bg-card/40 backdrop-blur-xl rounded-2xl border border-border/60 p-4 flex flex-col overflow-hidden shadow-xl">
+                <h3 className="font-sans font-black text-foreground text-base border-b border-border/70 pb-2.5 flex items-center gap-2">
+                  <MessageSquare size={18} className="text-primary" />
                   <span>Your matches</span>
                 </h3>
 
@@ -602,7 +602,7 @@ export default function App() {
                     placeholder="Search matches by name..."
                     value={searchMatchQuery}
                     onChange={(e) => setSearchMatchQuery(e.target.value)}
-                    className="w-full bg-white/50 border border-rose-100/60 rounded-xl px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-rose-300"
+                    className="w-full bg-card/50 border border-border/60 rounded-xl px-3 py-2 text-xs text-foreground placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                   />
                 </div>
 
@@ -614,7 +614,7 @@ export default function App() {
                       );
                       if (filtered.length === 0) {
                         return (
-                          <div className="text-center py-8 text-slate-400 font-sans text-xs">
+                          <div className="text-center py-8 text-muted-foreground font-sans text-xs">
                             No matches found.
                           </div>
                         );
@@ -628,8 +628,8 @@ export default function App() {
                             onClick={() => setActiveMatchId(m.id)}
                             className={`w-full p-3 rounded-xl border text-left transition-all flex items-start gap-3 ${
                               isSelected
-                                ? "bg-white border-rose-400 shadow-md ring-1 ring-rose-400 scale-[1.02]"
-                                : "bg-white/60 hover:bg-white/90 border-white/40"
+                                ? "bg-card border-rose-400 shadow-md ring-1 ring-ring scale-[1.02]"
+                                : "bg-card/60 hover:bg-card/90 border-border/40"
                             }`}
                           >
                             <img
@@ -640,18 +640,18 @@ export default function App() {
                             />
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center justify-between mb-0.5">
-                                <h4 className="font-bold text-xs text-slate-800 leading-none truncate pr-1">
+                                <h4 className="font-bold text-xs text-foreground leading-none truncate pr-1">
                                   {m.profile.name}
                                 </h4>
-                                <span className="text-[9px] bg-rose-50 text-rose-500 font-mono font-black px-1.5 py-0.5 rounded-full shrink-0 border border-rose-100/50">
+                                <span className="text-[9px] bg-accent/30 text-primary font-mono font-black px-1.5 py-0.5 rounded-full shrink-0 border border-border/50">
                                   {m.compatibilityRating}% Match
                                 </span>
                               </div>
-                              <p className="text-[10px] text-slate-400 truncate leading-tight font-mono">
+                              <p className="text-[10px] text-muted-foreground truncate leading-tight font-mono">
                                 {m.profile.university}
                               </p>
                               {lastMsg && (
-                                <p className="text-[10px] text-slate-500 truncate mt-1.5 leading-snug font-sans">
+                                <p className="text-[10px] text-muted-foreground truncate mt-1.5 leading-snug font-sans">
                                   {lastMsg.senderId === accountUser?.id ? "You: " : ""}{lastMsg.text}
                                 </p>
                               )}
@@ -661,7 +661,7 @@ export default function App() {
                       });
                     })()
                   ) : (
-                    <div className="text-center py-8 text-slate-400 font-sans text-xs">
+                    <div className="text-center py-8 text-muted-foreground font-sans text-xs">
                       No matches yet.
                     </div>
                   )}
@@ -681,8 +681,8 @@ export default function App() {
                     onSuggestPlan={() => {}}
                   />
                 ) : (
-                  <div className="bg-white rounded-2xl border border-stone-200 p-8 shadow-sm flex flex-col items-center justify-center text-center h-full text-stone-400">
-                    <MessageSquare size={36} className="text-stone-300 mb-2 animate-bounce" />
+                  <div className="bg-card rounded-2xl border border-border p-8 shadow-sm flex flex-col items-center justify-center text-center h-full text-muted-foreground">
+                    <MessageSquare size={36} className="text-muted-foreground/60 mb-2 animate-bounce" />
                     <p className="text-xs font-sans">Select a matched friend from the inbox to start planning outings!</p>
                   </div>
                 )}
@@ -741,11 +741,11 @@ export default function App() {
       {/* 3. DYNAMIC FULL-SCREEN MATCH ALERT POPUP */}
       {newMatchAlert && (
         <div className="fixed inset-0 bg-stone-950/80 backdrop-blur-md flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-3xl border border-stone-200 p-6 md:p-8 max-w-sm w-full text-center space-y-6 shadow-2xl relative animate-scale-up">
+          <div className="bg-card rounded-3xl border border-border p-6 md:p-8 max-w-sm w-full text-center space-y-6 shadow-2xl relative animate-scale-up">
             
             {/* Visual Header Matches Icon */}
             <div className="relative w-28 h-20 mx-auto flex items-center justify-center">
-              <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-rose-200 to-amber-200 flex items-center justify-center border-2 border-white shadow-md absolute -left-2 transform -rotate-12 z-10 font-bold text-rose-600 text-2xl select-none">
+              <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-rose-200 to-amber-200 flex items-center justify-center border-2 border-white shadow-md absolute -left-2 transform -rotate-12 z-10 font-bold text-primary text-2xl select-none">
                 {currentUser.name[0]}
               </div>
               <div className={`w-16 h-16 rounded-full bg-gradient-to-tr ${newMatchAlert.avatarColor || "from-rose-400 to-rose-600"} flex items-center justify-center border-2 border-white shadow-md absolute -right-2 transform rotate-12 z-10 font-bold text-white text-2xl select-none`}>
@@ -757,11 +757,11 @@ export default function App() {
             </div>
 
             <div className="space-y-1.5">
-              <h3 className="font-display text-3xl text-stone-900">
+              <h3 className="font-display text-3xl text-foreground">
                 It's a match
               </h3>
-              <p className="font-sans text-xs text-stone-500 leading-relaxed">
-                You and <strong className="text-stone-800">{newMatchAlert.name}</strong> liked each other. Say hola and plan something.
+              <p className="font-sans text-xs text-muted-foreground leading-relaxed">
+                You and <strong className="text-foreground">{newMatchAlert.name}</strong> liked each other. Say hola and plan something.
               </p>
             </div>
 
@@ -778,7 +778,7 @@ export default function App() {
               </button>
               <button
                 onClick={() => setNewMatchAlert(null)}
-                className="w-full py-2.5 border border-stone-200 hover:bg-stone-50 text-stone-600 font-sans text-xs font-black rounded-xl transition"
+                className="w-full py-2.5 border border-border hover:bg-card text-muted-foreground font-sans text-xs font-black rounded-xl transition"
               >
                 Keep browsing
               </button>
@@ -795,7 +795,7 @@ export default function App() {
           <button
             onClick={() => setActiveTab("swipe")}
             className={`flex flex-col items-center gap-1 flex-1 py-1 px-1 rounded-xl transition-all ${
-              activeTab === "swipe" ? "text-rose-600 font-bold" : "text-stone-400 hover:text-stone-700"
+              activeTab === "swipe" ? "text-primary font-bold" : "text-muted-foreground hover:text-foreground"
             }`}
           >
             <Sparkles size={18} className={activeTab === "swipe" ? "scale-110" : ""} />
@@ -806,7 +806,7 @@ export default function App() {
           <button
             onClick={() => setActiveTab("chat")}
             className={`flex flex-col items-center gap-1 flex-1 py-1 px-1 rounded-xl transition-all relative ${
-              activeTab === "chat" ? "text-rose-600 font-bold" : "text-stone-400 hover:text-stone-700"
+              activeTab === "chat" ? "text-primary font-bold" : "text-muted-foreground hover:text-foreground"
             }`}
           >
             <MessageSquare size={18} className={activeTab === "chat" ? "scale-110" : ""} />
@@ -814,7 +814,7 @@ export default function App() {
             
             {/* Active notifications indicator badge */}
             {matches.length > 0 && (
-              <span className="absolute top-1 right-5 w-2 h-2 rounded-full bg-rose-500 border border-white" />
+              <span className="absolute top-1 right-5 w-2 h-2 rounded-full bg-primary border border-white" />
             )}
           </button>
 
@@ -822,7 +822,7 @@ export default function App() {
           <button
             onClick={() => setActiveTab("city")}
             className={`flex flex-col items-center gap-1 flex-1 py-1 px-1 rounded-xl transition-all ${
-              activeTab === "city" ? "text-rose-600 font-bold" : "text-stone-400 hover:text-stone-700"
+              activeTab === "city" ? "text-primary font-bold" : "text-muted-foreground hover:text-foreground"
             }`}
           >
             <MapPin size={18} className={activeTab === "city" ? "scale-110" : ""} />
@@ -833,7 +833,7 @@ export default function App() {
           <button
             onClick={() => setActiveTab("events")}
             className={`flex flex-col items-center gap-1 flex-1 py-1 px-1 rounded-xl transition-all ${
-              activeTab === "events" ? "text-rose-600 font-bold" : "text-stone-400 hover:text-stone-700"
+              activeTab === "events" ? "text-primary font-bold" : "text-muted-foreground hover:text-foreground"
             }`}
           >
             <Calendar size={18} className={activeTab === "events" ? "scale-110" : ""} />
@@ -844,7 +844,7 @@ export default function App() {
           <button
             onClick={() => setActiveTab("profile")}
             className={`flex flex-col items-center gap-1 flex-1 py-1 px-1 rounded-xl transition-all ${
-              activeTab === "profile" ? "text-rose-600 font-bold" : "text-stone-400 hover:text-stone-700"
+              activeTab === "profile" ? "text-primary font-bold" : "text-muted-foreground hover:text-foreground"
             }`}
           >
             <User size={18} className={activeTab === "profile" ? "scale-110" : ""} />
@@ -856,11 +856,11 @@ export default function App() {
             <button
               onClick={() => setActiveTab("admin")}
               className={`flex flex-col items-center gap-1 flex-1 py-1 px-1 rounded-xl transition-all ${
-                activeTab === "admin" ? "text-rose-600 font-bold" : "text-stone-400 hover:text-stone-700"
+                activeTab === "admin" ? "text-primary font-bold" : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              <ShieldCheck size={18} className={activeTab === "admin" ? "scale-110 text-rose-600 animate-pulse" : "text-slate-400"} />
-              <span className="text-[10px] font-sans font-extrabold text-rose-600">Admin</span>
+              <ShieldCheck size={18} className={activeTab === "admin" ? "scale-110 text-primary animate-pulse" : "text-muted-foreground"} />
+              <span className="text-[10px] font-sans font-extrabold text-primary">Admin</span>
             </button>
           )}
 

@@ -132,8 +132,8 @@ export default function CityDiscovery({
       case "restaurant": return "bg-orange-100/60 text-orange-800 border-orange-200/30";
       case "study": return "bg-indigo-100/60 text-indigo-800 border-indigo-200/30";
       case "activity": return "bg-emerald-100/60 text-emerald-800 border-emerald-200/30";
-      case "hidden_gem": return "bg-rose-100/60 text-rose-800 border-rose-200/30";
-      default: return "bg-slate-100/60 text-slate-800 border-slate-200/30";
+      case "hidden_gem": return "bg-accent/50 text-accent-foreground border-border/30";
+      default: return "bg-muted/60 text-foreground border-border/30";
     }
   };
 
@@ -143,17 +143,17 @@ export default function CityDiscovery({
       {/* Upper header segment */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 animate-fade-in">
         <div>
-          <h2 className="font-display text-3xl text-slate-900">
+          <h2 className="font-display text-3xl text-foreground">
             City guide
           </h2>
-          <p className="font-sans text-xs text-slate-500 mt-1">
+          <p className="font-sans text-xs text-muted-foreground mt-1">
             Secret spots across Madrid, shared by verified members.
           </p>
         </div>
 
         <button
           onClick={() => setShowForm(!showForm)}
-          className="flex items-center justify-center gap-1.5 bg-rose-500 text-white font-sans text-xs font-bold px-4 py-2.5 rounded-xl shadow-lg shadow-rose-200/50 hover:bg-rose-600 transition md:self-end active:scale-95 shrink-0 cursor-pointer animate-fade-in"
+          className="flex items-center justify-center gap-1.5 bg-primary text-primary-foreground font-sans text-xs font-bold px-4 py-2.5 rounded-xl shadow-lg shadow-rose-200/50 hover:bg-primary/90 transition md:self-end active:scale-95 shrink-0 cursor-pointer animate-fade-in"
         >
           <Plus size={14} />
           <span>Share a spot</span>
@@ -162,13 +162,13 @@ export default function CityDiscovery({
 
       {/* Simplified, Map-free Recommendation Form */}
       {showForm && (
-        <form onSubmit={handleSubmit} className="bg-white/45 backdrop-blur-xl p-5 rounded-2xl border border-white/60 shadow-lg animate-fade-in space-y-4">
-          <div className="flex justify-between items-center pb-2 border-b border-white/30">
-            <h4 className="font-sans font-bold text-sm text-slate-800 flex items-center gap-1.5">
-              <Camera size={16} className="text-rose-500" />
+        <form onSubmit={handleSubmit} className="bg-card/45 backdrop-blur-xl p-5 rounded-2xl border border-border/60 shadow-lg animate-fade-in space-y-4">
+          <div className="flex justify-between items-center pb-2 border-b border-border/30">
+            <h4 className="font-sans font-bold text-sm text-foreground flex items-center gap-1.5">
+              <Camera size={16} className="text-primary" />
               <span>Share your Madrid Secret! 💖</span>
             </h4>
-            <button type="button" onClick={() => setShowForm(false)} className="text-xs text-slate-400 font-bold hover:text-slate-600">
+            <button type="button" onClick={() => setShowForm(false)} className="text-xs text-muted-foreground font-bold hover:text-muted-foreground">
               Cancel
             </button>
           </div>
@@ -176,24 +176,24 @@ export default function CityDiscovery({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Spot Name */}
             <div className="space-y-1">
-              <span className="text-[10px] font-sans font-extrabold text-slate-500 block">Place Name</span>
+              <span className="text-[10px] font-sans font-extrabold text-muted-foreground block">Place Name</span>
               <input
                 type="text"
                 placeholder="e.g. Acid Café"
                 value={placeName}
                 onChange={(e) => setPlaceName(e.target.value)}
-                className="w-full bg-white/40 border border-white/50 rounded-xl px-3.5 py-2 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-rose-300"
+                className="w-full bg-card/40 border border-border/50 rounded-xl px-3.5 py-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                 required
               />
             </div>
 
             {/* Category selection */}
             <div className="space-y-1">
-              <span className="text-[10px] font-sans font-extrabold text-slate-500 block">Category</span>
+              <span className="text-[10px] font-sans font-extrabold text-muted-foreground block">Category</span>
               <select
                 value={placeCategory}
                 onChange={(e) => setPlaceCategory(e.target.value as any)}
-                className="w-full bg-white/40 border border-white/50 rounded-xl px-3.5 py-2 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-rose-300"
+                className="w-full bg-card/40 border border-border/50 rounded-xl px-3.5 py-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
               >
                 <option value="cafe">Coffee / Cafés</option>
                 <option value="restaurant">Dinner / Restaurants</option>
@@ -207,32 +207,32 @@ export default function CityDiscovery({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Google Maps URL Link */}
             <div className="space-y-1">
-              <span className="text-[10px] font-sans font-extrabold text-slate-500 block">Google Maps Link (URL)</span>
+              <span className="text-[10px] font-sans font-extrabold text-muted-foreground block">Google Maps Link (URL)</span>
               <input
                 type="text"
                 placeholder="e.g. https://maps.google.com/?q=..."
                 value={googleMapsUrl}
                 onChange={(e) => setGoogleMapsUrl(e.target.value)}
-                className="w-full bg-white/40 border border-white/50 rounded-xl px-3.5 py-2 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-rose-300"
+                className="w-full bg-card/40 border border-border/50 rounded-xl px-3.5 py-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
               />
             </div>
 
             {/* Tags */}
             <div className="space-y-1">
-              <span className="text-[10px] font-sans font-extrabold text-slate-500 block">Tags (comma separated)</span>
+              <span className="text-[10px] font-sans font-extrabold text-muted-foreground block">Tags (comma separated)</span>
               <input
                 type="text"
                 placeholder="e.g. brunch, pastry, study session, aesthetic"
                 value={placeTagsString}
                 onChange={(e) => setPlaceTagsString(e.target.value)}
-                className="w-full bg-white/40 border border-white/50 rounded-xl px-3.5 py-2 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-rose-300"
+                className="w-full bg-card/40 border border-border/50 rounded-xl px-3.5 py-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
               />
             </div>
           </div>
 
           {/* Photo File Direct Device Upload */}
           <div className="space-y-1.5">
-            <span className="text-[10px] font-sans font-extrabold text-slate-500 block">Photo Upload (from gallery/files) 📸</span>
+            <span className="text-[10px] font-sans font-extrabold text-muted-foreground block">Photo Upload (from gallery/files) 📸</span>
             <ImageUploader
               value={placeImageUrl}
               onChange={(url) => setPlaceImageUrl(url)}
@@ -244,7 +244,7 @@ export default function CityDiscovery({
           <div className="flex items-center justify-between pt-1">
             {/* Rating */}
             <div className="flex items-center gap-1.5">
-              <span className="text-[10px] font-sans font-extrabold text-slate-500">Rating:</span>
+              <span className="text-[10px] font-sans font-extrabold text-muted-foreground">Rating:</span>
               <div className="flex items-center gap-1">
                 {[1, 2, 3, 4, 5].map(num => (
                   <button
@@ -259,11 +259,11 @@ export default function CityDiscovery({
               </div>
             </div>
 
-            {formError && <span className="text-rose-500 font-sans text-[10px] font-bold">{formError}</span>}
+            {formError && <span className="text-primary font-sans text-[10px] font-bold">{formError}</span>}
 
             <button
               type="submit"
-              className="bg-rose-500 text-white px-5 py-2 rounded-xl text-xs font-bold font-sans shadow-lg hover:bg-rose-600 transition active:scale-95 cursor-pointer"
+              className="bg-primary text-primary-foreground px-5 py-2 rounded-xl text-xs font-bold font-sans shadow-lg hover:bg-primary/90 transition active:scale-95 cursor-pointer"
             >
               Post Secret Spot
             </button>
@@ -272,7 +272,7 @@ export default function CityDiscovery({
       )}
 
       {/* Filter and Search controls bar */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white/30 backdrop-blur-md p-3.5 rounded-2xl border border-white/50 shrink-0 shadow-sm">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-card/30 backdrop-blur-md p-3.5 rounded-2xl border border-border/50 shrink-0 shadow-sm">
         
         {/* Categories sliders */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0 select-none">
@@ -283,7 +283,7 @@ export default function CityDiscovery({
               className={`px-3 py-1.5 rounded-xl font-sans text-xs font-bold border transition-all whitespace-nowrap flex items-center gap-1 cursor-pointer ${
                 activeCategory === cat.id
                   ? "bg-slate-900 text-white border-slate-900 shadow-sm"
-                  : "bg-white/50 text-slate-700 border-white/40 hover:bg-white/70"
+                  : "bg-card/50 text-foreground border-border/40 hover:bg-card/70"
               }`}
             >
               {cat.icon}
@@ -299,9 +299,9 @@ export default function CityDiscovery({
             placeholder="Search venue or tag..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-white/40 border border-white/50 rounded-xl pl-9 pr-4 py-1.5 text-xs font-sans text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-rose-300"
+            className="w-full bg-card/40 border border-border/50 rounded-xl pl-9 pr-4 py-1.5 text-xs font-sans text-foreground placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
           />
-          <Search size={14} className="text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <Search size={14} className="text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
         </div>
 
       </div>
@@ -313,12 +313,12 @@ export default function CityDiscovery({
             <div
               key={rec.id}
               id={`discovery-rec-${rec.id}`}
-              className="bg-white/40 backdrop-blur-md rounded-[24px] border border-white/60 p-5 shadow-sm flex flex-col justify-between hover:shadow-xl hover:bg-white/50 transition-all duration-300"
+              className="bg-card/40 backdrop-blur-md rounded-[24px] border border-border/60 p-5 shadow-sm flex flex-col justify-between hover:shadow-xl hover:bg-card/50 transition-all duration-300"
             >
               <div>
                 {/* Spot visual Image if present */}
                 {rec.imageUrl && (
-                  <div className="h-44 w-full rounded-2xl overflow-hidden mb-4 border border-white/20 relative shadow-sm group">
+                  <div className="h-44 w-full rounded-2xl overflow-hidden mb-4 border border-border/20 relative shadow-sm group">
                     <img
                       src={rec.imageUrl}
                       alt={rec.name}
@@ -334,7 +334,7 @@ export default function CityDiscovery({
                     <span className={`text-[9px] px-2.5 py-0.5 rounded-full font-sans font-extrabold uppercase border tracking-wider ${getCategoryColor(rec.category)}`}>
                       {rec.category.replace("_", " ")}
                     </span>
-                    <h3 className="font-sans font-black text-slate-900 text-sm mt-1.5 leading-tight">
+                    <h3 className="font-sans font-black text-foreground text-sm mt-1.5 leading-tight">
                       {rec.name}
                     </h3>
                   </div>
@@ -349,7 +349,7 @@ export default function CityDiscovery({
                 {/* Sub tags board */}
                 <div className="flex flex-wrap gap-1 mb-4 select-none">
                   {rec.userTags.map(tag => (
-                    <span key={tag} className="bg-white/50 text-slate-500 font-mono text-[9px] px-2 py-0.5 rounded border border-white/40">
+                    <span key={tag} className="bg-card/50 text-muted-foreground font-mono text-[9px] px-2 py-0.5 rounded border border-border/40">
                       #{tag}
                     </span>
                   ))}
@@ -357,7 +357,7 @@ export default function CityDiscovery({
               </div>
 
               {/* Bottom Metadata & Like feedback bar */}
-              <div className="pt-3 border-t border-white/30 flex items-center justify-between text-[11px] font-sans gap-2 flex-wrap">
+              <div className="pt-3 border-t border-border/30 flex items-center justify-between text-[11px] font-sans gap-2 flex-wrap">
                 
                 {/* Author profile tag */}
                 <div className="flex items-center gap-2 shrink-0">
@@ -365,8 +365,8 @@ export default function CityDiscovery({
                     {(rec.authorName || "N")[0]}
                   </div>
                   <div>
-                    <span className="text-slate-400">Shared by </span>
-                    <span className="font-bold text-slate-700">{rec.authorName}</span>
+                    <span className="text-muted-foreground">Shared by </span>
+                    <span className="font-bold text-foreground">{rec.authorName}</span>
                   </div>
                 </div>
 
@@ -380,7 +380,7 @@ export default function CityDiscovery({
                       className="transition flex items-center gap-1 font-bold text-[10px]"
                       title="Open in Google Maps"
                     >
-                      <span className="bg-rose-50 hover:bg-rose-100 border border-rose-100 px-2 py-0.5 rounded-full text-[9px] text-rose-600 flex items-center gap-1 font-extrabold transition">
+                      <span className="bg-accent/30 hover:bg-accent/60 border border-border/70 px-2 py-0.5 rounded-full text-[9px] text-primary flex items-center gap-1 font-extrabold transition">
                         🗺️ Google Maps ↗
                       </span>
                     </a>
@@ -390,8 +390,8 @@ export default function CityDiscovery({
                     onClick={() => handleToggleLike(rec.id)}
                     className={`flex items-center gap-1 font-bold font-sans transition cursor-pointer ${
                       rec.userLiked 
-                        ? "text-rose-500 scale-105" 
-                        : "text-slate-400 hover:text-rose-400"
+                        ? "text-primary scale-105" 
+                        : "text-muted-foreground hover:text-rose-400"
                     }`}
                   >
                     <Heart size={14} fill={rec.userLiked ? "currentColor" : "none"} />
@@ -419,10 +419,10 @@ export default function CityDiscovery({
             </div>
           ))
         ) : (
-          <div className="col-span-full py-12 text-center bg-white/40 backdrop-blur-md border border-dashed border-white/60 rounded-[28px] max-w-sm mx-auto p-6 space-y-3">
+          <div className="col-span-full py-12 text-center bg-card/40 backdrop-blur-md border border-dashed border-border/60 rounded-[28px] max-w-sm mx-auto p-6 space-y-3">
             <span className="text-3xl select-none">🗺️☕</span>
-            <h4 className="font-sans font-bold text-sm text-slate-800">No spots found in City Guide</h4>
-            <p className="font-sans text-xs text-slate-500 leading-relaxed max-w-xs mx-auto">
+            <h4 className="font-sans font-bold text-sm text-foreground">No spots found in City Guide</h4>
+            <p className="font-sans text-xs text-muted-foreground leading-relaxed max-w-xs mx-auto">
               The City Guide is empty until verified students share their secret spots around Madrid. Why not post a recommendation above?
             </p>
           </div>
