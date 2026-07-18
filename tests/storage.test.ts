@@ -10,6 +10,7 @@ function emptyDb(): DbSchema {
     swipes: [],
     matches: [],
     messages: [],
+    plans: [],
     recommendations: [],
     events: [],
     rsvps: [],

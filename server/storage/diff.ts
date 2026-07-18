@@ -9,6 +9,7 @@ export const COLLECTION_KEYS: Record<keyof DbSchema, string> = {
   swipes: "id",
   matches: "id",
   messages: "id",
+  plans: "id",
   recommendations: "id",
   events: "id",
   rsvps: "id",

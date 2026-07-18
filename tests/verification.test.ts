@@ -14,7 +14,10 @@ function readTestDb() {
 }
 
 describe("verification lifecycle", () => {
-  it("new accounts start unsubmitted and are hidden from discovery", async () => {
+  // Visibility rule (2026-07-19): every ACTIVE member is discoverable
+  // regardless of verification status; only approved members are marked as
+  // verified, and suspended accounts stay hidden.
+  it("new accounts start unsubmitted but are still discoverable", async () => {
     const viewer = await signup();
     await approveUser(viewer.userId);
     const newcomer = await signup();
@@ -24,7 +27,33 @@ describe("verification lifecycle", () => {
     expect(me.body.profile.isVerified).toBe(false);
 
     const discovery = await request(app).get("/api/profiles").set(auth(viewer.token)).expect(200);
-    expect(discovery.body.find((p: any) => p.userId === newcomer.userId)).toBeUndefined();
+    const seen = discovery.body.find((p: any) => p.userId === newcomer.userId);
+    expect(seen).toBeDefined();
+    // …but she carries no verified marker until an admin approves her
+    expect(seen.isVerified).toBe(false);
+    expect(seen.verificationStatus).toBe("unsubmitted");
+  });
+
+  it("suspended members disappear from discovery whatever their verification", async () => {
+    const admin = await getAdmin();
+    const viewer = await signup();
+    const target = await signup();
+    await approveUser(target.userId);
+
+    await request(app)
+      .post(`/api/admin/users/${target.userId}/suspend`)
+      .set(auth(admin.token))
+      .expect(200);
+
+    const discovery = await request(app).get("/api/profiles").set(auth(viewer.token)).expect(200);
+    expect(discovery.body.find((p: any) => p.userId === target.userId)).toBeUndefined();
+
+    // and she cannot be swiped either
+    await request(app)
+      .post("/api/swipe")
+      .set(auth(viewer.token))
+      .send({ toUserId: target.userId, action: "like" })
+      .expect(403);
   });
 
   it("submitting details makes the account pending — never approved", async () => {
@@ -39,26 +68,31 @@ describe("verification lifecycle", () => {
     expect(res.body.profile.verificationStatus).toBe("pending");
     expect(res.body.profile.isVerified).toBe(false);
 
-    // Still hidden from discovery while pending
+    // Visible while pending, but not marked verified
     const viewer = await signup();
     await approveUser(viewer.userId);
     const discovery = await request(app).get("/api/profiles").set(auth(viewer.token)).expect(200);
-    expect(discovery.body.find((p: any) => p.userId === user.userId)).toBeUndefined();
+    const seen = discovery.body.find((p: any) => p.userId === user.userId);
+    expect(seen).toBeDefined();
+    expect(seen.isVerified).toBe(false);
   });
 
-  it("pending users cannot initiate matching", async () => {
+  it("pending users can match, and matching never marks anyone verified", async () => {
     const pending = await signup();
     await request(app).post("/api/verification/submit").set(auth(pending.token)).send(submitBody).expect(200);
 
     const target = await signup();
     await approveUser(target.userId);
 
-    const res = await request(app)
+    await request(app)
       .post("/api/swipe")
       .set(auth(pending.token))
-      .send({ toUserId: target.userId, action: "like" });
-    expect(res.status).toBe(403);
-    expect(res.body.requiresVerification).toBe(true);
+      .send({ toUserId: target.userId, action: "like" })
+      .expect(200);
+
+    const me = await request(app).get("/api/auth/me").set(auth(pending.token)).expect(200);
+    expect(me.body.profile.verificationStatus).toBe("pending");
+    expect(me.body.profile.isVerified).toBe(false);
   });
 
   it("regular users cannot approve themselves or others", async () => {

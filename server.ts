@@ -717,8 +717,14 @@ app.post("/api/upload", async (req, res) => {
   }
 });
 
-// Get profiles of OTHER real users for swiping
-// Constraint: "Users must verify their account before it becomes visible to others."
+// Get profiles of OTHER real users for swiping.
+//
+// Visibility rule (product decision, 2026-07-19): every ACTIVE member is
+// discoverable, whether or not her student verification has been approved —
+// a community this young looks empty otherwise. Verification is still
+// meaningful: only approved members carry the "Verified Student" badge, and
+// suspended accounts are never shown. Tightening this back to
+// approved-only is a one-line change here.
 app.get("/api/profiles", authenticate, async (req, res) => {
   try {
     const userId = (req as any).userId;
@@ -729,13 +735,9 @@ app.get("/api/profiles", authenticate, async (req, res) => {
       .filter(s => s.fromUserId === userId)
       .map(s => s.toUserId);
 
-    // Discoverable = other users, admin-approved verification, active
-    // account, not yet swiped. Pending/rejected/suspended members are never
-    // shown or recommended.
     const activeUserIds = new Set(db.users.filter(u => u.status === "active").map(u => u.id));
     const discoverableProfiles = db.profiles.filter(p =>
       p.userId !== userId &&
-      p.verificationStatus === "approved" &&
       activeUserIds.has(p.userId) &&
       !swipedUserIds.includes(p.userId)
     );
@@ -761,16 +763,15 @@ app.post("/api/swipe", authenticate, async (req, res) => {
 
     const db = await dbManager.readDb();
 
-    // Only admin-approved members can initiate or receive matching
+    // Matching mirrors discovery visibility: any active member may swipe and
+    // be swiped. Suspended accounts stay out on both sides.
     const actorProfile = db.profiles.find(p => p.userId === userId);
-    if (!actorProfile || actorProfile.verificationStatus !== "approved") {
-      return res.status(403).json({
-        error: "Your account must be verified before you can match",
-        requiresVerification: true
-      });
+    if (!actorProfile) {
+      return res.status(404).json({ error: "Profile not found" });
     }
     const targetProfile = db.profiles.find(p => p.userId === toUserId);
-    if (!targetProfile || targetProfile.verificationStatus !== "approved") {
+    const targetUser = db.users.find(u => u.id === toUserId);
+    if (!targetProfile || !targetUser || targetUser.status !== "active") {
       return res.status(403).json({ error: "This member is not available for matching" });
     }
 
@@ -866,6 +867,7 @@ app.get("/api/matches", authenticate, async (req, res) => {
         otherUserId,
         profile: otherProfile ? publicProfileView(otherProfile) : undefined,
         messages: messages.sort((a,b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()),
+        plans: db.plans.filter(p => p.matchId === m.id),
         compatibilityRating: report.score,
         compatibilityReport: {
           sharedInterests: report.sharedInterests,
@@ -919,6 +921,136 @@ app.post("/api/chats/:matchId/messages", authenticate, async (req, res) => {
     res.json(newMessage);
   } catch (error) {
     res.status(500).json({ error: "Error posting message" });
+  }
+});
+
+// ----------------------------------------------------
+// OUTING PLANS (proposals exchanged inside a match)
+// ----------------------------------------------------
+
+// Propose an outing. The proposal is persisted AND posted into the chat as a
+// message carrying its planId, so the card appears inline in the thread.
+app.post("/api/chats/:matchId/plans", authenticate, async (req, res) => {
+  try {
+    const userId = (req as any).userId;
+    const { matchId } = req.params;
+    const { activity, title, placeName, placeArea, placeAddress, date, time, note } = req.body;
+
+    const trimmed = (value: unknown, max: number) =>
+      typeof value === "string" && value.trim() ? value.trim().slice(0, max) : "";
+
+    const cleanPlace = trimmed(placeName, 120);
+    const cleanDate = trimmed(date, 10);
+    const cleanTime = trimmed(time, 5);
+
+    if (!cleanPlace) return res.status(400).json({ error: "A place is required" });
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(cleanDate)) return res.status(400).json({ error: "A valid date is required" });
+    if (!/^\d{2}:\d{2}$/.test(cleanTime)) return res.status(400).json({ error: "A valid time is required" });
+
+    const db = await dbManager.readDb();
+    const match = db.matches.find(m => m.id === matchId && (m.user1Id === userId || m.user2Id === userId));
+    if (!match) {
+      return res.status(403).json({ error: "Forbidden: You are not part of this match" });
+    }
+
+    const receiverId = match.user1Id === userId ? match.user2Id : match.user1Id;
+
+    // One open proposal at a time keeps the thread readable and prevents
+    // spamming a match with invitations.
+    if (db.plans.some(p => p.matchId === matchId && p.status === "pending")) {
+      return res.status(400).json({ error: "There is already a pending outing for this chat" });
+    }
+
+    const planId = generateId();
+    const now = new Date().toISOString();
+    const plan = {
+      id: planId,
+      matchId,
+      senderId: userId,
+      receiverId,
+      activity: trimmed(activity, 20) || "meet",
+      title: trimmed(title, 120) || `Meet at ${cleanPlace}`,
+      placeName: cleanPlace,
+      placeArea: trimmed(placeArea, 60) || undefined,
+      placeAddress: trimmed(placeAddress, 160) || undefined,
+      date: cleanDate,
+      time: cleanTime,
+      note: trimmed(note, 300) || undefined,
+      status: "pending" as const,
+      createdAt: now
+    };
+    db.plans.push(plan);
+
+    db.messages.push({
+      id: generateId(),
+      matchId,
+      senderId: userId,
+      text: plan.title,
+      planId,
+      timestamp: now,
+      createdAt: now
+    });
+
+    const senderName = db.profiles.find(p => p.userId === userId)?.name || "A member";
+    db.notifications.push({
+      id: generateId(),
+      userId: receiverId,
+      text: `${senderName} suggested an outing: ${plan.title}`,
+      timestamp: now,
+      read: false,
+      createdAt: now
+    });
+
+    await dbManager.writeDb(db);
+    res.json(plan);
+  } catch (error) {
+    console.error("Plan creation error:", error);
+    res.status(500).json({ error: "Could not send the outing proposal" });
+  }
+});
+
+// Accept or decline a proposal. Only the member who received it may answer.
+app.post("/api/plans/:planId/respond", authenticate, async (req, res) => {
+  try {
+    const userId = (req as any).userId;
+    const { planId } = req.params;
+    const { status } = req.body;
+
+    if (status !== "accepted" && status !== "declined") {
+      return res.status(400).json({ error: "Status must be accepted or declined" });
+    }
+
+    const db = await dbManager.readDb();
+    const plan = db.plans.find(p => p.id === planId);
+    if (!plan) return res.status(404).json({ error: "Outing not found" });
+    if (plan.receiverId !== userId) {
+      return res.status(403).json({ error: "Only the member who received this outing can answer it" });
+    }
+    if (plan.status !== "pending") {
+      return res.status(400).json({ error: "This outing has already been answered" });
+    }
+
+    const now = new Date().toISOString();
+    plan.status = status;
+    plan.respondedAt = now;
+
+    const responderName = db.profiles.find(p => p.userId === userId)?.name || "Your match";
+    db.notifications.push({
+      id: generateId(),
+      userId: plan.senderId,
+      text: status === "accepted"
+        ? `${responderName} accepted: ${plan.title}`
+        : `${responderName} can't make it to: ${plan.title}`,
+      timestamp: now,
+      read: false,
+      createdAt: now
+    });
+
+    await dbManager.writeDb(db);
+    res.json(plan);
+  } catch (error) {
+    console.error("Plan response error:", error);
+    res.status(500).json({ error: "Could not answer the outing proposal" });
   }
 });
 
@@ -1446,6 +1578,11 @@ function deleteUserData(userId: string, db: any) {
 
   db.matches = db.matches.filter((m: any) => m.user1Id !== userId && m.user2Id !== userId);
   db.messages = db.messages.filter((msg: any) => msg.senderId !== userId && !matchIds.includes(msg.matchId));
+
+  // 10. Delete outing proposals in those matches (or involving the user)
+  db.plans = (db.plans || []).filter(
+    (p: any) => p.senderId !== userId && p.receiverId !== userId && !matchIds.includes(p.matchId)
+  );
 }
 
 // ----------------------------------------------------

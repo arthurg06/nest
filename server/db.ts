@@ -106,8 +106,33 @@ export interface Message {
   matchId: string;
   senderId: string; // userId of sender
   text: string;
+  /** Set when the message carries an outing proposal card. */
+  planId?: string;
   timestamp: string; // ISO string
   createdAt: string;
+}
+
+export type PlanStatus = "pending" | "accepted" | "declined";
+
+/** An outing two matched members agree on: what, where, when. */
+export interface Plan {
+  id: string;
+  matchId: string;
+  senderId: string;
+  receiverId: string;
+  /** Closed vocabulary from shared/places.ts (coffee, study, walk, …). */
+  activity: string;
+  title: string;
+  placeName: string;
+  /** Neighbourhood label — never a precise position. */
+  placeArea?: string;
+  placeAddress?: string;
+  date: string; // YYYY-MM-DD
+  time: string; // HH:MM
+  note?: string;
+  status: PlanStatus;
+  createdAt: string;
+  respondedAt?: string;
 }
 
 export interface Recommendation {
@@ -188,6 +213,7 @@ export interface DbSchema {
   swipes: Swipe[];
   matches: Match[];
   messages: Message[];
+  plans: Plan[];
   recommendations: Recommendation[];
   events: Event[];
   rsvps: EventRsvp[];
@@ -205,6 +231,7 @@ const initialDb: DbSchema = {
   swipes: [],
   matches: [],
   messages: [],
+  plans: [],
   recommendations: [],
   events: [],
   rsvps: [],
@@ -227,6 +254,11 @@ function migrateDb(db: DbSchema): boolean {
 
   if (!Array.isArray(db.processedStripeEvents)) {
     db.processedStripeEvents = [];
+    changed = true;
+  }
+
+  if (!Array.isArray(db.plans)) {
+    db.plans = [];
     changed = true;
   }
 
