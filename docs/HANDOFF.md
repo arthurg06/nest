@@ -28,18 +28,18 @@ work from her own Mac via the **Claude desktop app** (Claude Code).
   appear" in Claude Code. That's expected: Claude Code opens **local folders on
   the machine**, not projects "stored in an account." The account is only
   login + billing.
-- **Fix:** she opens her **own local `nest` folder** (cloned into her home
-  directory, e.g. `/Users/a/nest`) and uses **her own** Claude subscription —
-  not Arthur's. Sharing his account also exposes his other clients, so it's the
-  wrong path regardless.
+- **Fix:** the account only handles login/billing — it does not carry the
+  project. Whichever Claude account she is signed into, she must **open her local
+  `nest` folder** (cloned into her home directory, e.g. `/Users/a/nest`). She is
+  currently working on **Arthur's** Claude account (his call); note that means
+  she can also see his other Claude conversations and projects.
 - Her clone predates `CLAUDE.md`, so her first action must be a **`git pull`**.
 
 ## Pending (owner actions / decisions)
 
-- [ ] **Diana:** open the local `nest` folder in Claude Code on her *own*
-      account; first prompt → *"Pull the latest from GitHub, then read CLAUDE.md
-      and docs/DEV_SETUP.md, set me up, run the app, and show me how to publish a
-      change."*
+- [ ] **Diana:** in Claude Code, **open the local `nest` folder** (opening the
+      folder is what surfaces the project — the signed-in account only handles
+      login), then paste the first-session prompt below.
 - [ ] **Arthur:** send Diana `.env.local` via **Bitwarden Send** when she needs
       real data (never by email). Those values point at the **live** database —
       consider a separate dev database before any risky work.
@@ -58,19 +58,28 @@ work from her own Mac via the **Claude desktop app** (Claude Code).
   the Premium gate when Stripe is configured.
 - No **database backup** yet. No **"new message" notification** to bring members back.
 
-## Resume prompt for the next session
+## First-session prompt (paste this to start)
 
-> You are picking up the **NEST** project — a women-only friendship app for
-> international students in Madrid; the product owner is the client, **Diana**.
+Diana drives this from the Claude desktop app (currently on Arthur's account).
+Once the `nest` folder is open, paste:
+
+> You're helping **Diana**, the product owner of **NEST** — a women-only
+> friendship app for international students in Madrid. She is non-technical and is
+> driving you from the Claude desktop app on her own Mac, so guide her in plain
+> language and confirm before anything irreversible.
 >
-> First, read `CLAUDE.md` and `docs/HANDOFF.md` in this repo: they hold the rules
-> and the current state. Everything in this project stays **in English** (code,
-> comments, UI copy, commits, docs). Follow the guardrails in `CLAUDE.md`, and
-> don't build any approval-gated feature without an explicit go-ahead. Deploy by
-> pushing to `main`; never touch secrets or Diana's account.
+> **Set up this session:**
+> 1. Work in her local `nest` folder on this Mac (the clone in her home folder,
+>    e.g. `/Users/a/nest`). If it isn't open yet, tell her how to open it.
+> 2. Run `git pull`, then read `CLAUDE.md`, `docs/HANDOFF.md`, and `docs/DEV_SETUP.md`.
+> 3. Install anything missing, start the app locally, and give her the address to open.
+> 4. Explain, simply, how she makes a change and publishes it (edit → check it
+>    locally → you commit and push → the live site updates on its own).
 >
-> **Current focus:** finishing the handover to Diana and the open items in
-> `docs/HANDOFF.md`.
+> **Ground rules (from `CLAUDE.md`):** everything stays in English; never print or
+> change passwords, secrets, or real member data; don't build any approval-gated
+> feature without her explicit go-ahead; deploy only by pushing to `main`.
 >
-> Before changing anything, give me a short read-back of the current state and
-> what you'd tackle first.
+> **Current focus:** getting Diana set up and working, plus the open items in
+> `docs/HANDOFF.md`. Start by confirming the folder is open and giving her a
+> short, plain-language read-back of where the project stands.
