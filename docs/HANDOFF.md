@@ -23,23 +23,26 @@ work from her own Mac via the **Claude desktop app** (Claude Code).
 - `CLAUDE.md` (project brief her Claude Code reads automatically) and
   `docs/DEV_SETUP.md` (setup guide) were added and pushed.
 
-**Blocker currently being resolved — account vs. local folder**
-- Diana logged into *Arthur's* Claude account and the NEST project "didn't
-  appear" in Claude Code. That's expected: Claude Code opens **local folders on
-  the machine**, not projects "stored in an account." The account is only
-  login + billing.
-- **Fix:** the account only handles login/billing — it does not carry the
-  project. Whichever Claude account she is signed into, she must **open her local
-  `nest` folder** (cloned into her home directory, e.g. `/Users/a/nest`). She is
-  currently working on **Arthur's** Claude account (his call); note that means
-  she can also see his other Claude conversations and projects.
-- Her clone predates `CLAUDE.md`, so her first action must be a **`git pull`**.
+**How Diana gets the project — from GitHub, not a file transfer**
+- The code does **not** reach her Mac by any file/ZIP transfer (that kept failing —
+  a folder copy chokes on `node_modules`). It comes **from GitHub**: Diana is a
+  collaborator on `arthurg06/nest`, and she (or her Claude Code) **clones** it.
+  Cloning *is* the transfer, and it only pulls the real files — `npm install`
+  rebuilds `node_modules`.
+- In the Claude desktop app, Claude Code opens **local folders on the machine**,
+  not projects "stored in an account" — so signing into any account never makes
+  the project appear. She opens a folder, has Claude Code clone the repo into it,
+  and works there.
+- The repo is currently **public**, so cloning needs no GitHub login. (Once it's
+  made private, she signs into GitHub once — she is already a collaborator.)
+- She is working on **Arthur's** Claude account (his call); that also means she
+  can see his other Claude conversations and projects.
 
 ## Pending (owner actions / decisions)
 
-- [ ] **Diana:** in Claude Code, **open the local `nest` folder** (opening the
-      folder is what surfaces the project — the signed-in account only handles
-      login), then paste the first-session prompt below.
+- [ ] **Diana:** in the Claude desktop app, open a folder and paste the
+      first-session prompt below — Claude Code **clones `arthurg06/nest` from
+      GitHub** (if it isn't already on the Mac) and sets everything up.
 - [ ] **Arthur:** send Diana `.env.local` via **Bitwarden Send** when she needs
       real data (never by email). Those values point at the **live** database —
       consider a separate dev database before any risky work.
@@ -61,18 +64,24 @@ work from her own Mac via the **Claude desktop app** (Claude Code).
 ## First-session prompt (paste this to start)
 
 Diana drives this from the Claude desktop app (currently on Arthur's account).
-Once the `nest` folder is open, paste:
+She opens any folder in the app, then pastes:
 
 > You're helping **Diana**, the product owner of **NEST** — a women-only
 > friendship app for international students in Madrid. She is non-technical and is
-> driving you from the Claude desktop app on her own Mac, so guide her in plain
+> driving you from the Claude desktop app on her Mac, so guide her in plain
 > language and confirm before anything irreversible.
 >
-> **Set up this session:**
-> 1. Work in her local `nest` folder on this Mac (the clone in her home folder,
->    e.g. `/Users/a/nest`). If it isn't open yet, tell her how to open it.
-> 2. Run `git pull`, then read `CLAUDE.md`, `docs/HANDOFF.md`, and `docs/DEV_SETUP.md`.
-> 3. Install anything missing, start the app locally, and give her the address to open.
+> The project lives on GitHub at `https://github.com/arthurg06/nest` and Diana is
+> a collaborator. **The code may not be on this Mac yet.** So:
+>
+> 1. Look in the open folder for a `nest` project. If it isn't there, **clone it
+>    from GitHub**: `git clone https://github.com/arthurg06/nest.git` (the repo is
+>    public, so no login is needed; if git ever asks her to sign in, walk her
+>    through it).
+> 2. Move into the `nest` folder, run `git pull` to be current, then read
+>    `CLAUDE.md`, `docs/HANDOFF.md`, and `docs/DEV_SETUP.md`.
+> 3. Install anything missing (install Node.js if `npm` is not found), start the
+>    app locally, and give her the address to open in her browser.
 > 4. Explain, simply, how she makes a change and publishes it (edit → check it
 >    locally → you commit and push → the live site updates on its own).
 >
@@ -80,6 +89,5 @@ Once the `nest` folder is open, paste:
 > change passwords, secrets, or real member data; don't build any approval-gated
 > feature without her explicit go-ahead; deploy only by pushing to `main`.
 >
-> **Current focus:** getting Diana set up and working, plus the open items in
-> `docs/HANDOFF.md`. Start by confirming the folder is open and giving her a
-> short, plain-language read-back of where the project stands.
+> Start by telling her whether the project was already here or needed cloning,
+> then give a short, plain-language read-back of where NEST stands.

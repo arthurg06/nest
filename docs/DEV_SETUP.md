@@ -16,12 +16,16 @@ in two places:
 The Claude desktop app includes Claude Code, so you can drive everything by
 chatting — no terminal knowledge needed.
 
-1. Open the Claude desktop app and open the **`nest` folder** as your working
-   folder.
-2. Ask it: *"Read CLAUDE.md and docs/DEV_SETUP.md, then get me set up and run
-   the app."*
-3. It installs what's needed, starts the app, and gives you the local address to
-   open in your browser.
+1. Accept the GitHub invitation to `arthurg06/nest` (from your email) so you can
+   push changes later.
+2. Open the Claude desktop app and open any folder where the project should live
+   (e.g. your Documents folder). Then ask it:
+   *"Clone my GitHub repo arthurg06/nest into this folder, then read CLAUDE.md and
+   docs/DEV_SETUP.md, get me set up, and run the app."*
+   (If a `nest` folder is already on this Mac, open that folder directly and just
+   ask it to set you up and run the app.)
+3. It clones the code from GitHub, installs what's needed, starts the app, and
+   gives you the local address to open in your browser.
 
 After that you just describe the change you want; it edits the code, you check it
 locally, and when you're happy you tell it to **publish** — it commits and
