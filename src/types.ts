@@ -80,6 +80,9 @@ export interface Event {
   userRsvped: boolean;
   price: string; // e.g., "Free" or "€5"
   maxParticipants?: number; // Maximum amount of people (for study sessions, etc)
+  /** True when the server sent a Premium teaser: only id and category are
+      real — every other field is absent for non-Premium members. */
+  teaser?: boolean;
 }
 
 export interface Recommendation {
@@ -115,7 +118,7 @@ export interface Plan {
   date: string;
   time: string;
   note?: string;
-  status: "pending" | "accepted" | "declined";
+  status: "pending" | "accepted" | "declined" | "cancelled";
   createdAt: string;
   respondedAt?: string;
 }

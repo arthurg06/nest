@@ -5,6 +5,7 @@ import { ANIMAL_EMOJI } from "../../shared/compatibility";
 import { ShieldCheck, ArrowRight, Lock, Mail, Globe, Check, Search } from "lucide-react";
 import UniversitySelect from "./UniversitySelect";
 import { ImageUploader } from "./ImageUploader";
+import TermsModal from "./TermsModal";
 import { searchCountries } from "../../shared/countries";
 import { apiUrl } from "../lib/api";
 import { ForgotPassword, ResetPassword } from "./PasswordRecovery";
@@ -72,6 +73,11 @@ export default function OnboardingSignUp({ onAuthSuccess }: OnboardingSignUpProp
   const [selectedNationalities, setSelectedNationalities] = useState<string[]>([]);
   const [nationalitySearch, setNationalitySearch] = useState("");
   const [showNationalityDropdown, setShowNationalityDropdown] = useState(false);
+
+  // Terms & Conditions — active agreement gates account creation (the server
+  // enforces the same rule).
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [showTerms, setShowTerms] = useState(false);
 
   const handleToggleActivity = (act: string) => {
     setSelectedActivities(prev =>
@@ -198,6 +204,10 @@ export default function OnboardingSignUp({ onAuthSuccess }: OnboardingSignUpProp
       reportError("Please select at least one Nationality.");
       return;
     }
+    if (!agreedToTerms) {
+      reportError("Please agree to the Terms & Conditions to create your account.");
+      return;
+    }
     setLoading(true);
     try {
       const res = await fetch(apiUrl("/api/auth/signup"), {
@@ -206,6 +216,7 @@ export default function OnboardingSignUp({ onAuthSuccess }: OnboardingSignUpProp
         body: JSON.stringify({
           email: email.trim(),
           password,
+          termsAccepted: agreedToTerms,
           ...profileFields()
         })
       });
@@ -656,6 +667,28 @@ export default function OnboardingSignUp({ onAuthSuccess }: OnboardingSignUpProp
                           </div>
                         )}
                       </div>
+
+                      {/* Terms & Conditions — active agreement, right beside
+                          the final action */}
+                      <label className="flex items-start gap-2.5 pt-1 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={agreedToTerms}
+                          onChange={(e) => setAgreedToTerms(e.target.checked)}
+                          className="mt-0.5 w-4 h-4 accent-[var(--primary)] shrink-0 cursor-pointer"
+                        />
+                        <span className="text-[11px] text-muted-foreground font-sans leading-relaxed">
+                          By signing up, you agree to the{" "}
+                          <button
+                            type="button"
+                            onClick={(e) => { e.preventDefault(); setShowTerms(true); }}
+                            className="text-primary font-bold underline underline-offset-2 hover:opacity-80"
+                          >
+                            Terms &amp; Conditions
+                          </button>
+                          .
+                        </span>
+                      </label>
                     </div>
                   )}
                 </div>
@@ -697,6 +730,8 @@ export default function OnboardingSignUp({ onAuthSuccess }: OnboardingSignUpProp
           </div>
         </>
       )}
+
+      {showTerms && <TermsModal onClose={() => setShowTerms(false)} />}
 
       {/* Safety Badge */}
       <div className="max-w-md mx-auto text-center mt-6 select-none shrink-0">

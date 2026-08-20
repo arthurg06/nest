@@ -24,6 +24,9 @@ export interface User {
   subscriptionStatus?: string;
   lastActiveAt?: string;
   createdAt: string;
+  /** When the member accepted the Terms & Conditions, and which version. */
+  termsAcceptedAt?: string;
+  termsVersion?: string;
 }
 
 export interface Interests {
@@ -117,7 +120,7 @@ export interface Message {
   createdAt: string;
 }
 
-export type PlanStatus = "pending" | "accepted" | "declined";
+export type PlanStatus = "pending" | "accepted" | "declined" | "cancelled";
 
 /** An outing two matched members agree on: what, where, when. */
 export interface Plan {
@@ -174,6 +177,9 @@ export interface Event {
   price: string;
   maxParticipants?: number;
   createdAt: string;
+  /** Album photos from the outing (app-issued URLs), added after the event.
+      Feeds NEST Memories photo counts — counts are real data, never made up. */
+  albumPhotos?: string[];
 }
 
 export interface EventRsvp {

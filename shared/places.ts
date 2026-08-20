@@ -62,22 +62,42 @@ export interface Place {
 }
 
 // Well-known public places, kept factual (name, area, street) with no invented
-// details such as prices or opening hours.
+// details such as prices or opening hours. Grouped by what an outing is for so
+// the list stays easy to curate; the planner re-ranks by activity, area and
+// query, so this order never shows through as-is. Every named venue was a
+// long-standing, currently-operating place when added (last check 2026-08).
 export const SUGGESTED_PLACES: Place[] = [
-  { id: "retiro-park", name: "Parque del Retiro", areaId: "retiro", address: "Plaza de la Independencia", activities: ["walk", "move", "study"] },
+  // Coffee & study
   { id: "federal-cafe", name: "Federal Café", areaId: "malasana", address: "Plaza de las Comendadoras, 9", activities: ["coffee", "study", "food"] },
   { id: "la-bicicleta", name: "La Bicicleta Café", areaId: "malasana", address: "Plaza de San Ildefonso, 9", activities: ["coffee", "study"] },
   { id: "toma-cafe", name: "Toma Café", areaId: "malasana", address: "Calle de la Palma, 49", activities: ["coffee"] },
+  { id: "hanso-cafe", name: "HanSo Café", areaId: "malasana", address: "Calle del Pez, 20", activities: ["coffee", "study"] },
+  { id: "chamberi-cafes", name: "Chamberí cafés", areaId: "chamberi", address: "Calle de Fuencarral (north)", activities: ["coffee", "study", "food"] },
+
+  // Brunch & food
+  { id: "mision-cafe", name: "Misión Café", areaId: "malasana", address: "Calle de los Reyes, 5", activities: ["coffee", "food", "study"] },
   { id: "pum-pum", name: "Pum Pum Café", areaId: "lavapies", address: "Calle de Tribulete, 6", activities: ["coffee", "food"] },
+  { id: "honest-greens", name: "Honest Greens", areaId: "centro", address: "Gran Vía, 7", activities: ["food"] },
+  { id: "ojala", name: "Ojalá", areaId: "malasana", address: "Calle de San Andrés, 1", activities: ["food", "coffee"] },
+  { id: "jardin-secreto", name: "El Jardín Secreto", areaId: "malasana", address: "Calle del Conde Duque, 2", activities: ["coffee", "food"] },
   { id: "san-anton", name: "Mercado de San Antón", areaId: "chueca", address: "Calle de Augusto Figueroa, 24", activities: ["food", "shopping"] },
-  { id: "el-rastro", name: "El Rastro (Sundays)", areaId: "latina", address: "Ribera de Curtidores", activities: ["shopping", "walk"] },
+
+  // Parks & walks
+  { id: "retiro-park", name: "Parque del Retiro", areaId: "retiro", address: "Plaza de la Independencia", activities: ["walk", "move", "study"] },
+  { id: "parque-oeste", name: "Parque del Oeste", areaId: "moncloa", address: "Paseo del Pintor Rosales", activities: ["walk", "move"] },
+  { id: "madrid-rio", name: "Madrid Río", areaId: "latina", address: "Puente de Segovia", activities: ["walk", "move"] },
+  { id: "debod", name: "Templo de Debod", areaId: "moncloa", address: "Calle de Ferraz, 1", activities: ["walk", "culture"] },
+
+  // Culture & views
   { id: "reina-sofia", name: "Museo Reina Sofía", areaId: "centro", address: "Calle de Santa Isabel, 52", activities: ["culture"] },
   { id: "prado", name: "Museo del Prado", areaId: "retiro", address: "Paseo del Prado", activities: ["culture"] },
-  { id: "debod", name: "Templo de Debod", areaId: "moncloa", address: "Calle de Ferraz, 1", activities: ["walk", "culture"] },
-  { id: "parque-oeste", name: "Parque del Oeste", areaId: "moncloa", address: "Paseo del Pintor Rosales", activities: ["walk", "move"] },
+  { id: "azotea-circulo", name: "Azotea del Círculo de Bellas Artes", areaId: "centro", address: "Calle de Alcalá, 42", activities: ["culture", "food"] },
+
+  // Shopping & wandering
+  { id: "el-rastro", name: "El Rastro (Sundays)", areaId: "latina", address: "Ribera de Curtidores", activities: ["shopping", "walk"] },
   { id: "gran-via", name: "Gran Vía", areaId: "centro", address: "Gran Vía", activities: ["shopping", "walk"] },
+  { id: "salesas-boutiques", name: "Las Salesas boutiques", areaId: "chueca", address: "Calle de Fernando VI", activities: ["shopping", "walk", "coffee"] },
   { id: "malasana-streets", name: "Malasaña (wander around)", areaId: "malasana", address: "Calle del Espíritu Santo", activities: ["walk", "shopping", "coffee"] },
-  { id: "chamberi-cafes", name: "Chamberí cafés", areaId: "chamberi", address: "Calle de Fuencarral (north)", activities: ["coffee", "study", "food"] },
 ];
 
 // Campus options resolve against the member's own university, so they stay

@@ -138,7 +138,12 @@ export default function SwipeCard({ profile, currentUser, onSwipeLeft, onSwipeRi
           exit={{ opacity: 0, scale: 0.9 }}
           transition={{ duration: 0.25, ease: "easeInOut" }}
           className={`bg-card/40 backdrop-blur-xl rounded-[32px] border border-border/60 shadow-2xl overflow-hidden flex flex-col transition-[height] duration-300 ${
-            showFullProfile ? "h-[640px] md:h-[720px]" : "h-[520px] md:h-[580px]"
+            /* Mobile heights track the real viewport (capped) so the details
+               area gets the room the fixed height used to waste; md+ keeps
+               the previous desktop proportions. */
+            showFullProfile
+              ? "h-[max(600px,min(700px,calc(100dvh-11rem)))] md:h-[720px]"
+              : "h-[max(500px,min(600px,calc(100dvh-16rem)))] md:h-[580px]"
           }`}
         >
           {/* Real Portrait Photo — deliberately unobstructed: no chips, badges
@@ -165,7 +170,7 @@ export default function SwipeCard({ profile, currentUser, onSwipeLeft, onSwipeRi
           </button>
 
           {/* Profile Name & Primary Info Section */}
-          <div className="px-6 pt-5 md:pt-8 pb-3 border-b border-border/20 shrink-0">
+          <div className="px-5 pt-4 pb-2.5 md:px-6 md:pt-8 md:pb-3 border-b border-border/20 shrink-0">
             <div className="flex items-baseline gap-x-2 gap-y-1 flex-wrap mb-1.5">
               <h3 className="font-display text-2xl text-foreground">
                 {profile.name}
@@ -190,7 +195,7 @@ export default function SwipeCard({ profile, currentUser, onSwipeLeft, onSwipeRi
               {/* Nationalities — below the picture, never on top of it */}
               {profile.nationality && (
                 <div className="flex items-center gap-1.5">
-                  <span className="select-none" aria-hidden="true">✈️</span>
+                  <span className="select-none" aria-hidden="true">🌎</span>
                   <span>{profile.nationality}</span>
                 </div>
               )}
@@ -222,7 +227,7 @@ export default function SwipeCard({ profile, currentUser, onSwipeLeft, onSwipeRi
           </div>
 
           {/* Scrollable Interests & Details Area */}
-          <div className="px-6 py-4 overflow-y-auto grow select-text">
+          <div className="px-5 py-3 md:px-6 md:py-4 overflow-y-auto grow select-text overscroll-contain">
             {/* Short Bio */}
             <div className="mb-4">
               <span className="text-[10px] font-mono font-extrabold uppercase text-primary tracking-wider block mb-1">
@@ -421,14 +426,14 @@ export default function SwipeCard({ profile, currentUser, onSwipeLeft, onSwipeRi
           {/* Swipe/Match Action Buttons Footer. In preview the same two shapes
               are drawn without handlers: removing them would shorten the card
               and she would be judging proportions nobody else will see. */}
-          <div className="px-6 py-4 bg-card/25 border-t border-border/30 flex items-center justify-center gap-5 shrink-0">
+          <div className="px-6 py-2.5 md:py-4 bg-card/25 border-t border-border/30 flex items-center justify-center gap-5 shrink-0">
             {preview ? (
               <div className="flex items-center justify-center gap-5 opacity-40" aria-hidden="true">
-                <div className="w-14 h-14 rounded-full bg-card/60 border border-border/50 shadow-md text-muted-foreground flex items-center justify-center">
-                  <X size={26} strokeWidth={2.5} />
+                <div className="w-12 h-12 md:w-14 md:h-14 rounded-full bg-card/60 border border-border/50 shadow-md text-muted-foreground flex items-center justify-center">
+                  <X size={24} strokeWidth={2.5} />
                 </div>
-                <div className="w-16 h-16 rounded-full bg-primary shadow-pop-lg text-primary-foreground flex items-center justify-center border border-rose-400">
-                  <Heart size={30} fill="currentColor" stroke="none" />
+                <div className="w-14 h-14 md:w-16 md:h-16 rounded-full bg-primary shadow-pop-lg text-primary-foreground flex items-center justify-center border border-rose-400">
+                  <Heart size={28} fill="currentColor" stroke="none" />
                 </div>
               </div>
             ) : (
@@ -436,17 +441,17 @@ export default function SwipeCard({ profile, currentUser, onSwipeLeft, onSwipeRi
                 {/* Left/Dislike Button */}
                 <button
                   onClick={handlePass}
-                  className="w-14 h-14 rounded-full bg-card/60 border border-border/50 shadow-md text-muted-foreground flex items-center justify-center hover:bg-accent/30 hover:text-primary hover:border-border hover:scale-105 transition-all duration-200 active:scale-95"
+                  className="w-12 h-12 md:w-14 md:h-14 rounded-full bg-card/60 border border-border/50 shadow-md text-muted-foreground flex items-center justify-center hover:bg-accent/30 hover:text-primary hover:border-border hover:scale-105 transition-all duration-200 active:scale-95"
                 >
-                  <X size={26} strokeWidth={2.5} />
+                  <X size={24} strokeWidth={2.5} />
                 </button>
 
                 {/* Right/Like Button */}
                 <button
                   onClick={handleLike}
-                  className="w-16 h-16 rounded-full bg-primary shadow-pop-lg text-primary-foreground flex items-center justify-center hover:bg-primary/90 hover:scale-105 transition-all duration-200 active:scale-95 border border-rose-400"
+                  className="w-14 h-14 md:w-16 md:h-16 rounded-full bg-primary shadow-pop-lg text-primary-foreground flex items-center justify-center hover:bg-primary/90 hover:scale-105 transition-all duration-200 active:scale-95 border border-rose-400"
                 >
-                  <Heart size={30} fill="currentColor" stroke="none" />
+                  <Heart size={28} fill="currentColor" stroke="none" />
                 </button>
               </>
             )}

@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { isOwnMessage } from "../lib/chat";
 import VerifiedBadge from "./VerifiedBadge";
 import OutingPlanner, { OutingDraft } from "./OutingPlanner";
+import MemberProfileModal from "./MemberProfileModal";
 
 interface ChatWindowProps {
   activeMatch: Match;
@@ -13,7 +14,7 @@ interface ChatWindowProps {
   recommendations: Recommendation[];
   onSendMessage: (matchId: string, text: string) => void;
   onSuggestPlan: (matchId: string, draft: OutingDraft) => Promise<string | null>;
-  onRespondToPlan: (planId: string, status: "accepted" | "declined") => Promise<string | null>;
+  onRespondToPlan: (planId: string, status: "accepted" | "declined" | "cancelled") => Promise<string | null>;
 }
 
 export default function ChatWindow({
@@ -29,6 +30,10 @@ export default function ChatWindow({
   const [showPlanner, setShowPlanner] = useState(false);
   const [sending, setSending] = useState(false);
   const [plannerError, setPlannerError] = useState("");
+  // Her full profile, opened from the header name — same viewer as the deck.
+  const [showMatchProfile, setShowMatchProfile] = useState(false);
+  // Which outing is showing its cancel confirmation, if any.
+  const [cancellingPlanId, setCancellingPlanId] = useState<string | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const plans = activeMatch.plans || [];
@@ -104,7 +109,7 @@ export default function ChatWindow({
             </p>
           )}
 
-          <div className="pt-2.5 border-t border-border/30">
+          <div className="pt-2.5 border-t border-border/30 space-y-2">
             {plan.status === "pending" ? (
               isMine ? (
                 <span className="text-[10px] font-bold text-muted-foreground">Waiting for her reply…</span>
@@ -130,10 +135,51 @@ export default function ChatWindow({
                 <Check size={11} strokeWidth={3} />
                 <span>It's on</span>
               </span>
+            ) : plan.status === "cancelled" ? (
+              <span className="text-[10px] font-bold text-muted-foreground">
+                {isMine ? "You cancelled this outing" : "She cancelled this outing"}
+              </span>
             ) : (
               <span className="text-[10px] font-bold text-muted-foreground">
                 {isMine ? "She can't make it this time" : "You declined"}
               </span>
+            )}
+
+            {/* Cancelling belongs to the member who created the outing, for
+                invites that are still pending or already agreed. */}
+            {isMine && (plan.status === "pending" || plan.status === "accepted") && (
+              cancellingPlanId === plan.id ? (
+                <div className="bg-muted/40 border border-border/50 rounded-xl p-2.5 space-y-2 animate-fade-in">
+                  <p className="text-[10px] font-bold text-foreground leading-snug">Cancel this outing?</p>
+                  <p className="text-[10px] text-muted-foreground leading-snug">
+                    This will remove the outing for everyone in this chat.
+                  </p>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setCancellingPlanId(null)}
+                      className="flex-1 py-1.5 rounded-lg bg-card border border-border/60 text-foreground font-bold text-[10px] hover:bg-muted transition"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={async () => {
+                        await onRespondToPlan(plan.id, "cancelled");
+                        setCancellingPlanId(null);
+                      }}
+                      className="flex-1 py-1.5 rounded-lg bg-destructive text-destructive-foreground font-bold text-[10px] hover:opacity-90 transition"
+                    >
+                      Confirm cancellation
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setCancellingPlanId(plan.id)}
+                  className="text-[10px] font-bold text-muted-foreground hover:text-destructive underline underline-offset-2 transition"
+                >
+                  Cancel outing
+                </button>
+              )
             )}
           </div>
         </div>
@@ -145,7 +191,13 @@ export default function ChatWindow({
     <div className="flex flex-col h-full min-h-0 bg-card/40 backdrop-blur-xl rounded-[28px] border border-border/60 shadow-2xl overflow-hidden relative">
       {/* Header */}
       <div className="px-4 md:px-5 py-3 border-b border-border/30 flex items-center justify-between gap-3 bg-card/30 shrink-0">
-        <div className="flex items-center gap-3 min-w-0">
+        {/* Her name opens her full profile — the same card the deck shows. */}
+        <button
+          type="button"
+          onClick={() => setShowMatchProfile(true)}
+          aria-label={`View ${activeMatch.profile.name}'s profile`}
+          className="flex items-center gap-3 min-w-0 text-left cursor-pointer rounded-xl -m-1 p-1 hover:bg-muted/40 transition"
+        >
           <img
             src={activeMatch.profile.photo}
             alt={activeMatch.profile.name}
@@ -164,7 +216,7 @@ export default function ChatWindow({
               {sharedInterests.length > 0 && ` · you both like ${sharedInterests.slice(0, 2).join(", ")}`}
             </p>
           </div>
-        </div>
+        </button>
 
         <button
           onClick={() => setShowPlanner(true)}
@@ -310,6 +362,14 @@ export default function ChatWindow({
           </motion.div>
         )}
       </AnimatePresence>
+
+      {showMatchProfile && (
+        <MemberProfileModal
+          profile={activeMatch.profile}
+          currentUser={currentUser}
+          onClose={() => setShowMatchProfile(false)}
+        />
+      )}
     </div>
   );
 }

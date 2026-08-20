@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { ShieldCheck, Trash2, Users, MapPin, Search, ExternalLink, Ban, RotateCcw, BadgeCheck, XCircle, Key } from "lucide-react";
-import { Recommendation } from "../types";
+import { ShieldCheck, Trash2, Users, MapPin, Search, ExternalLink, Ban, RotateCcw, BadgeCheck, XCircle, Key, Pencil, Crown } from "lucide-react";
+import { Recommendation, UserProfile } from "../types";
 import { apiUrl } from "../lib/api";
+import MemberProfileModal from "./MemberProfileModal";
+import UniversitySelect from "./UniversitySelect";
+import { canonicalUniversity } from "../../shared/universities";
 
 interface AdminUser {
   id: string;
@@ -79,6 +82,93 @@ export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboar
   const [rejectingUserId, setRejectingUserId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState("");
   const [feedback, setFeedback] = useState("");
+
+  // Full-profile viewer (same card the deck renders) and the per-member
+  // university correction editor.
+  const [viewingProfile, setViewingProfile] = useState<UserProfile | null>(null);
+  const [editingUniversityUserId, setEditingUniversityUserId] = useState<string | null>(null);
+  const [universityDraft, setUniversityDraft] = useState("");
+
+  const handleViewProfile = async (userId: string) => {
+    try {
+      const res = await fetch(apiUrl(`/api/admin/users/${userId}/profile`), { headers: authHeaders() });
+      const data = await res.json();
+      if (!res.ok) {
+        setFeedback(data.error || "Could not load that member's profile.");
+        return;
+      }
+      setViewingProfile(data);
+    } catch {
+      setFeedback("Could not load that member's profile.");
+    }
+  };
+
+  // Manual Premium grant/revoke — how membership is managed until payments
+  // are connected. Server-enforced admin-only; every change is audited.
+  const handlePremiumToggle = async (u: AdminUser) => {
+    const granting = !u.isPremium;
+    if (!confirm(granting
+      ? `Grant NEST Premium to ${u.email}?`
+      : `Revoke NEST Premium from ${u.email}? She will lose access to outings.`)) {
+      return;
+    }
+    setBusyUserId(u.id);
+    try {
+      const res = await fetch(apiUrl(`/api/admin/users/${u.id}/premium`), {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...authHeaders() },
+        body: JSON.stringify({ isPremium: granting })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setFeedback(data.error || "Could not update Premium status.");
+        return;
+      }
+      setUsers(prev => prev.map(x => (x.id === u.id ? { ...x, isPremium: data.isPremium } : x)));
+      setFeedback(granting ? `Premium granted to ${u.email}.` : `Premium revoked from ${u.email}.`);
+    } catch {
+      setFeedback("Could not update Premium status.");
+    } finally {
+      setBusyUserId(null);
+    }
+  };
+
+  const startEditingUniversity = (u: AdminUser) => {
+    setEditingUniversityUserId(u.id);
+    // Preselect the canonical suggestion when the stored value resolves to
+    // one (e.g. "complutense") — the admin still reviews and saves.
+    setUniversityDraft(canonicalUniversity(u.profile?.university) || "");
+  };
+
+  const handleSaveUniversity = async (userId: string) => {
+    if (!universityDraft) {
+      setFeedback("Pick a university from the list first.");
+      return;
+    }
+    setBusyUserId(userId);
+    try {
+      const res = await fetch(apiUrl(`/api/admin/users/${userId}/university`), {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...authHeaders() },
+        body: JSON.stringify({ university: universityDraft })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setFeedback(data.error || "Could not update the university.");
+        return;
+      }
+      setUsers(prev => prev.map(u =>
+        u.id === userId && u.profile ? { ...u, profile: { ...u.profile, university: data.university } } : u
+      ));
+      setFeedback(`University updated to ${data.university}.`);
+      setEditingUniversityUserId(null);
+      setUniversityDraft("");
+    } catch {
+      setFeedback("Could not update the university.");
+    } finally {
+      setBusyUserId(null);
+    }
+  };
 
   const notify = (message: string) => {
     setFeedback(message);
@@ -569,7 +659,15 @@ export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboar
                   {filteredUsers.map((u) => (
                     <tr key={u.id} className={`hover:bg-card/40 transition ${u.status === "suspended" ? "opacity-60" : ""}`}>
                       <td className="p-3.5">
-                        <div className="flex items-center gap-3">
+                        {/* The name opens her full profile in the same card
+                            members see on the deck. */}
+                        <button
+                          type="button"
+                          onClick={() => u.profile && handleViewProfile(u.id)}
+                          disabled={!u.profile}
+                          title={u.profile ? "View full profile" : undefined}
+                          className={`flex items-center gap-3 text-left rounded-lg -m-1 p-1 transition ${u.profile ? "cursor-pointer hover:bg-muted/50" : "cursor-default"}`}
+                        >
                           {u.profile?.photo ? (
                             <img
                               src={u.profile.photo}
@@ -583,16 +681,56 @@ export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboar
                             </div>
                           )}
                           <div>
-                            <h4 className="font-sans font-bold text-foreground">{u.profile?.name || "Unfinished profile"}</h4>
+                            <h4 className={`font-sans font-bold text-foreground ${u.profile ? "hover:text-primary" : ""}`}>{u.profile?.name || "Unfinished profile"}</h4>
                             <span className="text-[10px] text-muted-foreground font-sans">
                               {u.profile ? `Age ${u.profile.age}` : ""}{u.isPremium ? " · Premium" : ""}{u.role === "admin" ? " · Admin" : ""}
                             </span>
                           </div>
-                        </div>
+                        </button>
                       </td>
                       <td className="p-3.5 font-mono text-[11px] text-muted-foreground select-text">{u.email}</td>
-                      <td className="p-3.5 font-sans font-semibold text-foreground capitalize">
-                        {u.profile?.university || <span className="text-muted-foreground font-normal">—</span>}
+                      <td className="p-3.5 font-sans font-semibold text-foreground">
+                        {editingUniversityUserId === u.id ? (
+                          <div className="min-w-[220px] space-y-1.5">
+                            <UniversitySelect value={universityDraft} onChange={setUniversityDraft} />
+                            <div className="flex gap-1.5 justify-end">
+                              <button
+                                type="button"
+                                onClick={() => { setEditingUniversityUserId(null); setUniversityDraft(""); }}
+                                className="px-2.5 py-1.5 rounded-lg bg-card border border-border text-[10px] font-bold text-foreground hover:bg-muted transition"
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleSaveUniversity(u.id)}
+                                disabled={busyUserId !== null || !universityDraft}
+                                className="px-2.5 py-1.5 rounded-lg bg-primary text-primary-foreground text-[10px] font-black hover:bg-primary/90 disabled:opacity-50 transition"
+                              >
+                                Save
+                              </button>
+                            </div>
+                          </div>
+                        ) : u.profile ? (
+                          <button
+                            type="button"
+                            onClick={() => startEditingUniversity(u)}
+                            title={
+                              canonicalUniversity(u.profile.university)
+                                ? "Edit university"
+                                : "Not on the canonical Madrid list — click to correct"
+                            }
+                            className="group inline-flex items-center gap-1.5 text-left capitalize cursor-pointer hover:text-primary transition"
+                          >
+                            <span>{u.profile.university || "—"}</span>
+                            {!canonicalUniversity(u.profile.university) && (
+                              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" aria-hidden="true" />
+                            )}
+                            <Pencil size={11} className="text-muted-foreground opacity-0 group-hover:opacity-100 transition shrink-0" />
+                          </button>
+                        ) : (
+                          <span className="text-muted-foreground font-normal">—</span>
+                        )}
                       </td>
                       <td className="p-3.5 font-mono text-[10px] text-muted-foreground">
                         {new Date(u.createdAt).toLocaleDateString()}
@@ -617,6 +755,18 @@ export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboar
                           <span className="text-[10px] text-muted-foreground italic font-sans pr-2">Admin</span>
                         ) : (
                           <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              onClick={() => handlePremiumToggle(u)}
+                              disabled={busyUserId !== null}
+                              className={`p-2 rounded-lg border transition cursor-pointer ${
+                                u.isPremium
+                                  ? "bg-amber-50 hover:bg-amber-100 text-amber-600 border-amber-200"
+                                  : "bg-card hover:bg-muted text-muted-foreground border-border"
+                              }`}
+                              title={u.isPremium ? "Revoke NEST Premium" : "Grant NEST Premium"}
+                            >
+                              <Crown size={13} />
+                            </button>
                             <button
                               onClick={() => handleResetLink(u)}
                               disabled={busyUserId !== null}
@@ -727,6 +877,10 @@ export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboar
             </div>
           )}
         </div>
+      )}
+
+      {viewingProfile && (
+        <MemberProfileModal profile={viewingProfile} onClose={() => setViewingProfile(null)} />
       )}
 
     </div>

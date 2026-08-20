@@ -1,8 +1,20 @@
 import React, { useState } from "react";
 import { Event } from "../types";
-import { Calendar, Clock, MapPin, Sparkles, Check, Bookmark, Crown, X, Trash2, Plus } from "lucide-react";
-import { PREMIUM_PRICE_LABEL, PREMIUM_RENEWAL_NOTE } from "../../shared/subscription";
+import { Calendar, Clock, MapPin, Sparkles, Check, Bookmark, Crown, X, Trash2, Plus, Lock } from "lucide-react";
+import PremiumInfoModal from "./PremiumInfoModal";
 import { apiUrl } from "../lib/api";
+
+interface MemoriesData {
+  memories: {
+    eventId: string;
+    title: string;
+    date: string;
+    category: string;
+    attendeeCount: number;
+    photoCount: number;
+  }[];
+  totals: { photos: number; attendees: number; connections: number };
+}
 
 export interface SubscriptionInfo {
   stripeConfigured: boolean;
@@ -25,12 +37,32 @@ interface EventsProps {
 
 export default function Events({ events, onToggleRsvp, isSubscribed, subscription, onSyncOfficialEvents, isAdmin, onAddEvent, onDeleteEvent }: EventsProps) {
   const [activeTab, setActiveTab] = React.useState<string>("all");
-  const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
+  // Small upsell when a non-Premium member tries to RSVP; the full Premium
+  // page opens from its "More Information" button (and from the banner).
+  const [showUpsell, setShowUpsell] = useState(false);
+  const [showPremiumInfo, setShowPremiumInfo] = useState(false);
   const [isRedirecting, setIsRedirecting] = useState(false);
   const [paymentError, setPaymentError] = useState("");
 
   const stripeReady = subscription?.stripeConfigured === true;
-  const priceLabel = subscription?.plan?.label || PREMIUM_PRICE_LABEL;
+
+  // NEST Memories — Premium members' personal outing archive, computed
+  // server-side from real attendance data.
+  const [memoriesData, setMemoriesData] = useState<MemoriesData | null>(null);
+  React.useEffect(() => {
+    if (!isSubscribed) {
+      setMemoriesData(null);
+      return;
+    }
+    let alive = true;
+    fetch(apiUrl("/api/memories"), {
+      headers: { "Authorization": `Bearer ${localStorage.getItem("nest_token")}` }
+    })
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => { if (alive && d) setMemoriesData(d); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [isSubscribed, events]);
 
   // Stripe-hosted checkout: the browser is redirected to Stripe; no card
   // data is ever collected in this app.
@@ -112,7 +144,7 @@ export default function Events({ events, onToggleRsvp, isSubscribed, subscriptio
 
   const handleRsvpClick = (eventId: string) => {
     if (!isSubscribed) {
-      setShowSubscriptionModal(true);
+      setShowUpsell(true);
     } else {
       onToggleRsvp(eventId);
     }
@@ -164,7 +196,7 @@ export default function Events({ events, onToggleRsvp, isSubscribed, subscriptio
             <p className="font-sans text-[11px] text-muted-foreground leading-tight mt-0.5">
               {isSubscribed
                 ? "Full access to every official NEST outing. Enjoy Madrid!"
-                : "Browse outings freely. Membership unlocks RSVPs."
+                : "Outings are a Premium experience — membership unlocks the details."
               }
             </p>
           </div>
@@ -181,10 +213,10 @@ export default function Events({ events, onToggleRsvp, isSubscribed, subscriptio
           )
         ) : (
           <button
-            onClick={() => setShowSubscriptionModal(true)}
+            onClick={() => setShowPremiumInfo(true)}
             className="bg-slate-900 hover:bg-slate-800 text-rose-300 border border-slate-700 font-sans text-xs font-bold px-4 py-2 rounded-xl transition shadow-pop"
           >
-            Join NEST Premium · {priceLabel}
+            Join NEST Premium
           </button>
         )}
       </div>
@@ -196,7 +228,7 @@ export default function Events({ events, onToggleRsvp, isSubscribed, subscriptio
             Official outings
           </h2>
           <p className="font-sans text-xs text-muted-foreground mt-1">
-            Curated by the NEST team. Membership unlocks RSVPs.
+            Curated by the NEST team. Membership unlocks the outings.
           </p>
         </div>
         {isAdmin && (
@@ -362,7 +394,50 @@ export default function Events({ events, onToggleRsvp, isSubscribed, subscriptio
       {/* Events Grid layout */}
       {filteredEvents.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          {filteredEvents.map(event => (
+          {filteredEvents.map(event => event.teaser ? (
+            /* Premium teaser — the server sent only the category; there is
+               genuinely nothing else here to reveal. */
+            <div
+              key={event.id}
+              className="bg-card/40 backdrop-blur-md rounded-[28px] border border-border/60 overflow-hidden shadow-sm flex flex-col animate-fade-in"
+            >
+              <div className="h-32 relative flex items-center justify-center overflow-hidden">
+                <div className={`absolute inset-0 bg-gradient-to-tr ${
+                  event.category === "social"
+                    ? "from-rose-200 to-amber-100"
+                    : event.category === "study"
+                    ? "from-indigo-100 to-sky-100"
+                    : "from-emerald-100 to-teal-50"
+                } opacity-40`} />
+                <div className="z-10 text-center">
+                  <span className="text-3xl block mb-1.5 select-none blur-[1px]">{getCategoryImageEmoji(event.category)}</span>
+                  <span className="bg-card/50 backdrop-blur-md border border-border/40 text-foreground text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full font-mono tracking-widest">
+                    {event.category}
+                  </span>
+                </div>
+              </div>
+
+              <div className="p-5 flex-1 flex flex-col items-center justify-center text-center space-y-1.5">
+                <span className="inline-flex items-center gap-1.5 text-[9px] font-mono font-black uppercase tracking-widest text-primary">
+                  <Lock size={11} />
+                  <span>Premium outing</span>
+                </span>
+                <h3 className="font-display text-lg text-foreground">Something special is planned…</h3>
+                <p className="font-sans text-xs text-muted-foreground leading-relaxed max-w-[240px]">
+                  Curated by the NEST team. The where, the when, and who's coming are revealed to Premium members.
+                </p>
+              </div>
+
+              <div className="px-5 py-3.5 bg-card/30 border-t border-border/20 flex justify-center">
+                <button
+                  onClick={() => setShowUpsell(true)}
+                  className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-rose-300 font-sans text-xs font-bold shadow-pop transition"
+                >
+                  Unlock with Premium
+                </button>
+              </div>
+            </div>
+          ) : (
             <div
               key={event.id}
               id={`event-card-${event.id}`}
@@ -499,88 +574,96 @@ export default function Events({ events, onToggleRsvp, isSubscribed, subscriptio
         </div>
       )}
 
-      {/* GORGEOUS PREMIUM SUBSCRIPTION FORM MODAL */}
-      {showSubscriptionModal && (
-        <div className="fixed inset-0 bg-slate-950/75 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fade-in select-text">
-          <div className="bg-card rounded-[32px] border border-border max-w-md w-full overflow-hidden shadow-2xl relative animate-scale-up">
-            
-            {/* Close Button */}
-            <button
-              onClick={() => setShowSubscriptionModal(false)}
-              aria-label="Close" className="absolute top-3 right-3 text-muted-foreground hover:text-foreground p-2.5 rounded-full hover:bg-muted transition z-10"
-            >
-              <X size={18} />
-            </button>
-
-            {/* Brand header */}
-            <div className="bg-slate-950 text-white p-6 pb-7 text-center relative overflow-hidden">
-              <img
-                src="/icons/nest-logo.png"
-                alt="NEST logo"
-                className="w-14 h-14 rounded-2xl mx-auto mb-3 shadow-lg border border-border/10"
-              />
-              <h3 className="font-sans font-black text-xl tracking-tight">{subscription?.plan?.name || "NEST Premium"}</h3>
-              <div className="text-rose-300 font-sans font-black text-sm mt-1">{priceLabel}</div>
-              <p className="text-[10px] text-muted-foreground mt-1">{PREMIUM_RENEWAL_NOTE}</p>
-            </div>
-
-            <div className="p-6 space-y-4">
-              <ul className="text-xs text-muted-foreground space-y-2">
-                <li className="flex items-start gap-2">
-                  <Check size={14} className="text-emerald-600 shrink-0 mt-0.5" />
-                  <span>RSVP to every official NEST outing — mixers, picnics, study sessions, wellness meetups</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <Check size={14} className="text-emerald-600 shrink-0 mt-0.5" />
-                  <span>Curated, women-only gatherings hosted by the NEST team</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <Check size={14} className="text-emerald-600 shrink-0 mt-0.5" />
-                  <span>Cancel anytime from the billing portal</span>
-                </li>
-              </ul>
-
-              {paymentError && (
-                <div className="bg-destructive/10 border border-destructive/25 text-destructive p-3 rounded-xl text-[11px] leading-normal">
-                  {paymentError}
-                </div>
-              )}
-
-              {stripeReady ? (
-                <>
-                  <button
-                    onClick={handleStartCheckout}
-                    disabled={isRedirecting}
-                    className="w-full bg-slate-900 hover:bg-slate-800 text-white font-sans text-xs font-bold py-3 rounded-2xl transition shadow-pop disabled:opacity-60 disabled:shadow-none"
-                  >
-                    {isRedirecting ? "Opening secure checkout…" : "Continue to secure checkout"}
-                  </button>
-                  <p className="text-[10px] text-muted-foreground text-center leading-normal">
-                    Payment is handled by Stripe on a secure page — card details never touch NEST. Major cards and Apple Pay are supported where available.
-                  </p>
-                </>
-              ) : (
-                <>
-                  <div className="bg-amber-50 border border-amber-200 p-3.5 rounded-2xl text-[11px] text-amber-800 leading-normal">
-                    <p className="font-bold mb-0.5">Payments are being configured</p>
-                    <p>Secure checkout opens soon. No payment details are collected in the meantime.</p>
-                    {import.meta.env.DEV && (
-                      <p className="mt-1.5 font-mono text-[10px] text-amber-600">
-                        Dev notice: Stripe environment variables are not set.
-                      </p>
-                    )}
-                  </div>
-                  <button
-                    onClick={() => setShowSubscriptionModal(false)}
-                    className="w-full bg-slate-900 hover:bg-slate-800 text-white font-sans text-xs font-bold py-3 rounded-2xl transition shadow-md"
-                  >
-                    Got it
-                  </button>
-                </>
-              )}
+      {/* NEST MEMORIES — Premium members' personal archive of attended
+          outings. Every number comes from the server's real records. */}
+      {isSubscribed && (
+        <div className="bg-card/40 backdrop-blur-md rounded-[28px] border border-border/60 p-6 shadow-sm space-y-4 animate-fade-in">
+          <div className="flex items-center gap-2 border-b border-border/30 pb-3">
+            <span className="text-lg select-none">🪺</span>
+            <div>
+              <h3 className="font-display text-xl text-foreground leading-none">NEST Memories</h3>
+              <p className="font-sans text-[11px] text-muted-foreground mt-1">
+                Your personal archive of the NEST experiences you've been part of.
+              </p>
             </div>
           </div>
+
+          {memoriesData && memoriesData.memories.length > 0 ? (
+            <>
+              <div className="flex flex-wrap gap-2">
+                <span className="bg-accent/40 border border-border/50 text-foreground font-sans text-[11px] font-bold px-3 py-1.5 rounded-full">
+                  📸 {memoriesData.totals.photos} photos
+                </span>
+                <span className="bg-accent/40 border border-border/50 text-foreground font-sans text-[11px] font-bold px-3 py-1.5 rounded-full">
+                  👯‍♀️ {memoriesData.totals.attendees} girls attended
+                </span>
+                <span className="bg-accent/40 border border-border/50 text-foreground font-sans text-[11px] font-bold px-3 py-1.5 rounded-full">
+                  💞 {memoriesData.totals.connections} new connections
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {memoriesData.memories.map(memory => (
+                  <div key={memory.eventId} className="bg-card/60 border border-border/50 rounded-2xl p-3.5 space-y-1">
+                    <div className="flex items-start justify-between gap-2">
+                      <h4 className="font-sans font-bold text-xs text-foreground leading-snug">{memory.title}</h4>
+                      <span className="text-base select-none shrink-0">{getCategoryImageEmoji(memory.category)}</span>
+                    </div>
+                    <p className="font-sans text-[10px] text-muted-foreground">{memory.date}</p>
+                    <p className="font-mono text-[9px] text-muted-foreground uppercase tracking-wider">
+                      {memory.attendeeCount} attended · {memory.photoCount} photos
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : (
+            <div className="text-center py-6 space-y-1">
+              <p className="font-sans text-xs text-muted-foreground">Your NEST Memories will live here.</p>
+              <p className="font-sans text-xs font-bold text-foreground">Your first one is waiting. 🪺</p>
+            </div>
+          )}
         </div>
+      )}
+
+      {/* Premium upsell — shown when a non-Premium member tries to RSVP */}
+      {showUpsell && (
+        <div className="fixed inset-0 bg-slate-950/75 backdrop-blur-md flex items-center justify-center p-4 z-[80] animate-fade-in select-text">
+          <div className="bg-card rounded-[32px] border border-border max-w-sm w-full shadow-2xl p-6 pt-8 text-center space-y-3 animate-scale-up relative">
+            <button
+              onClick={() => setShowUpsell(false)}
+              aria-label="Close"
+              className="absolute top-3 right-3 text-muted-foreground hover:text-foreground p-2.5 rounded-full hover:bg-muted transition"
+            >
+              <X size={16} />
+            </button>
+            <span className="text-3xl block select-none">🪺</span>
+            <h3 className="font-sans font-black text-base text-foreground leading-snug">
+              Oops! This feature is only for NEST Premium users.
+            </h3>
+            <p className="font-sans text-xs text-muted-foreground leading-relaxed">
+              Join NEST Premium and get access to exclusive events curated by our official NEST team — and meet
+              your nest.
+            </p>
+            <button
+              onClick={() => { setShowUpsell(false); setShowPremiumInfo(true); }}
+              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-sans text-xs font-black py-3 rounded-2xl transition shadow-pop"
+            >
+              More Information
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Dedicated NEST Premium page */}
+      {showPremiumInfo && (
+        <PremiumInfoModal
+          onClose={() => setShowPremiumInfo(false)}
+          stripeReady={stripeReady}
+          onStartCheckout={handleStartCheckout}
+          isRedirecting={isRedirecting}
+          paymentError={paymentError}
+        />
       )}
 
     </div>

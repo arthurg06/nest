@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { UserProfile, Interests } from "../types";
 import { PREDEFINED_INTEREST_OPTIONS } from "../data";
 import { ANIMAL_EMOJI } from "../../shared/compatibility";
-import { ShieldCheck, User, Sparkles, Check, Mail, Upload, FileText, Globe, Search, Trash2, Edit, MapPin, ExternalLink, ShieldAlert, Eye } from "lucide-react";
+import { ShieldCheck, User, Sparkles, Check, Mail, Upload, FileText, Globe, Search, Trash2, Edit, MapPin, ExternalLink, ShieldAlert, Eye, X } from "lucide-react";
 import ProfilePreview from "./ProfilePreview";
 import { PhotoGalleryEditor } from "./PhotoGalleryEditor";
 import { ThemeToggle } from "./ThemeToggle";
@@ -363,6 +363,74 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
   const savedSnapshot = useRef<string>(draftJson);
   const hasUnsavedChanges = savedSnapshot.current !== draftJson;
 
+  // View/edit split: the profile opens read-only; Edit Profile switches the
+  // same form on, Save commits through the existing path, Cancel throws the
+  // draft away by resetting every field from the server-known profile.
+  const [isEditing, setIsEditing] = useState(false);
+
+  const resetDraft = () => {
+    setName(currentUser.name);
+    setAge(currentUser.age);
+    setUniversity(currentUser.university);
+    setSelectedNationalities(
+      currentUser.nationality
+        ? currentUser.nationality.split(", ").map(n => n.trim()).filter(Boolean)
+        : []
+    );
+    setNationalitySearch("");
+    setShowNationalityDropdown(false);
+    setPhoto(currentUser.photo || "");
+    setPhotos(currentUser.photos?.length ? currentUser.photos : currentUser.photo ? [currentUser.photo] : []);
+    setBio(currentUser.bio);
+    setTiktok(currentUser.tiktok || "");
+    setInstagram(currentUser.instagram || "");
+    setFriendshipType(currentUser.friendshipType);
+    setSelectedActivities(currentUser.interests.activities);
+    setSelectedMusic(currentUser.interests.music);
+    setSelectedSocial(currentUser.interests.social);
+    setSelectedLifestyle(currentUser.interests.lifestyle);
+    setSpendingStyle(currentUser.interests.spendingStyle);
+    setAnimals(currentUser.interests.animals || "");
+  };
+
+  const startEditing = () => {
+    resetDraft();
+    setIsEditing(true);
+  };
+
+  const cancelEditing = () => {
+    resetDraft();
+    setIsEditing(false);
+  };
+
+  // Leaving the edit pop-up with unsaved changes asks first. The baseline is
+  // the draft as it stood when the pop-up opened (captured on the first
+  // render after opening, i.e. after resetDraft has applied).
+  const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
+  const editBaseline = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (isEditing && editBaseline.current === null) {
+      editBaseline.current = draftJson;
+    }
+    if (!isEditing) {
+      editBaseline.current = null;
+    }
+  }, [isEditing, draftJson]);
+
+  const requestCloseEdit = () => {
+    if (editBaseline.current !== null && draftJson !== editBaseline.current) {
+      setShowDiscardConfirm(true);
+    } else {
+      cancelEditing();
+    }
+  };
+
+  const discardAndClose = () => {
+    setShowDiscardConfirm(false);
+    cancelEditing();
+  };
+
   const handleSave = () => {
     if (selectedNationalities.length === 0) {
       showFeedback("Please select or add at least one Nationality!", "error");
@@ -372,6 +440,7 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
     savedSnapshot.current = JSON.stringify(updatedProfile);
     onSaveProfile(updatedProfile);
     showFeedback("Profile saved.", "success");
+    setIsEditing(false);
   };
 
   // Submit details for manual admin review — this never verifies the
@@ -462,377 +531,96 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
         {/* LEFT COLUMN: Main Form details */}
         <div className="md:col-span-8 space-y-6 bg-card/40 backdrop-blur-xl p-5 md:p-6 rounded-[28px] border border-border/60 shadow-xl animate-fade-in">
           
-          <div className="border-b border-border/30 pb-3 flex items-center gap-1.5 text-foreground">
-            <User size={16} className="text-primary" />
-            <h3 className="font-sans font-bold text-sm">Primary Information</h3>
-          </div>
-
-          {/* Photos — up to four, the first one is the profile picture */}
-          <div className="space-y-3 bg-accent/50 p-4 rounded-2xl border border-border/50">
-            <span className="text-[10px] font-sans font-extrabold text-muted-foreground uppercase tracking-wider block">
-              Your photos 📸
-            </span>
-            <PhotoGalleryEditor
-              photos={photos}
-              onChange={next => {
-                setPhotos(next);
-                setPhoto(next[0] || "");
-              }}
-            />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Name */}
-            <div className="space-y-1">
-              <span className="text-[10px] font-sans font-extrabold text-muted-foreground block">Your Name</span>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="w-full bg-card/40 border border-border/50 rounded-xl px-3.5 py-2 text-xs text-foreground placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-              />
-            </div>
-
-            {/* Age */}
-            <div className="space-y-1">
-              <span className="text-[10px] font-sans font-extrabold text-primary block">Your Age</span>
-              <input
-                type="number"
-                value={age}
-                onChange={(e) => setAge(Number(e.target.value))}
-                className="w-full bg-card/40 border border-border/50 rounded-xl px-3.5 py-2 text-xs text-foreground placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-              />
-            </div>
-          </div>
-
-          {/* Multiple Nationalities Selector */}
-          <div className="space-y-2 bg-card/30 p-4 rounded-2xl border border-border/40 relative">
-            <span className="text-[10px] font-sans font-extrabold text-muted-foreground uppercase tracking-wider block">
-              Nationalities 🗺️
-            </span>
-            
-            {/* Single Trigger Button */}
-            <button
-              type="button"
-              onClick={() => setShowNationalityDropdown(!showNationalityDropdown)}
-              className="w-full bg-card/60 border border-border hover:border-border rounded-xl px-3.5 py-2.5 text-xs text-foreground font-medium flex items-center justify-between transition"
-            >
-              <span>Select Nationalities</span>
-              <Globe size={14} className="text-muted-foreground" />
-            </button>
-
-            {/* Selected Nationalities badges */}
-            {selectedNationalities.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 mt-2">
-                {selectedNationalities.map(nat => (
-                  <span key={nat} className="bg-slate-900 text-rose-400 font-sans text-[11px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1 shadow-sm">
-                    <span>{nat}</span>
-                    <button type="button" onClick={(e) => { e.stopPropagation(); handleRemoveNationality(nat); }} className="text-white hover:text-rose-300 font-extrabold text-[10px] ml-0.5 p-2 -m-1.5 inline-flex items-center justify-center" aria-label="Remove">✕</button>
-                  </span>
-                ))}
+              {/* READ-ONLY VIEW — nothing on this card can change until she
+                  presses Edit Profile. */}
+              <div className="border-b border-border/30 pb-3 flex items-center justify-between gap-2 text-foreground">
+                <div className="flex items-center gap-1.5">
+                  <User size={16} className="text-primary" />
+                  <h3 className="font-sans font-bold text-sm">Primary Information</h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={startEditing}
+                  className="flex items-center gap-1.5 bg-primary text-primary-foreground font-sans text-[11px] font-black px-3.5 py-2 rounded-xl hover:bg-primary/90 transition shadow-sm cursor-pointer"
+                >
+                  <Edit size={12} />
+                  <span>Edit Profile</span>
+                </button>
               </div>
-            )}
 
-            {/* Searchable Pop-up / Modal / Dropdown */}
-            {showNationalityDropdown && (
-              <div className="absolute z-30 left-4 right-4 mt-1 bg-card border border-border rounded-2xl shadow-xl p-3.5 space-y-2 animate-fade-in">
-                <div className="flex items-center justify-between pb-1.5 border-b border-border/60">
-                  <span className="text-[10px] font-mono font-bold text-muted-foreground uppercase">Search Countries</span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowNationalityDropdown(false);
-                      setNationalitySearch("");
-                    }}
-                    className="text-[10px] font-extrabold text-primary hover:text-primary uppercase"
-                  >
-                    Close
-                  </button>
+              {(currentUser.photos?.length ? currentUser.photos : currentUser.photo ? [currentUser.photo] : []).length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {(currentUser.photos?.length ? currentUser.photos : [currentUser.photo]).map((url, i) => (
+                    <img
+                      key={url}
+                      src={url}
+                      alt={i === 0 ? `${currentUser.name}, main photo` : `${currentUser.name}, photo ${i + 1}`}
+                      referrerPolicy="no-referrer"
+                      className="w-20 h-20 rounded-2xl object-cover border border-border/60 shadow-sm"
+                    />
+                  ))}
                 </div>
+              )}
 
-                {/* Search Input inside the pop-up only */}
-                <div className="relative">
-                  <input
-                    type="text"
-                    placeholder="Type to search country..."
-                    value={nationalitySearch}
-                    onChange={(e) => setNationalitySearch(e.target.value)}
-                    className="w-full bg-card border border-border rounded-lg pl-8 pr-2.5 py-1.5 text-xs focus:outline-none"
-                  />
-                  <Search size={12} className="text-muted-foreground absolute left-2.5 top-2.5" />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <span className="text-[10px] font-sans font-extrabold text-muted-foreground block">Your Name</span>
+                  <p className="text-sm font-sans font-semibold text-foreground mt-0.5">{currentUser.name}</p>
                 </div>
-
-                {/* Complete list of countries with flag emojis inside pop-up */}
-                <div className="max-h-40 overflow-y-auto space-y-0.5 -mx-1.5 px-1.5">
-                  {searchCountries(nationalitySearch).map(opt => {
-                    const formatted = `${opt.name} ${opt.flag}`;
-                    const isSelected = selectedNationalities.includes(formatted);
-                    return (
-                      <button
-                        key={opt.name}
-                        type="button"
-                        onClick={() => {
-                          if (!isSelected) {
-                            setSelectedNationalities(prev => [...prev, formatted]);
-                          } else {
-                            setSelectedNationalities(prev => prev.filter(c => c !== formatted));
-                          }
-                        }}
-                        className={`w-full text-left py-1.5 px-2.5 rounded-lg text-xs font-medium flex items-center justify-between transition ${
-                          isSelected 
-                            ? "bg-accent/30 text-primary font-bold" 
-                            : "hover:bg-muted/60 text-foreground"
-                        }`}
-                      >
-                        <span className="flex items-center gap-1.5">
-                          <span>{opt.flag}</span>
-                          <span>{opt.name}</span>
-                        </span>
-                        {isSelected && <Check size={12} className="text-primary" />}
-                      </button>
-                    );
-                  })}
+                <div>
+                  <span className="text-[10px] font-sans font-extrabold text-muted-foreground block">Your Age</span>
+                  <p className="text-sm font-sans font-semibold text-foreground mt-0.5">{currentUser.age}</p>
+                </div>
+                <div>
+                  <span className="text-[10px] font-sans font-extrabold text-muted-foreground block">Nationalities</span>
+                  <p className="text-sm font-sans font-semibold text-foreground mt-0.5">{currentUser.nationality || "—"}</p>
+                </div>
+                <div>
+                  <span className="text-[10px] font-sans font-extrabold text-muted-foreground block">University in Madrid</span>
+                  <p className="text-sm font-sans font-semibold text-foreground mt-0.5">{currentUser.university || "—"}</p>
+                </div>
+                <div>
+                  <span className="text-[10px] font-sans font-extrabold text-muted-foreground block">TikTok</span>
+                  <p className="text-sm font-sans font-semibold text-foreground mt-0.5">{currentUser.tiktok ? `@${currentUser.tiktok}` : "—"}</p>
+                </div>
+                <div>
+                  <span className="text-[10px] font-sans font-extrabold text-muted-foreground block">Instagram</span>
+                  <p className="text-sm font-sans font-semibold text-foreground mt-0.5">{currentUser.instagram ? `@${currentUser.instagram}` : "—"}</p>
                 </div>
               </div>
-            )}
-          </div>
 
-          <div className="grid grid-cols-1 gap-4">
-            {/* University */}
-            <div className="space-y-1">
-              <span className="text-[10px] font-sans font-extrabold text-muted-foreground block">University in Madrid</span>
-              <UniversitySelect
-                value={university}
-                onChange={setUniversity}
-                triggerClassName="w-full bg-card/40 border border-border/50 hover:border-border rounded-xl px-3.5 py-2 text-xs flex items-center justify-between transition"
-              />
-            </div>
-
-          </div>
-
-          {/* Friendship style */}
-          <div className="space-y-1">
-            <span className="text-[10px] font-sans font-extrabold text-muted-foreground block">Friendship style you're looking for</span>
-            <input
-              type="text"
-              value={friendshipType}
-              onChange={(e) => setFriendshipType(e.target.value)}
-              placeholder="e.g. Travel companion, pilates & brunch buddy"
-              className="w-full bg-card/40 border border-border/50 rounded-xl px-3.5 py-2 text-xs text-foreground placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-            />
-          </div>
-
-          {/* Social Handles Section */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* TikTok Handle */}
-            <div className="space-y-1">
-              <span className="text-[10px] font-sans font-extrabold text-muted-foreground block">TikTok Handle (Optional) 🎵</span>
-              <div className="relative">
-                <span className="absolute left-3.5 top-2 text-xs text-muted-foreground font-bold">@</span>
-                <input
-                  type="text"
-                  placeholder="username"
-                  value={tiktok}
-                  onChange={(e) => setTiktok(e.target.value)}
-                  className="w-full bg-card/40 border border-border/50 rounded-xl pl-8 pr-3.5 py-2 text-xs text-foreground placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-                />
+              <div>
+                <span className="text-[10px] font-sans font-extrabold text-muted-foreground block">Friendship style you're looking for</span>
+                <p className="text-sm font-sans font-semibold text-foreground mt-0.5">{currentUser.friendshipType || "—"}</p>
               </div>
-            </div>
 
-            {/* Instagram Handle */}
-            <div className="space-y-1">
-              <span className="text-[10px] font-sans font-extrabold text-muted-foreground block">Instagram Handle (Optional) 📸</span>
-              <div className="relative">
-                <span className="absolute left-3.5 top-2 text-xs text-muted-foreground font-bold">@</span>
-                <input
-                  type="text"
-                  placeholder="username"
-                  value={instagram}
-                  onChange={(e) => setInstagram(e.target.value)}
-                  className="w-full bg-card/40 border border-border/50 rounded-xl pl-8 pr-3.5 py-2 text-xs text-foreground placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-                />
+              <div>
+                <span className="text-[10px] font-sans font-extrabold text-muted-foreground block">Bio</span>
+                <p className="text-xs font-sans text-foreground leading-relaxed mt-0.5 italic">{currentUser.bio ? `"${currentUser.bio}"` : "—"}</p>
               </div>
-            </div>
-          </div>
 
-          {/* Bio */}
-          <div className="space-y-1">
-            <span className="text-[10px] font-sans font-extrabold text-muted-foreground block">Introduce yourself! (Bio)</span>
-            <textarea
-              value={bio}
-              onChange={(e) => setBio(e.target.value)}
-              rows={3}
-              placeholder="Tell girls who you are, when you're moving, what you love to do etc..."
-              className="w-full bg-card/40 border border-border/50 rounded-xl p-3 text-xs text-foreground placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-none"
-            />
-          </div>
-
-          {/* TAXONOMY INTERESTS PICKER SECTIONS */}
-          <div className="pt-4 border-t border-border/30 space-y-6">
-            
-            <div className="flex items-center gap-1 text-foreground">
-              <Sparkles size={16} className="text-amber-500" />
-              <h3 className="font-sans font-bold text-sm">Predefined Friendship Interests</h3>
-            </div>
-
-            {/* Activities checkboxes */}
-            <div className="space-y-2">
-              <span className="text-[10px] font-mono font-extrabold uppercase text-muted-foreground tracking-widest block">
-                Activities & Hobbies
-              </span>
-              <div className="flex flex-wrap gap-1.5 select-none">
-                {PREDEFINED_INTEREST_OPTIONS.activities.map(act => {
-                  const selected = selectedActivities.includes(act);
-                  return (
-                    <button
-                      key={act}
-                      type="button"
-                      onClick={() => handleToggleActivity(act)}
-                      className={`px-3 py-1 rounded-full text-xs font-sans border font-semibold transition ${
-                        selected
-                          ? "bg-slate-900 text-rose-400 border-slate-900 shadow-sm"
-                          : "bg-card/40 text-muted-foreground border-border/40 hover:bg-card/60"
-                      }`}
-                    >
-                      {act}
-                    </button>
-                  );
-                })}
+              <div>
+                <span className="text-[10px] font-sans font-extrabold text-muted-foreground block mb-1.5">Interests</span>
+                {[...currentUser.interests.activities, ...currentUser.interests.social, ...currentUser.interests.music, ...currentUser.interests.lifestyle].length > 0 ? (
+                  <div className="flex flex-wrap gap-1.5">
+                    {[...currentUser.interests.activities, ...currentUser.interests.social, ...currentUser.interests.music, ...currentUser.interests.lifestyle].map(tag => (
+                      <span key={tag} className="text-[10px] font-sans font-bold bg-muted/60 text-muted-foreground border border-border/40 px-2.5 py-1 rounded-full">
+                        {tag}
+                      </span>
+                    ))}
+                    <span className="text-[10px] font-sans font-bold bg-accent/40 text-accent-foreground border border-border/40 px-2.5 py-1 rounded-full">
+                      👑 {currentUser.interests.spendingStyle}
+                    </span>
+                    {currentUser.interests.animals && (
+                      <span className="text-[10px] font-sans font-bold bg-accent/40 text-accent-foreground border border-border/40 px-2.5 py-1 rounded-full">
+                        {ANIMAL_EMOJI[currentUser.interests.animals] || "🐾"} {currentUser.interests.animals}
+                      </span>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground font-sans">—</p>
+                )}
               </div>
-            </div>
-
-            {/* Social Preferences */}
-            <div className="space-y-2">
-              <span className="text-[10px] font-mono font-extrabold uppercase text-muted-foreground tracking-widest block">
-                Social Plans
-              </span>
-              <div className="flex flex-wrap gap-1.5 select-none">
-                {PREDEFINED_INTEREST_OPTIONS.social.map(soc => {
-                  const selected = selectedSocial.includes(soc);
-                  return (
-                    <button
-                      key={soc}
-                      type="button"
-                      onClick={() => handleToggleSocial(soc)}
-                      className={`px-3 py-1 rounded-full text-xs font-sans border font-semibold transition ${
-                        selected
-                          ? "bg-slate-900 text-rose-400 border-slate-900 shadow-sm"
-                          : "bg-card/40 text-muted-foreground border-border/40 hover:bg-card/60"
-                      }`}
-                    >
-                      {soc}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Music preferences */}
-            <div className="space-y-2">
-              <span className="text-[10px] font-mono font-extrabold uppercase text-muted-foreground tracking-widest block">
-                Music Taste
-              </span>
-              <div className="flex flex-wrap gap-1.5 select-none">
-                {PREDEFINED_INTEREST_OPTIONS.music.map(mus => {
-                  const selected = selectedMusic.includes(mus);
-                  return (
-                    <button
-                      key={mus}
-                      type="button"
-                      onClick={() => handleToggleMusic(mus)}
-                      className={`px-3 py-1 rounded-full text-xs font-sans border font-semibold transition ${
-                        selected
-                          ? "bg-slate-900 text-rose-400 border-slate-900 shadow-sm"
-                          : "bg-card/40 text-muted-foreground border-border/40 hover:bg-card/60"
-                      }`}
-                    >
-                      {mus}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Lifestyle preferences */}
-            <div className="space-y-2">
-              <span className="text-[10px] font-mono font-extrabold uppercase text-muted-foreground tracking-widest block">
-                Lifestyle & Energy
-              </span>
-              <div className="flex flex-wrap gap-1.5 select-none">
-                {PREDEFINED_INTEREST_OPTIONS.lifestyle.map(life => {
-                  const selected = selectedLifestyle.includes(life);
-                  return (
-                    <button
-                      key={life}
-                      type="button"
-                      onClick={() => handleToggleLifestyle(life)}
-                      className={`px-3 py-1 rounded-full text-xs font-sans border font-semibold transition ${
-                        selected
-                          ? "bg-slate-900 text-rose-400 border-slate-900 shadow-sm"
-                          : "bg-card/40 text-muted-foreground border-border/40 hover:bg-card/60"
-                      }`}
-                    >
-                      {life}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Spending Style preferences (Radio) */}
-            <div className="space-y-2 pt-1 border-t border-border/30">
-              <span className="text-[10px] font-mono font-extrabold uppercase text-muted-foreground tracking-widest block">
-                Spending Style Preference
-              </span>
-              <div className="flex flex-wrap gap-2 select-none pt-1">
-                {PREDEFINED_INTEREST_OPTIONS.spendingStyle.map(style => {
-                  const selected = spendingStyle === style;
-                  return (
-                    <button
-                      key={style}
-                      type="button"
-                      onClick={() => setSpendingStyle(style)}
-                      className={`px-4 py-1.5 rounded-xl text-xs font-sans border font-black transition ${
-                        selected
-                          ? "bg-primary text-primary-foreground border-rose-500 shadow-md"
-                          : "bg-card/40 text-muted-foreground border-border/40 hover:bg-card/60"
-                      }`}
-                    >
-                      👑 {style}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Animals — single choice, easy conversation starter */}
-            <div className="space-y-2 pt-1 border-t border-border/30">
-              <span className="text-[10px] font-mono font-extrabold uppercase text-muted-foreground tracking-widest block">
-                Animals
-              </span>
-              <div className="flex flex-wrap gap-2 select-none pt-1">
-                {PREDEFINED_INTEREST_OPTIONS.animals.map(option => {
-                  const selected = animals === option;
-                  return (
-                    <button
-                      key={option}
-                      type="button"
-                      onClick={() => setAnimals(selected ? "" : option)}
-                      aria-pressed={selected}
-                      className={`px-4 py-1.5 rounded-xl text-xs font-sans border font-black transition ${
-                        selected
-                          ? "bg-primary text-primary-foreground border-rose-500 shadow-md"
-                          : "bg-card/40 text-muted-foreground border-border/40 hover:bg-card/60"
-                      }`}
-                    >
-                      {ANIMAL_EMOJI[option]} {option}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-          </div>
 
           {/* PERSONAL RECOMMENDATIONS SECTION */}
           <div className="bg-card/40 backdrop-blur-xl p-5 rounded-[28px] border border-border/60 shadow-xl space-y-4 mt-6">
@@ -890,15 +678,6 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
             )}
           </div>
 
-          {/* Save */}
-          <div className="pt-4 border-t border-border/30 flex justify-end">
-            <button
-              onClick={handleSave}
-              className="w-full sm:w-auto bg-primary text-primary-foreground font-sans text-xs font-black px-6 py-3 rounded-xl shadow-pop hover:bg-primary/90 transition active:scale-95 cursor-pointer"
-            >
-              Save profile
-            </button>
-          </div>
 
           {/* ACCOUNT ACTIONS — sign out is non-destructive; deletion is
               explicit, typed, and clearly separated */}
@@ -1311,6 +1090,448 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
         </div>
 
       </div>
+
+      {/* EDIT PROFILE POP-UP — a distinct editing screen over the profile.
+          Full-screen sheet on mobile, contained modal on desktop. Nothing on
+          the profile itself is editable; everything editable lives here, and
+          only Save Changes commits it. */}
+      {isEditing && (
+        <div
+          className="fixed inset-0 z-[70] bg-slate-950/60 backdrop-blur-sm flex items-stretch md:items-center justify-center md:p-6 animate-fade-in"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Edit your profile"
+        >
+          <div className="bg-background w-full h-full md:h-auto md:max-h-[90vh] md:max-w-2xl md:rounded-[28px] md:border md:border-border/70 md:shadow-2xl flex flex-col overflow-hidden relative">
+            {/* Header */}
+            <div className="px-5 md:px-6 pt-[max(1rem,env(safe-area-inset-top))] pb-3.5 border-b border-border/40 flex items-center justify-between gap-3 shrink-0 bg-card/70">
+              <div className="flex items-center gap-2">
+                <Edit size={15} className="text-primary" />
+                <h3 className="font-sans font-black text-sm text-foreground">Edit Profile</h3>
+              </div>
+              <button
+                type="button"
+                onClick={requestCloseEdit}
+                aria-label="Close without saving"
+                className="text-muted-foreground hover:text-foreground p-2 -m-2"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Scrollable form body */}
+            <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-5 md:px-6 py-5 space-y-6">
+
+          {/* Photos — up to four, the first one is the profile picture */}
+          <div className="space-y-3 bg-accent/50 p-4 rounded-2xl border border-border/50">
+            <span className="text-[10px] font-sans font-extrabold text-muted-foreground uppercase tracking-wider block">
+              Your photos 📸
+            </span>
+            <PhotoGalleryEditor
+              photos={photos}
+              onChange={next => {
+                setPhotos(next);
+                setPhoto(next[0] || "");
+              }}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Name */}
+            <div className="space-y-1">
+              <span className="text-[10px] font-sans font-extrabold text-muted-foreground block">Your Name</span>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="w-full bg-card/40 border border-border/50 rounded-xl px-3.5 py-2 text-xs text-foreground placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+              />
+            </div>
+
+            {/* Age */}
+            <div className="space-y-1">
+              <span className="text-[10px] font-sans font-extrabold text-primary block">Your Age</span>
+              <input
+                type="number"
+                value={age}
+                onChange={(e) => setAge(Number(e.target.value))}
+                className="w-full bg-card/40 border border-border/50 rounded-xl px-3.5 py-2 text-xs text-foreground placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+              />
+            </div>
+          </div>
+
+          {/* Multiple Nationalities Selector */}
+          <div className="space-y-2 bg-card/30 p-4 rounded-2xl border border-border/40 relative">
+            <span className="text-[10px] font-sans font-extrabold text-muted-foreground uppercase tracking-wider block">
+              Nationalities 🗺️
+            </span>
+            
+            {/* Single Trigger Button */}
+            <button
+              type="button"
+              onClick={() => setShowNationalityDropdown(!showNationalityDropdown)}
+              className="w-full bg-card/60 border border-border hover:border-border rounded-xl px-3.5 py-2.5 text-xs text-foreground font-medium flex items-center justify-between transition"
+            >
+              <span>Select Nationalities</span>
+              <Globe size={14} className="text-muted-foreground" />
+            </button>
+
+            {/* Selected Nationalities badges */}
+            {selectedNationalities.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {selectedNationalities.map(nat => (
+                  <span key={nat} className="bg-slate-900 text-rose-400 font-sans text-[11px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1 shadow-sm">
+                    <span>{nat}</span>
+                    <button type="button" onClick={(e) => { e.stopPropagation(); handleRemoveNationality(nat); }} className="text-white hover:text-rose-300 font-extrabold text-[10px] ml-0.5 p-2 -m-1.5 inline-flex items-center justify-center" aria-label="Remove">✕</button>
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {/* Searchable Pop-up / Modal / Dropdown */}
+            {showNationalityDropdown && (
+              <div className="absolute z-30 left-4 right-4 mt-1 bg-card border border-border rounded-2xl shadow-xl p-3.5 space-y-2 animate-fade-in">
+                <div className="flex items-center justify-between pb-1.5 border-b border-border/60">
+                  <span className="text-[10px] font-mono font-bold text-muted-foreground uppercase">Search Countries</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowNationalityDropdown(false);
+                      setNationalitySearch("");
+                    }}
+                    className="text-[10px] font-extrabold text-primary hover:text-primary uppercase"
+                  >
+                    Close
+                  </button>
+                </div>
+
+                {/* Search Input inside the pop-up only */}
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="Type to search country..."
+                    value={nationalitySearch}
+                    onChange={(e) => setNationalitySearch(e.target.value)}
+                    className="w-full bg-card border border-border rounded-lg pl-8 pr-2.5 py-1.5 text-xs focus:outline-none"
+                  />
+                  <Search size={12} className="text-muted-foreground absolute left-2.5 top-2.5" />
+                </div>
+
+                {/* Complete list of countries with flag emojis inside pop-up */}
+                <div className="max-h-40 overflow-y-auto space-y-0.5 -mx-1.5 px-1.5">
+                  {searchCountries(nationalitySearch).map(opt => {
+                    const formatted = `${opt.name} ${opt.flag}`;
+                    const isSelected = selectedNationalities.includes(formatted);
+                    return (
+                      <button
+                        key={opt.name}
+                        type="button"
+                        onClick={() => {
+                          if (!isSelected) {
+                            setSelectedNationalities(prev => [...prev, formatted]);
+                          } else {
+                            setSelectedNationalities(prev => prev.filter(c => c !== formatted));
+                          }
+                        }}
+                        className={`w-full text-left py-1.5 px-2.5 rounded-lg text-xs font-medium flex items-center justify-between transition ${
+                          isSelected 
+                            ? "bg-accent/30 text-primary font-bold" 
+                            : "hover:bg-muted/60 text-foreground"
+                        }`}
+                      >
+                        <span className="flex items-center gap-1.5">
+                          <span>{opt.flag}</span>
+                          <span>{opt.name}</span>
+                        </span>
+                        {isSelected && <Check size={12} className="text-primary" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 gap-4">
+            {/* University */}
+            <div className="space-y-1">
+              <span className="text-[10px] font-sans font-extrabold text-muted-foreground block">University in Madrid</span>
+              <UniversitySelect
+                value={university}
+                onChange={setUniversity}
+                triggerClassName="w-full bg-card/40 border border-border/50 hover:border-border rounded-xl px-3.5 py-2 text-xs flex items-center justify-between transition"
+              />
+            </div>
+
+          </div>
+
+          {/* Friendship style */}
+          <div className="space-y-1">
+            <span className="text-[10px] font-sans font-extrabold text-muted-foreground block">Friendship style you're looking for</span>
+            <input
+              type="text"
+              value={friendshipType}
+              onChange={(e) => setFriendshipType(e.target.value)}
+              placeholder="e.g. Travel companion, pilates & brunch buddy"
+              className="w-full bg-card/40 border border-border/50 rounded-xl px-3.5 py-2 text-xs text-foreground placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+            />
+          </div>
+
+          {/* Social Handles Section */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* TikTok Handle */}
+            <div className="space-y-1">
+              <span className="text-[10px] font-sans font-extrabold text-muted-foreground block">TikTok Handle (Optional) 🎵</span>
+              <div className="relative">
+                <span className="absolute left-3.5 top-2 text-xs text-muted-foreground font-bold">@</span>
+                <input
+                  type="text"
+                  placeholder="username"
+                  value={tiktok}
+                  onChange={(e) => setTiktok(e.target.value)}
+                  className="w-full bg-card/40 border border-border/50 rounded-xl pl-8 pr-3.5 py-2 text-xs text-foreground placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                />
+              </div>
+            </div>
+
+            {/* Instagram Handle */}
+            <div className="space-y-1">
+              <span className="text-[10px] font-sans font-extrabold text-muted-foreground block">Instagram Handle (Optional) 📸</span>
+              <div className="relative">
+                <span className="absolute left-3.5 top-2 text-xs text-muted-foreground font-bold">@</span>
+                <input
+                  type="text"
+                  placeholder="username"
+                  value={instagram}
+                  onChange={(e) => setInstagram(e.target.value)}
+                  className="w-full bg-card/40 border border-border/50 rounded-xl pl-8 pr-3.5 py-2 text-xs text-foreground placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Bio */}
+          <div className="space-y-1">
+            <span className="text-[10px] font-sans font-extrabold text-muted-foreground block">Introduce yourself! (Bio)</span>
+            <textarea
+              value={bio}
+              onChange={(e) => setBio(e.target.value)}
+              rows={3}
+              placeholder="Tell girls who you are, when you're moving, what you love to do etc..."
+              className="w-full bg-card/40 border border-border/50 rounded-xl p-3 text-xs text-foreground placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-none"
+            />
+          </div>
+
+          {/* TAXONOMY INTERESTS PICKER SECTIONS */}
+          <div className="pt-4 border-t border-border/30 space-y-6">
+            
+            <div className="flex items-center gap-1 text-foreground">
+              <Sparkles size={16} className="text-amber-500" />
+              <h3 className="font-sans font-bold text-sm">Predefined Friendship Interests</h3>
+            </div>
+
+            {/* Activities checkboxes */}
+            <div className="space-y-2">
+              <span className="text-[10px] font-mono font-extrabold uppercase text-muted-foreground tracking-widest block">
+                Activities & Hobbies
+              </span>
+              <div className="flex flex-wrap gap-1.5 select-none">
+                {PREDEFINED_INTEREST_OPTIONS.activities.map(act => {
+                  const selected = selectedActivities.includes(act);
+                  return (
+                    <button
+                      key={act}
+                      type="button"
+                      onClick={() => handleToggleActivity(act)}
+                      className={`px-3 py-1 rounded-full text-xs font-sans border font-semibold transition ${
+                        selected
+                          ? "bg-slate-900 text-rose-400 border-slate-900 shadow-sm"
+                          : "bg-card/40 text-muted-foreground border-border/40 hover:bg-card/60"
+                      }`}
+                    >
+                      {act}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Social Preferences */}
+            <div className="space-y-2">
+              <span className="text-[10px] font-mono font-extrabold uppercase text-muted-foreground tracking-widest block">
+                Social Plans
+              </span>
+              <div className="flex flex-wrap gap-1.5 select-none">
+                {PREDEFINED_INTEREST_OPTIONS.social.map(soc => {
+                  const selected = selectedSocial.includes(soc);
+                  return (
+                    <button
+                      key={soc}
+                      type="button"
+                      onClick={() => handleToggleSocial(soc)}
+                      className={`px-3 py-1 rounded-full text-xs font-sans border font-semibold transition ${
+                        selected
+                          ? "bg-slate-900 text-rose-400 border-slate-900 shadow-sm"
+                          : "bg-card/40 text-muted-foreground border-border/40 hover:bg-card/60"
+                      }`}
+                    >
+                      {soc}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Music preferences */}
+            <div className="space-y-2">
+              <span className="text-[10px] font-mono font-extrabold uppercase text-muted-foreground tracking-widest block">
+                Music Taste
+              </span>
+              <div className="flex flex-wrap gap-1.5 select-none">
+                {PREDEFINED_INTEREST_OPTIONS.music.map(mus => {
+                  const selected = selectedMusic.includes(mus);
+                  return (
+                    <button
+                      key={mus}
+                      type="button"
+                      onClick={() => handleToggleMusic(mus)}
+                      className={`px-3 py-1 rounded-full text-xs font-sans border font-semibold transition ${
+                        selected
+                          ? "bg-slate-900 text-rose-400 border-slate-900 shadow-sm"
+                          : "bg-card/40 text-muted-foreground border-border/40 hover:bg-card/60"
+                      }`}
+                    >
+                      {mus}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Lifestyle preferences */}
+            <div className="space-y-2">
+              <span className="text-[10px] font-mono font-extrabold uppercase text-muted-foreground tracking-widest block">
+                Lifestyle & Energy
+              </span>
+              <div className="flex flex-wrap gap-1.5 select-none">
+                {PREDEFINED_INTEREST_OPTIONS.lifestyle.map(life => {
+                  const selected = selectedLifestyle.includes(life);
+                  return (
+                    <button
+                      key={life}
+                      type="button"
+                      onClick={() => handleToggleLifestyle(life)}
+                      className={`px-3 py-1 rounded-full text-xs font-sans border font-semibold transition ${
+                        selected
+                          ? "bg-slate-900 text-rose-400 border-slate-900 shadow-sm"
+                          : "bg-card/40 text-muted-foreground border-border/40 hover:bg-card/60"
+                      }`}
+                    >
+                      {life}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Spending Style preferences (Radio) */}
+            <div className="space-y-2 pt-1 border-t border-border/30">
+              <span className="text-[10px] font-mono font-extrabold uppercase text-muted-foreground tracking-widest block">
+                Spending Style Preference
+              </span>
+              <div className="flex flex-wrap gap-2 select-none pt-1">
+                {PREDEFINED_INTEREST_OPTIONS.spendingStyle.map(style => {
+                  const selected = spendingStyle === style;
+                  return (
+                    <button
+                      key={style}
+                      type="button"
+                      onClick={() => setSpendingStyle(style)}
+                      className={`px-4 py-1.5 rounded-xl text-xs font-sans border font-black transition ${
+                        selected
+                          ? "bg-primary text-primary-foreground border-rose-500 shadow-md"
+                          : "bg-card/40 text-muted-foreground border-border/40 hover:bg-card/60"
+                      }`}
+                    >
+                      👑 {style}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Animals — single choice, easy conversation starter */}
+            <div className="space-y-2 pt-1 border-t border-border/30">
+              <span className="text-[10px] font-mono font-extrabold uppercase text-muted-foreground tracking-widest block">
+                Animals
+              </span>
+              <div className="flex flex-wrap gap-2 select-none pt-1">
+                {PREDEFINED_INTEREST_OPTIONS.animals.map(option => {
+                  const selected = animals === option;
+                  return (
+                    <button
+                      key={option}
+                      type="button"
+                      onClick={() => setAnimals(selected ? "" : option)}
+                      aria-pressed={selected}
+                      className={`px-4 py-1.5 rounded-xl text-xs font-sans border font-black transition ${
+                        selected
+                          ? "bg-primary text-primary-foreground border-rose-500 shadow-md"
+                          : "bg-card/40 text-muted-foreground border-border/40 hover:bg-card/60"
+                      }`}
+                    >
+                      {ANIMAL_EMOJI[option]} {option}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+          </div>
+            </div>
+
+            {/* Footer — the only way changes are committed */}
+            <div className="px-5 md:px-6 pt-3 pb-[max(0.875rem,env(safe-area-inset-bottom))] border-t border-border/40 shrink-0 bg-card/70 flex flex-col-reverse sm:flex-row justify-end gap-2">
+              <button
+                onClick={requestCloseEdit}
+                className="w-full sm:w-auto bg-card border border-border text-foreground font-sans text-xs font-bold px-6 py-3 rounded-xl hover:bg-muted transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSave}
+                className="w-full sm:w-auto bg-primary text-primary-foreground font-sans text-xs font-black px-8 py-3 rounded-xl shadow-pop hover:bg-primary/90 transition active:scale-95 cursor-pointer"
+              >
+                Save Changes
+              </button>
+            </div>
+
+            {/* Discard confirmation */}
+            {showDiscardConfirm && (
+              <div className="absolute inset-0 z-10 bg-slate-950/40 backdrop-blur-[2px] flex items-center justify-center p-6">
+                <div className="bg-card rounded-2xl border border-border/70 shadow-2xl p-5 max-w-xs w-full space-y-2 animate-scale-up">
+                  <p className="font-sans font-black text-sm text-foreground">Discard changes?</p>
+                  <p className="font-sans text-xs text-muted-foreground">Your changes haven't been saved.</p>
+                  <div className="flex gap-2 justify-end pt-2">
+                    <button
+                      onClick={() => setShowDiscardConfirm(false)}
+                      className="px-3.5 py-2 rounded-xl bg-card border border-border text-foreground text-[11px] font-bold hover:bg-muted transition cursor-pointer"
+                    >
+                      Keep Editing
+                    </button>
+                    <button
+                      onClick={discardAndClose}
+                      className="px-3.5 py-2 rounded-xl bg-destructive text-destructive-foreground text-[11px] font-black hover:opacity-90 transition cursor-pointer"
+                    >
+                      Discard Changes
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {showPreview && (
         <ProfilePreview

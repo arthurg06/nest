@@ -16,6 +16,7 @@ import { saveImage, deleteImage, isAppIssuedImage } from "./server/images.js";
 import { PREMIUM_PLAN, PREMIUM_PRICE_LABEL } from "./shared/subscription.js";
 import { profileFor } from "./shared/visibility.js";
 import { canonicalUniversity, universityKey } from "./shared/universities.js";
+import { TERMS_VERSION } from "./shared/terms.js";
 import { avatarGradient } from "./shared/avatar.js";
 
 dotenv.config({ quiet: true });
@@ -136,10 +137,13 @@ function imagesSafeToDelete(db: DbSchema, candidates: (string | undefined)[], ow
   return candidates.filter((url): url is string => Boolean(url) && !referencedElsewhere.has(url!));
 }
 
-// Server-side Premium entitlement — driven by Stripe webhook state (or a
-// still-valid paid period), never by client-side flags.
+// Server-side Premium entitlement — driven by Stripe webhook state, a
+// still-valid paid period, or an explicit manual grant made by an admin.
+// Never by client-side flags. When payments land, a real Stripe status
+// simply overwrites "manual".
 function hasActiveSubscription(user: User): boolean {
   if (user.subscriptionStatus === "active" || user.subscriptionStatus === "trialing") return true;
+  if (user.subscriptionStatus === "manual") return true;
   if (user.premiumExpiresAt && new Date(user.premiumExpiresAt).getTime() > Date.now()) return true;
   return false;
 }
@@ -453,6 +457,13 @@ app.post("/api/auth/signup", async (req, res) => {
       return res.status(400).json({ error: "Please select your university from the Madrid list" });
     }
 
+    // Terms & Conditions must be actively accepted before an account exists.
+    // The server records the version it currently serves — never a
+    // client-supplied one — so a future update can ask for re-acceptance.
+    if (req.body.termsAccepted !== true) {
+      return res.status(400).json({ error: "You must agree to the Terms & Conditions to create an account" });
+    }
+
     if (!isTestEnv && !signupLimiter.check(clientIp(req))) {
       return res.status(429).json({ error: "Too many sign-up attempts. Please try again later." });
     }
@@ -478,7 +489,9 @@ app.post("/api/auth/signup", async (req, res) => {
       status: "active",
       source: "web",
       isPremium: false,
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      termsAcceptedAt: new Date().toISOString(),
+      termsVersion: TERMS_VERSION
     };
 
     const defaultInterests = {
@@ -778,7 +791,10 @@ app.get("/api/auth/me", authenticate, async (req, res) => {
         id: user.id,
         email: user.email,
         isAdmin: user.isAdmin,
-        isPremium: hasActiveSubscription(user)
+        isPremium: hasActiveSubscription(user),
+        // Which Terms version this account accepted (absent on accounts that
+        // predate the terms) — lets a future release prompt for re-acceptance.
+        termsVersion: user.termsVersion
       },
       profile: profile ? ownProfileView(profile) : profile
     });
@@ -1135,6 +1151,47 @@ app.post("/api/swipe", authenticate, async (req, res) => {
   }
 });
 
+// Undo the caller's single most recent swipe. The client names the member it
+// believes it is undoing, so a stale button can never delete a different
+// swipe. A like that already became a match is not undoable — that would
+// silently destroy a conversation the other member can see.
+app.post("/api/swipe/undo", authenticate, async (req, res) => {
+  try {
+    const userId = (req as any).userId;
+    const { toUserId } = req.body;
+
+    if (!toUserId || typeof toUserId !== "string") {
+      return res.status(400).json({ error: "toUserId is required" });
+    }
+
+    const db = await dbManager.readDb();
+    const mySwipes = db.swipes.filter(s => s.fromUserId === userId);
+    const last = mySwipes[mySwipes.length - 1];
+
+    if (!last) {
+      return res.status(404).json({ error: "There is no swipe to undo" });
+    }
+    if (last.toUserId !== toUserId) {
+      return res.status(409).json({ error: "Only your most recent swipe can be undone" });
+    }
+    const matched = db.matches.some(
+      m =>
+        (m.user1Id === userId && m.user2Id === last.toUserId) ||
+        (m.user2Id === userId && m.user1Id === last.toUserId)
+    );
+    if (matched) {
+      return res.status(409).json({ error: "You already matched with her — this swipe can't be undone" });
+    }
+
+    db.swipes = db.swipes.filter(s => s.id !== last.id);
+    await dbManager.writeDb(db);
+
+    res.json({ success: true, undoneUserId: last.toUserId, action: last.action });
+  } catch (error) {
+    res.status(500).json({ error: "Error undoing swipe" });
+  }
+});
+
 // Get active matches for current user
 app.get("/api/matches", authenticate, async (req, res) => {
   try {
@@ -1329,18 +1386,25 @@ app.post("/api/plans/:planId/respond", authenticate, async (req, res) => {
     const db = await dbManager.readDb();
     const plan = db.plans.find(p => p.id === planId);
     if (!plan) return res.status(404).json({ error: "Outing not found" });
-    // Answering belongs to the receiver; withdrawing belongs to the sender.
+    // Answering belongs to the receiver; withdrawing/cancelling belongs to
+    // the sender — who may also cancel an outing that was already accepted.
     if (status === "cancelled") {
       if (plan.senderId !== userId) {
-        return res.status(403).json({ error: "Only the member who sent this outing can withdraw it" });
+        return res.status(403).json({ error: "Only the member who created this outing can cancel it" });
       }
-    } else if (plan.receiverId !== userId) {
-      return res.status(403).json({ error: "Only the member who received this outing can answer it" });
-    }
-    if (plan.status !== "pending") {
-      return res.status(400).json({ error: "This outing has already been answered" });
+      if (plan.status !== "pending" && plan.status !== "accepted") {
+        return res.status(400).json({ error: "This outing is no longer active" });
+      }
+    } else {
+      if (plan.receiverId !== userId) {
+        return res.status(403).json({ error: "Only the member who received this outing can answer it" });
+      }
+      if (plan.status !== "pending") {
+        return res.status(400).json({ error: "This outing has already been answered" });
+      }
     }
 
+    const wasAccepted = plan.status === "accepted";
     const now = new Date().toISOString();
     plan.status = status;
     plan.respondedAt = now;
@@ -1352,7 +1416,7 @@ app.post("/api/plans/:planId/respond", authenticate, async (req, res) => {
       text: status === "accepted"
         ? `${responderName} accepted: ${plan.title}`
         : status === "cancelled"
-        ? `${responderName} withdrew: ${plan.title}`
+        ? `${responderName} ${wasAccepted ? "cancelled" : "withdrew"}: ${plan.title}`
         : `${responderName} can't make it to: ${plan.title}`,
       timestamp: now,
       read: false,
@@ -1489,8 +1553,18 @@ app.get("/api/events", authenticate, async (req, res) => {
   try {
     const userId = (req as any).userId;
     const db = await dbManager.readDb();
+    const user = db.users.find(u => u.id === userId);
+
+    // Outings are a Premium experience. Non-Premium members get a teaser
+    // only — no date, time, location, description, attendee info, or
+    // anything else that would let them identify or join the outing. This
+    // is the API's shape, not a frontend hide: there is nothing to bypass.
+    const premiumAccess = !!user && (hasActiveSubscription(user) || user.role === "admin");
 
     const list = db.events.map(evt => {
+      if (!premiumAccess) {
+        return { id: evt.id, category: evt.category, teaser: true };
+      }
       const rsvps = db.rsvps.filter(r => r.eventId === evt.id);
       const isRsvped = rsvps.some(r => r.userId === userId);
       return {
@@ -1503,6 +1577,64 @@ app.get("/api/events", authenticate, async (req, res) => {
     res.json(list);
   } catch (error) {
     res.status(500).json({ error: "Error loading events" });
+  }
+});
+
+// NEST Memories — a Premium member's personal archive of the outings she
+// attended. Every number is computed from real records (RSVPs, event albums,
+// matches); nothing is ever fabricated. Premium-gated like the outings
+// themselves; admins retain access.
+app.get("/api/memories", authenticate, async (req, res) => {
+  try {
+    const userId = (req as any).userId;
+    const db = await dbManager.readDb();
+    const user = db.users.find(u => u.id === userId);
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    if (!hasActiveSubscription(user) && user.role !== "admin") {
+      return res.status(403).json({
+        error: "Premium membership required",
+        requiresPremium: true
+      });
+    }
+
+    const myRsvps = db.rsvps.filter(r => r.userId === userId);
+    const myEventIds = new Set(myRsvps.map(r => r.eventId));
+
+    // Everyone else who attended an outing with her, and which of them she
+    // matched with — the "new connections" around her outings.
+    const otherAttendees = new Set<string>();
+    for (const r of db.rsvps) {
+      if (myEventIds.has(r.eventId) && r.userId !== userId) otherAttendees.add(r.userId);
+    }
+    const myMatchPartners = new Set(
+      db.matches
+        .filter(m => m.user1Id === userId || m.user2Id === userId)
+        .map(m => (m.user1Id === userId ? m.user2Id : m.user1Id))
+    );
+    const connections = [...otherAttendees].filter(id => myMatchPartners.has(id)).length;
+
+    const memories = db.events
+      .filter(e => myEventIds.has(e.id))
+      .map(e => ({
+        eventId: e.id,
+        title: e.title,
+        date: e.date,
+        category: e.category,
+        attendeeCount: db.rsvps.filter(r => r.eventId === e.id).length,
+        photoCount: e.albumPhotos?.length || 0
+      }));
+
+    res.json({
+      memories,
+      totals: {
+        photos: memories.reduce((sum, m) => sum + m.photoCount, 0),
+        attendees: otherAttendees.size,
+        connections
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: "Error loading memories" });
   }
 });
 
@@ -2115,6 +2247,87 @@ app.get("/api/admin/users", authenticateAdmin, async (req, res) => {
     res.json(usersWithProfiles);
   } catch (error) {
     res.status(500).json({ error: "Error retrieving users list" });
+  }
+});
+
+// Admin: full profile of one member, for the profile viewer on the admin
+// page. Admins already review every member by hand, so nothing is filtered
+// except the verification record's private email (PRIVATE_FIELDS applies to
+// the card view; verification details live in the verifications tab).
+app.get("/api/admin/users/:userId/profile", authenticateAdmin, async (req, res) => {
+  try {
+    const db = await dbManager.readDb();
+    const profile = db.profiles.find(p => p.userId === req.params.userId);
+    if (!profile) {
+      return res.status(404).json({ error: "Profile not found" });
+    }
+    res.json(profileFor(profile, "match"));
+  } catch (error) {
+    res.status(500).json({ error: "Error retrieving member profile" });
+  }
+});
+
+// Admin: manually grant or revoke NEST Premium. The manual switch is how
+// membership works until payments are connected; a future Stripe activation
+// writes the same fields. Revoking also clears any stored expiry so access
+// genuinely ends. Audited.
+app.post("/api/admin/users/:userId/premium", authenticateAdmin, async (req, res) => {
+  try {
+    const adminId = (req as any).userId;
+    const { userId } = req.params;
+    const { isPremium } = req.body;
+    if (typeof isPremium !== "boolean") {
+      return res.status(400).json({ error: "isPremium must be true or false" });
+    }
+
+    const db = await dbManager.readDb();
+    const user = db.users.find(u => u.id === userId);
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    user.isPremium = isPremium;
+    if (isPremium) {
+      // Manual entitlement — recognized by hasActiveSubscription until a
+      // real Stripe status replaces it.
+      user.subscriptionStatus = "manual";
+    } else {
+      if (user.subscriptionStatus === "manual") user.subscriptionStatus = undefined;
+      user.premiumExpiresAt = undefined;
+    }
+    recordAudit(db, adminId, isPremium ? "premium_granted" : "premium_revoked", userId);
+
+    await dbManager.writeDb(db);
+    res.json({ isPremium: user.isPremium });
+  } catch (error) {
+    res.status(500).json({ error: "Error updating Premium status" });
+  }
+});
+
+// Admin: correct a member's university to a canonical Madrid value — for
+// records that predate the selector. Only the university changes, only to a
+// value on the approved list, and the correction lands in the audit trail.
+app.post("/api/admin/users/:userId/university", authenticateAdmin, async (req, res) => {
+  try {
+    const adminId = (req as any).userId;
+    const { userId } = req.params;
+    const canonical = canonicalUniversity(req.body.university);
+    if (!canonical) {
+      return res.status(400).json({ error: "University must be one of the approved Madrid universities" });
+    }
+
+    const db = await dbManager.readDb();
+    const profile = db.profiles.find(p => p.userId === userId);
+    if (!profile) {
+      return res.status(404).json({ error: "Profile not found" });
+    }
+
+    const previous = profile.university;
+    profile.university = canonical;
+    recordAudit(db, adminId, "university_corrected", userId, `"${previous}" → "${canonical}"`);
+
+    await dbManager.writeDb(db);
+    res.json({ university: canonical });
+  } catch (error) {
+    res.status(500).json({ error: "Error updating university" });
   }
 });
 

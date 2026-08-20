@@ -10,6 +10,7 @@ const signupBody = (overrides: Record<string, unknown> = {}) => ({
   age: 22,
   nationality: "Spain 🇪🇸",
   university: "IE University",
+  termsAccepted: true,
   ...overrides,
 });
 

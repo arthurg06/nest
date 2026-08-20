@@ -11,7 +11,7 @@ import OnboardingSignUp from "./components/OnboardingSignUp";
 import AdminDashboard from "./components/AdminDashboard";
 import {
   Sparkles, MessageSquare, MapPin, Users, Calendar, User,
-  Bell, Heart, Check, X, ShieldCheck, HelpCircle, RefreshCw, Key
+  Bell, Heart, Check, X, ShieldCheck, HelpCircle, RefreshCw, Key, Undo2
 } from "lucide-react";
 import { apiUrl } from "./lib/api";
 import { avatarGradient } from "../shared/avatar";
@@ -268,6 +268,10 @@ export default function App() {
     }
   }, [currentUser]);
 
+  // One-step undo: only the profile swiped immediately before, and never one
+  // that already became a match (the server refuses that too).
+  const [lastSwiped, setLastSwiped] = useState<UserProfile | null>(null);
+
   // Swiping Actions with server persistence
   const handleSwipeLeft = async () => {
     const swiped = swipeQueue[0];
@@ -279,6 +283,7 @@ export default function App() {
         body: JSON.stringify({ toUserId: swiped.userId, action: "pass" })
       });
       setSwipeQueue(prev => prev.slice(1));
+      setLastSwiped(swiped);
     } catch (err) {
       console.error("Pass error:", err);
     }
@@ -300,9 +305,32 @@ export default function App() {
           loadMatches();
         }
         setSwipeQueue(prev => prev.slice(1));
+        // A like that matched cannot be undone — deleting it would destroy
+        // the new conversation.
+        setLastSwiped(data.isMatch ? null : swiped);
       }
     } catch (err) {
       console.error("Like error:", err);
+    }
+  };
+
+  // The server deletes the swipe record, so she genuinely returns to the
+  // deck — this is not a visual trick over a kept "pass".
+  const handleUndoSwipe = async () => {
+    if (!lastSwiped) return;
+    try {
+      const res = await fetchWithAuth("/api/swipe/undo", {
+        method: "POST",
+        body: JSON.stringify({ toUserId: lastSwiped.userId })
+      });
+      if (res.ok) {
+        setSwipeQueue(prev => [lastSwiped, ...prev.filter(p => p.userId !== lastSwiped.userId)]);
+      }
+      // Whether it worked or the server refused (e.g. already matched), the
+      // one-step undo is spent.
+      setLastSwiped(null);
+    } catch (err) {
+      console.error("Undo error:", err);
     }
   };
 
@@ -339,7 +367,7 @@ export default function App() {
     }
   };
 
-  const handleRespondToPlan = async (planId: string, status: "accepted" | "declined"): Promise<string | null> => {
+  const handleRespondToPlan = async (planId: string, status: "accepted" | "declined" | "cancelled"): Promise<string | null> => {
     try {
       const res = await fetchWithAuth(`/api/plans/${planId}/respond`, {
         method: "POST",
@@ -619,6 +647,21 @@ export default function App() {
                       {currentUser.verificationStatus === "rejected" ? "Update & resubmit" : "Verify my status"}
                     </button>
                   )}
+                </div>
+              )}
+
+              {/* One-step undo — appears only while there is a swipe to take
+                  back, and disappears once it is used. */}
+              {lastSwiped && (
+                <div className="max-w-md mx-auto flex justify-end animate-fade-in">
+                  <button
+                    type="button"
+                    onClick={handleUndoSwipe}
+                    className="flex items-center gap-1.5 text-[11px] font-sans font-bold text-muted-foreground hover:text-foreground bg-card/60 border border-border/60 px-3 py-2 rounded-xl transition shadow-sm"
+                  >
+                    <Undo2 size={13} />
+                    <span>Undo last swipe</span>
+                  </button>
                 </div>
               )}
 
