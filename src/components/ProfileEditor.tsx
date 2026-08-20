@@ -10,6 +10,7 @@ import { searchCountries } from "../../shared/countries";
 import { apiUrl } from "../lib/api";
 import VerifiedBadge from "./VerifiedBadge";
 import UniversitySelect from "./UniversitySelect";
+import { displayUniversity } from "../../shared/universities";
 
 interface ProfileEditorProps {
   currentUser: UserProfile;
@@ -577,7 +578,7 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
                 </div>
                 <div>
                   <span className="text-[10px] font-sans font-extrabold text-muted-foreground block">University in Madrid</span>
-                  <p className="text-sm font-sans font-semibold text-foreground mt-0.5">{currentUser.university || "—"}</p>
+                  <p className="text-sm font-sans font-semibold text-foreground mt-0.5">{displayUniversity(currentUser.university) || "—"}</p>
                 </div>
                 <div>
                   <span className="text-[10px] font-sans font-extrabold text-muted-foreground block">TikTok</span>

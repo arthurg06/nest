@@ -21,7 +21,7 @@ function suggestionsFor(profile: UserProfile): string[] {
   if (photoCount === 0) {
     notes.push("You have no photo yet, and your card opens with it.");
   } else if (photoCount === 1) {
-    notes.push("You can add up to four photos — others tap through them on the card.");
+    notes.push("You can add up to six photos — others tap through them on the card.");
   }
 
   if (!profile.bio?.trim()) {
@@ -139,7 +139,7 @@ export default function ProfilePreview({ profile, onClose, unsaved = false }: Pr
 
         {/* Card + notes */}
         <div className="flex-1 min-h-0 overflow-y-auto px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] space-y-4">
-          <SwipeCard profile={visible} preview />
+          <SwipeCard profile={visible} preview expanded />
 
           <div className="bg-card/50 border border-border/60 rounded-2xl p-4 space-y-3 text-muted-foreground shadow-sm">
             <div className="flex items-center gap-1.5 text-foreground font-sans font-bold text-xs">

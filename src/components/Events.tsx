@@ -4,6 +4,20 @@ import { Calendar, Clock, MapPin, Sparkles, Check, Bookmark, Crown, X, Trash2, P
 import PremiumInfoModal from "./PremiumInfoModal";
 import { apiUrl } from "../lib/api";
 
+interface MyEventItem {
+  kind: "plan" | "outing";
+  id: string;
+  matchId?: string;
+  title: string;
+  placeName?: string;
+  placeArea?: string;
+  date: string;
+  time?: string;
+  withName?: string;
+  location?: string;
+  category?: string;
+}
+
 interface MemoriesData {
   memories: {
     eventId: string;
@@ -33,9 +47,11 @@ interface EventsProps {
   isAdmin: boolean;
   onAddEvent: (title: string, description: string, date: string, time: string, location: string, category: string, price: string, maxParticipants?: number) => void;
   onDeleteEvent?: (id: string) => void;
+  /** Opens the chat that owns a confirmed private outing (My Events). */
+  onOpenPlanChat?: (matchId: string) => void;
 }
 
-export default function Events({ events, onToggleRsvp, isSubscribed, subscription, onSyncOfficialEvents, isAdmin, onAddEvent, onDeleteEvent }: EventsProps) {
+export default function Events({ events, onToggleRsvp, isSubscribed, subscription, onSyncOfficialEvents, isAdmin, onAddEvent, onDeleteEvent, onOpenPlanChat }: EventsProps) {
   const [activeTab, setActiveTab] = React.useState<string>("all");
   // Small upsell when a non-Premium member tries to RSVP; the full Premium
   // page opens from its "More Information" button (and from the banner).
@@ -45,6 +61,21 @@ export default function Events({ events, onToggleRsvp, isSubscribed, subscriptio
   const [paymentError, setPaymentError] = useState("");
 
   const stripeReady = subscription?.stripeConfigured === true;
+
+  // "My Events" — the member's own upcoming confirmed plans, scoped to her
+  // account by the server.
+  const [myEvents, setMyEvents] = useState<MyEventItem[] | null>(null);
+  React.useEffect(() => {
+    if (activeTab !== "mine") return;
+    let alive = true;
+    fetch(apiUrl("/api/my-events"), {
+      headers: { "Authorization": `Bearer ${localStorage.getItem("nest_token")}` }
+    })
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => { if (alive && d) setMyEvents(d.items); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [activeTab, events]);
 
   // NEST Memories — Premium members' personal outing archive, computed
   // server-side from real attendance data.
@@ -123,7 +154,8 @@ export default function Events({ events, onToggleRsvp, isSubscribed, subscriptio
     { id: "all", label: "All Events" },
     { id: "social", label: "Social Mixer" },
     { id: "study", label: "Study & Coffee" },
-    { id: "wellness", label: "Wellness & Sports" }
+    { id: "wellness", label: "Wellness & Sports" },
+    { id: "mine", label: "My Events" }
   ];
 
   const filteredEvents = tabFilter(activeTab);
@@ -391,8 +423,49 @@ export default function Events({ events, onToggleRsvp, isSubscribed, subscriptio
         ))}
       </div>
 
-      {/* Events Grid layout */}
-      {filteredEvents.length > 0 ? (
+      {/* MY EVENTS — only the member's own upcoming confirmed plans */}
+      {activeTab === "mine" ? (
+        <div className="space-y-3 max-w-2xl">
+          {(myEvents || []).map(item => (
+            <button
+              key={item.kind + item.id}
+              type="button"
+              onClick={() => {
+                if (item.kind === "plan" && item.matchId) {
+                  onOpenPlanChat?.(item.matchId);
+                } else {
+                  setActiveTab("all");
+                  window.setTimeout(() => {
+                    document.getElementById(`event-card-${item.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+                  }, 150);
+                }
+              }}
+              className="w-full text-left bg-card/40 backdrop-blur-md rounded-2xl border border-border/60 p-4 flex items-center gap-3.5 shadow-sm hover:bg-card/60 hover:shadow-md transition animate-fade-in"
+            >
+              <span className="text-2xl select-none shrink-0">
+                {item.kind === "plan" ? "💌" : getCategoryImageEmoji(item.category || "")}
+              </span>
+              <div className="flex-1 min-w-0">
+                <h4 className="font-sans font-bold text-sm text-foreground leading-snug truncate">{item.title}</h4>
+                <p className="font-sans text-[11px] text-muted-foreground mt-0.5 truncate">
+                  {item.kind === "plan"
+                    ? `${new Date(`${item.date}T12:00:00`).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })} at ${item.time} · ${item.placeName} · with ${item.withName}`
+                    : [item.date, item.time, item.location].filter(Boolean).join(" · ")}
+                </p>
+              </div>
+              <span className="text-[9px] font-mono font-black uppercase tracking-widest text-primary shrink-0">
+                {item.kind === "plan" ? "Outing" : "NEST event"}
+              </span>
+            </button>
+          ))}
+          {myEvents && myEvents.length === 0 && (
+            <div className="bg-card/40 backdrop-blur-md rounded-[28px] border border-dashed border-border/60 p-8 text-center space-y-1 max-w-sm mx-auto">
+              <p className="font-sans text-xs font-bold text-foreground">No upcoming events yet.</p>
+              <p className="font-sans text-xs text-muted-foreground">Your confirmed NEST plans will appear here.</p>
+            </div>
+          )}
+        </div>
+      ) : filteredEvents.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {filteredEvents.map(event => event.teaser ? (
             /* Premium teaser — the server sent only the category; there is
@@ -642,8 +715,7 @@ export default function Events({ events, onToggleRsvp, isSubscribed, subscriptio
               Oops! This feature is only for NEST Premium users.
             </h3>
             <p className="font-sans text-xs text-muted-foreground leading-relaxed">
-              Join NEST Premium and get access to exclusive events curated by our official NEST team — and meet
-              your nest.
+              Join NEST Premium and get access to exclusive events curated by our official NEST team.
             </p>
             <button
               onClick={() => { setShowUpsell(false); setShowPremiumInfo(true); }}

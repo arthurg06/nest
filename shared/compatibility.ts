@@ -1,6 +1,8 @@
 // Shared between the React frontend and the Express server so both compute
 // the same, stable compatibility score for a pair of profiles.
 
+import { displayUniversity } from "./universities.js";
+
 export const PREDEFINED_INTEREST_OPTIONS = {
   activities: [
     "gym", "yoga", "pilates", "dance", "running", "hiking", "reading", "cooking",
@@ -104,7 +106,12 @@ export function calculateCompatibility(user: CompatibilityProfile, match: Compat
 
   let explanation = "";
   if (user.university && match.university && user.university.toLowerCase() === match.university.toLowerCase()) {
-    explanation = `You both study at ${user.university} and share interests like ${allSharedInterests.slice(0, 2).join(" & ")}.`;
+    // Display name (e.g. "UCM"), and no dangling "like ." when the pair has
+    // no shared interests yet.
+    const uni = displayUniversity(user.university);
+    explanation = allSharedInterests.length > 0
+      ? `You both study at ${uni} and share interests like ${allSharedInterests.slice(0, 2).join(" & ")}.`
+      : `You both study at ${uni} — same campus, same city, new friend.`;
   } else if (allSharedInterests.length > 0) {
     explanation = `High overlap in social plans! You both love ${allSharedInterests.slice(0, 3).join(", ")}.`;
   } else if (matchingVibes.length > 0) {

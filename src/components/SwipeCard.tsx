@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { UserProfile } from "../types";
 import { calculateCompatibility } from "../data";
+import { displayUniversity } from "../../shared/universities";
 import { ANIMAL_EMOJI } from "../../shared/compatibility";
 import { X, Heart, MapPin, Sparkles, GraduationCap, ChevronDown, ChevronUp, Instagram, ArrowLeft } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
@@ -21,9 +22,16 @@ interface SwipeCardProps {
    * the card keeps exactly the proportions another member will see.
    */
   preview?: boolean;
+  /**
+   * Set by the full-screen viewers (match profile, "How others see you"):
+   * on phones the card grows to use the modal's whole height, giving the
+   * details area real room instead of the deck's compact proportions.
+   * Desktop keeps the standard card size.
+   */
+  expanded?: boolean;
 }
 
-export default function SwipeCard({ profile, currentUser, onSwipeLeft, onSwipeRight, preview = false }: SwipeCardProps) {
+export default function SwipeCard({ profile, currentUser, onSwipeLeft, onSwipeRight, preview = false, expanded = false }: SwipeCardProps) {
   const [showFullProfile, setShowFullProfile] = useState(false);
   const [photoIndex, setPhotoIndex] = useState(0);
   const cardRef = useRef<HTMLDivElement>(null);
@@ -141,7 +149,11 @@ export default function SwipeCard({ profile, currentUser, onSwipeLeft, onSwipeRi
             /* Mobile heights track the real viewport (capped) so the details
                area gets the room the fixed height used to waste; md+ keeps
                the previous desktop proportions. */
-            showFullProfile
+            expanded
+              ? showFullProfile
+                ? "h-[max(620px,calc(100dvh-8rem))] md:h-[720px]"
+                : "h-[max(540px,calc(100dvh-11rem))] md:h-[580px]"
+              : showFullProfile
               ? "h-[max(600px,min(700px,calc(100dvh-11rem)))] md:h-[720px]"
               : "h-[max(500px,min(600px,calc(100dvh-16rem)))] md:h-[580px]"
           }`}
@@ -201,7 +213,7 @@ export default function SwipeCard({ profile, currentUser, onSwipeLeft, onSwipeRi
               )}
               <div className="flex items-center gap-1.5 font-medium text-foreground">
                 <GraduationCap size={14} className="text-primary" />
-                <span>{profile.university}</span>
+                <span>{displayUniversity(profile.university)}</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <MapPin size={14} className="text-muted-foreground" />

@@ -35,7 +35,7 @@ export default function MemberProfileModal({ profile, currentUser, onClose }: Me
         </div>
 
         <div className="flex-1 min-h-0 overflow-y-auto pb-6">
-          <SwipeCard profile={profile} currentUser={currentUser} preview />
+          <SwipeCard profile={profile} currentUser={currentUser} preview expanded />
         </div>
       </div>
     </div>

@@ -17,6 +17,11 @@ interface PremiumInfoModalProps {
 export default function PremiumInfoModal({ onClose, stripeReady, onStartCheckout, isRedirecting, paymentError }: PremiumInfoModalProps) {
   const perks = activePartnerPerks();
 
+  // Plans are genuinely clickable, but payments do not exist yet: choosing
+  // one selects it visually and shows the coming-soon notice — nothing is
+  // charged, collected, or pretended.
+  const [selectedPlanId, setSelectedPlanId] = React.useState<string | null>(null);
+
   return (
     <div
       className="fixed inset-0 z-[85] bg-slate-950/75 backdrop-blur-md flex items-stretch md:items-center justify-center md:p-6 animate-fade-in select-text"
@@ -43,29 +48,53 @@ export default function PremiumInfoModal({ onClose, stripeReady, onStartCheckout
           {/* Plans — display-only until payments are connected */}
           <div className="space-y-2">
             <h4 className="font-sans font-black text-xs text-foreground uppercase tracking-wider">Membership</h4>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-              {PREMIUM_PLAN_OPTIONS.map(plan => (
-                <div
-                  key={plan.id}
-                  className={`rounded-2xl border p-3 text-center relative ${
-                    plan.bestValue
-                      ? "border-primary/60 bg-accent/30 shadow-sm"
-                      : "border-border/60 bg-card/60"
-                  }`}
-                >
-                  {plan.bestValue && (
-                    <span className="absolute -top-2 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-[8px] font-mono font-black uppercase tracking-widest px-2 py-0.5 rounded-full">
-                      Best value
-                    </span>
-                  )}
-                  <div className="font-sans font-black text-sm text-foreground mt-1">{plan.label.split(" / ")[0]}</div>
-                  <div className="text-[10px] text-muted-foreground font-sans mt-0.5">/ {plan.label.split(" / ")[1]}</div>
-                </div>
-              ))}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2" role="radiogroup" aria-label="Membership plans">
+              {PREMIUM_PLAN_OPTIONS.map(plan => {
+                const selected = selectedPlanId === plan.id;
+                return (
+                  <button
+                    key={plan.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={selected}
+                    onClick={() => setSelectedPlanId(plan.id)}
+                    className={`rounded-2xl border p-3 text-center relative transition cursor-pointer hover:shadow-md active:scale-[0.98] ${
+                      selected
+                        ? "border-primary bg-accent/50 shadow-md ring-1 ring-primary/50"
+                        : plan.bestValue
+                        ? "border-primary/60 bg-accent/30 shadow-sm hover:bg-accent/40"
+                        : "border-border/60 bg-card/60 hover:bg-card"
+                    }`}
+                  >
+                    {plan.bestValue && (
+                      <span className="absolute -top-2 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-[8px] font-mono font-black uppercase tracking-widest px-2 py-0.5 rounded-full">
+                        Best value
+                      </span>
+                    )}
+                    {selected && (
+                      <span className="absolute top-1.5 right-1.5 text-primary">
+                        <Check size={13} strokeWidth={3} />
+                      </span>
+                    )}
+                    <div className="font-sans font-black text-sm text-foreground mt-1">{plan.label.split(" / ")[0]}</div>
+                    <div className="text-[10px] text-muted-foreground font-sans mt-0.5">/ {plan.label.split(" / ")[1]}</div>
+                  </button>
+                );
+              })}
             </div>
-            <p className="text-[10px] text-muted-foreground leading-normal">
-              Membership options open soon — no payment details are collected yet.
-            </p>
+            {selectedPlanId ? (
+              <div className="bg-accent/30 border border-border/50 rounded-xl p-3 text-[11px] text-foreground leading-relaxed animate-fade-in" role="status">
+                <span className="font-bold">Almost! Premium purchases aren't open quite yet.</span>{" "}
+                <span className="text-muted-foreground">
+                  The {PREMIUM_PLAN_OPTIONS.find(p => p.id === selectedPlanId)?.label} plan will be available here
+                  soon — no payment details are collected today.
+                </span>
+              </div>
+            ) : (
+              <p className="text-[10px] text-muted-foreground leading-normal">
+                Membership options open soon — no payment details are collected yet.
+              </p>
+            )}
           </div>
 
           {/* What Premium includes */}

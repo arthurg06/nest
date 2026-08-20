@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { apiUrl } from "./lib/api";
 import { avatarGradient } from "../shared/avatar";
+import { displayUniversity } from "../shared/universities";
 
 export default function App() {
   // Navigation State: "swipe" | "chat" | "city" | "events" | "profile" | "admin"
@@ -765,7 +766,7 @@ export default function App() {
                                 </span>
                               </div>
                               <p className="text-[10px] text-muted-foreground truncate leading-tight font-mono">
-                                {m.profile.university}
+                                {displayUniversity(m.profile.university)}
                               </p>
                               {lastMsg ? (
                                 <p className="text-[10px] text-muted-foreground truncate mt-1.5 leading-snug font-sans">
@@ -850,6 +851,10 @@ export default function App() {
               isAdmin={isAdmin}
               onAddEvent={handleAddEvent}
               onDeleteEvent={handleDeleteEvent}
+              onOpenPlanChat={(matchId) => {
+                setActiveMatchId(matchId);
+                setActiveTab("chat");
+              }}
             />
           )}
 

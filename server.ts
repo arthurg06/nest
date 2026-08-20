@@ -1580,6 +1580,80 @@ app.get("/api/events", authenticate, async (req, res) => {
   }
 });
 
+// "My Events" — the caller's own upcoming, confirmed plans in one list:
+// NEST outings she RSVPed to and private match outings she or her match
+// accepted. Strictly scoped to the authenticated member server-side —
+// other members' plans are unreachable whatever the client sends.
+// Event dates are stored as display text ("Saturday, Sep 12"), so they are
+// parsed tolerantly: a date that parses and lies in the past excludes the
+// event; an unparseable date keeps it (it cannot be proven past) at the
+// end of the list. Plans carry ISO dates and filter exactly.
+function parseDisplayDate(raw: string): number | null {
+  const m = /\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?,?\s+(\d{1,2})\b/i.exec(raw || "");
+  if (!m) return null;
+  const months = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+  const month = months.indexOf(m[1].slice(0, 3).toLowerCase());
+  const day = parseInt(m[2], 10);
+  if (month < 0 || !day || day > 31) return null;
+  return new Date(new Date().getFullYear(), month, day).getTime();
+}
+
+app.get("/api/my-events", authenticate, async (req, res) => {
+  try {
+    const userId = (req as any).userId;
+    const db = await dbManager.readDb();
+
+    const today = new Date().toISOString().slice(0, 10);
+    const startOfToday = new Date(new Date().toISOString().slice(0, 10)).getTime();
+
+    // Accepted private outings the caller is part of, not yet past.
+    const planItems = db.plans
+      .filter(p =>
+        (p.senderId === userId || p.receiverId === userId) &&
+        p.status === "accepted" &&
+        p.date >= today
+      )
+      .map(p => {
+        const otherId = p.senderId === userId ? p.receiverId : p.senderId;
+        const other = db.profiles.find(x => x.userId === otherId);
+        return {
+          kind: "plan" as const,
+          id: p.id,
+          matchId: p.matchId,
+          title: p.title,
+          placeName: p.placeName,
+          placeArea: p.placeArea,
+          date: p.date,
+          time: p.time,
+          withName: other?.name || "your match",
+          sortKey: new Date(`${p.date}T${p.time || "00:00"}:00`).getTime()
+        };
+      });
+
+    // NEST outings the caller RSVPed to. Her own confirmed attendance is her
+    // data, so the details are returned even if her membership later lapsed.
+    const eventItems = db.events
+      .filter(evt => db.rsvps.some(r => r.eventId === evt.id && r.userId === userId))
+      .map(evt => ({ evt, parsed: parseDisplayDate(evt.date) }))
+      .filter(({ parsed }) => parsed === null || parsed >= startOfToday)
+      .map(({ evt, parsed }) => ({
+        kind: "outing" as const,
+        id: evt.id,
+        title: evt.title,
+        date: evt.date,
+        time: evt.time,
+        location: evt.location,
+        category: evt.category,
+        sortKey: parsed ?? Number.MAX_SAFE_INTEGER
+      }));
+
+    const items = [...planItems, ...eventItems].sort((a, b) => a.sortKey - b.sortKey);
+    res.json({ items });
+  } catch (error) {
+    res.status(500).json({ error: "Error loading your events" });
+  }
+});
+
 // NEST Memories — a Premium member's personal archive of the outings she
 // attended. Every number is computed from real records (RSVPs, event albums,
 // matches); nothing is ever fabricated. Premium-gated like the outings

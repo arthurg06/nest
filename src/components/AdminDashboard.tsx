@@ -4,7 +4,7 @@ import { Recommendation, UserProfile } from "../types";
 import { apiUrl } from "../lib/api";
 import MemberProfileModal from "./MemberProfileModal";
 import UniversitySelect from "./UniversitySelect";
-import { canonicalUniversity } from "../../shared/universities";
+import { canonicalUniversity, displayUniversity } from "../../shared/universities";
 
 interface AdminUser {
   id: string;
@@ -105,13 +105,14 @@ export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboar
 
   // Manual Premium grant/revoke — how membership is managed until payments
   // are connected. Server-enforced admin-only; every change is audited.
+  // The confirmation is an inline row, NOT window.confirm(): the desktop
+  // app's webview suppresses native dialogs (confirm silently returns
+  // false), which is why the crown appeared to do nothing.
+  const [confirmingPremiumUserId, setConfirmingPremiumUserId] = useState<string | null>(null);
+
   const handlePremiumToggle = async (u: AdminUser) => {
     const granting = !u.isPremium;
-    if (!confirm(granting
-      ? `Grant NEST Premium to ${u.email}?`
-      : `Revoke NEST Premium from ${u.email}? She will lose access to outings.`)) {
-      return;
-    }
+    setConfirmingPremiumUserId(null);
     setBusyUserId(u.id);
     try {
       const res = await fetch(apiUrl(`/api/admin/users/${u.id}/premium`), {
@@ -121,13 +122,13 @@ export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboar
       });
       const data = await res.json();
       if (!res.ok) {
-        setFeedback(data.error || "Could not update Premium status.");
+        notify(data.error || "Could not update Premium status.");
         return;
       }
       setUsers(prev => prev.map(x => (x.id === u.id ? { ...x, isPremium: data.isPremium } : x)));
-      setFeedback(granting ? `Premium granted to ${u.email}.` : `Premium revoked from ${u.email}.`);
+      notify(granting ? `👑 Premium granted to ${u.email}.` : `Premium revoked from ${u.email}.`);
     } catch {
-      setFeedback("Could not update Premium status.");
+      notify("Could not update Premium status.");
     } finally {
       setBusyUserId(null);
     }
@@ -722,7 +723,7 @@ export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboar
                             }
                             className="group inline-flex items-center gap-1.5 text-left capitalize cursor-pointer hover:text-primary transition"
                           >
-                            <span>{u.profile.university || "—"}</span>
+                            <span>{displayUniversity(u.profile.university) || "—"}</span>
                             {!canonicalUniversity(u.profile.university) && (
                               <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" aria-hidden="true" />
                             )}
@@ -755,18 +756,39 @@ export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboar
                           <span className="text-[10px] text-muted-foreground italic font-sans pr-2">Admin</span>
                         ) : (
                           <div className="flex items-center justify-end gap-1.5">
-                            <button
-                              onClick={() => handlePremiumToggle(u)}
-                              disabled={busyUserId !== null}
-                              className={`p-2 rounded-lg border transition cursor-pointer ${
-                                u.isPremium
-                                  ? "bg-amber-50 hover:bg-amber-100 text-amber-600 border-amber-200"
-                                  : "bg-card hover:bg-muted text-muted-foreground border-border"
-                              }`}
-                              title={u.isPremium ? "Revoke NEST Premium" : "Grant NEST Premium"}
-                            >
-                              <Crown size={13} />
-                            </button>
+                            {confirmingPremiumUserId === u.id ? (
+                              <span className="inline-flex items-center gap-1.5 bg-card border border-border rounded-lg px-2 py-1 animate-fade-in">
+                                <span className="text-[10px] font-bold text-foreground whitespace-nowrap">
+                                  {u.isPremium ? "Revoke Premium?" : "Grant Premium?"}
+                                </span>
+                                <button
+                                  onClick={() => setConfirmingPremiumUserId(null)}
+                                  className="text-[10px] font-bold text-muted-foreground hover:text-foreground px-1.5 py-1 cursor-pointer"
+                                >
+                                  No
+                                </button>
+                                <button
+                                  onClick={() => handlePremiumToggle(u)}
+                                  disabled={busyUserId !== null}
+                                  className="text-[10px] font-black bg-primary text-primary-foreground rounded px-2 py-1 hover:bg-primary/90 cursor-pointer"
+                                >
+                                  Yes
+                                </button>
+                              </span>
+                            ) : (
+                              <button
+                                onClick={() => setConfirmingPremiumUserId(u.id)}
+                                disabled={busyUserId !== null}
+                                className={`p-2 rounded-lg border transition cursor-pointer ${
+                                  u.isPremium
+                                    ? "bg-amber-50 hover:bg-amber-100 text-amber-600 border-amber-200"
+                                    : "bg-card hover:bg-muted text-muted-foreground border-border"
+                                }`}
+                                title={u.isPremium ? "Revoke NEST Premium" : "Grant NEST Premium"}
+                              >
+                                <Crown size={13} />
+                              </button>
+                            )}
                             <button
                               onClick={() => handleResetLink(u)}
                               disabled={busyUserId !== null}
