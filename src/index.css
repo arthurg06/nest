@@ -1,61 +1,66 @@
 @import "tailwindcss";
 
 /* ---------------------------------------------------------------------------
-   NEST design tokens — supplied brand theme (bright, girly, luxurious).
+   NEST design tokens — refined brand theme (soft, feminine, premium).
    Raw values live on :root / .dark; Tailwind consumes them via `@theme
    inline` below so utilities like bg-background/text-foreground flip with
    the theme class. Fonts are loaded from index.html (<link>, display=swap).
 
-   Technical corrections vs. the supplied snippet (values preserved):
-   - font tokens exposed as --font-sans/--font-serif/--font-mono (the
-     supplied --color-font-* names would not be consumed by Tailwind)
+   2026-08 visual polish (values only — no component/API changes):
+   - surfaces moved from saturated pink to porcelain blush; body text from
+     magenta to espresso plum. Femininity now comes from warmth and the rose
+     primary, not from painting every surface pink.
+   - primary softened from neon magenta to a refined raspberry rose; the
+     dark theme dropped its neon values for muted rose on deep plum.
+   - the stone/slate remap ramps became genuinely neutral warm plums, so
+     "dark" buttons and photo-viewer scrims read espresso, not magenta.
+   - `--shadow-pop` changed from a hard offset to a soft layered shadow.
+
+   Technical corrections vs. the original supplied snippet (still true):
+   - font tokens exposed as --font-sans/--font-serif/--font-mono
    - fallback stacks added to the font tokens
-   - shadow parts composed into a usable `--shadow-pop` token (hard offset,
-     no blur) instead of ineffective --color-shadow-* declarations
-   - dark-mode --font-sans unified to Poppins (supplied Quicksand would
-     change typography between themes with no product reason; documented)
    - semantic success tokens added for verification status (green must stay
-     distinct from the pink primary)
+     distinct from the rose primary)
 --------------------------------------------------------------------------- */
 
 :root {
   color-scheme: light;
-  --background: #fff0f8;
-  --foreground: #91185c;
-  --card: #fff7fc;
-  --card-foreground: #91185c;
-  --popover: #fff7fc;
-  --popover-foreground: #91185c;
-  --primary: #e6067a;
+  --background: #fdf8f7;
+  --foreground: #362430;
+  --card: #fffcfb;
+  --card-foreground: #362430;
+  --popover: #fffcfb;
+  --popover-foreground: #362430;
+  --primary: #c9457a;
   --primary-foreground: #ffffff;
-  --secondary: #ffd6ff;
-  --secondary-foreground: #91185c;
-  --muted: #ffe3f2;
-  --muted-foreground: #c04283;
-  --accent: #ffc1e3;
-  --accent-foreground: #91185c;
-  --destructive: #d13869;
+  --secondary: #f7e4ec;
+  --secondary-foreground: #7c2d52;
+  --muted: #f5eaef;
+  --muted-foreground: #8b6579;
+  --accent: #f7dde8;
+  --accent-foreground: #7c2d52;
+  --destructive: #c03e62;
   --destructive-foreground: #ffffff;
-  --border: #ffc7e6;
-  --input: #ffd6ff;
-  --ring: #e6067a;
+  --border: #eedde5;
+  --input: #f3e4eb;
+  --ring: #c9457a;
   --radius: 0.5rem;
-  --chart-1: #e6067a;
-  --chart-2: #c44b97;
-  --chart-3: #9969b6;
-  --chart-4: #7371bf;
-  --chart-5: #5e84ff;
-  --sidebar: #ffedf6;
-  --sidebar-foreground: #91185c;
-  --sidebar-primary: #e6067a;
+  --chart-1: #c9457a;
+  --chart-2: #a85797;
+  --chart-3: #8668ae;
+  --chart-4: #6f73bf;
+  --chart-5: #5e84d6;
+  --sidebar: #fbf4f6;
+  --sidebar-foreground: #362430;
+  --sidebar-primary: #c9457a;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #ffc1e3;
-  --sidebar-accent-foreground: #91185c;
-  --sidebar-border: #ffddf0;
-  --sidebar-ring: #e6067a;
-  --shadow-color: hsl(330 70% 30% / 0.12);
+  --sidebar-accent: #f7dde8;
+  --sidebar-accent-foreground: #7c2d52;
+  --sidebar-border: #f0e1e8;
+  --sidebar-ring: #c9457a;
+  --shadow-color: hsl(330 35% 25% / 0.09);
 
-  /* Verification / success status (distinct from pink primary) */
+  /* Verification / success status (distinct from the rose primary) */
   --success: #177a45;
   --success-foreground: #ffffff;
   --success-muted: #e2f7eb;
@@ -68,42 +73,41 @@
 
 .dark {
   color-scheme: dark;
-  --background: #1a0922;
-  --foreground: #ffb3ff;
-  --card: #2a1435;
-  --card-foreground: #ffb3ff;
-  --popover: #2a1435;
-  --popover-foreground: #ffb3ff;
-  --primary: #ff6bef;
-  --primary-foreground: #180518;
-  --secondary: #46204f;
-  --secondary-foreground: #ffb3ff;
-  --muted: #331941;
-  --muted-foreground: #d67ad6;
-  --accent: #5a1f5d;
-  --accent-foreground: #ffb3ff;
-  --destructive: #ff2876;
-  /* Corrected from the supplied #f9f9f9: white on this bright berry measures
-     3.4:1 (below AA). Dark text mirrors the dark primary-foreground pairing
-     and measures ~5.3:1. */
-  --destructive-foreground: #2b040f;
-  --border: #4a1b5f;
-  --input: #46204f;
-  --ring: #ff6bef;
-  --chart-1: #ff6bef;
-  --chart-2: #c359e3;
-  --chart-3: #9161ff;
-  --chart-4: #6f73e2;
-  --chart-5: #547aff;
-  --sidebar: #1c0d25;
-  --sidebar-foreground: #ffb3ff;
-  --sidebar-primary: #ff6bef;
-  --sidebar-primary-foreground: #180518;
-  --sidebar-accent: #5a1f5d;
-  --sidebar-accent-foreground: #ffb3ff;
-  --sidebar-border: #4a1b5f;
-  --sidebar-ring: #ff6bef;
-  --shadow-color: hsl(300 80% 50% / 0.25);
+  --background: #171015;
+  --foreground: #f0e4ea;
+  --card: #221823;
+  --card-foreground: #f0e4ea;
+  --popover: #221823;
+  --popover-foreground: #f0e4ea;
+  --primary: #e57fae;
+  --primary-foreground: #2b0f1d;
+  --secondary: #3a2836;
+  --secondary-foreground: #f0e4ea;
+  --muted: #2c202a;
+  --muted-foreground: #b294a3;
+  --accent: #43293c;
+  --accent-foreground: #f2cede;
+  --destructive: #e14e77;
+  /* Dark text on the berry: white measured below AA here; the dark pairing
+     mirrors primary-foreground and stays comfortably readable. */
+  --destructive-foreground: #300a17;
+  --border: #3a2a37;
+  --input: #342433;
+  --ring: #e57fae;
+  --chart-1: #e57fae;
+  --chart-2: #c185cf;
+  --chart-3: #9d8ce0;
+  --chart-4: #7f93e8;
+  --chart-5: #6da3e8;
+  --sidebar: #1c1420;
+  --sidebar-foreground: #f0e4ea;
+  --sidebar-primary: #e57fae;
+  --sidebar-primary-foreground: #2b0f1d;
+  --sidebar-accent: #43293c;
+  --sidebar-accent-foreground: #f2cede;
+  --sidebar-border: #342637;
+  --sidebar-ring: #e57fae;
+  --shadow-color: hsl(320 40% 4% / 0.45);
 
   --success: #3ddc8b;
   --success-foreground: #06281a;
@@ -153,66 +157,68 @@
   --font-serif: var(--font-serif);
   --font-mono: var(--font-mono);
 
-  /* Signature hard shadow: no blur, vertical offset, brand shadow color.
-     Use selectively (primary CTAs, hero cards) via `shadow-pop`. */
-  --shadow-pop: 0px 3px 0px 0px var(--shadow-color);
-  --shadow-pop-lg: 0px 5px 0px 0px var(--shadow-color);
+  /* Soft layered elevation for primary CTAs and hero cards (`shadow-pop`).
+     Replaces the old hard-offset shadow: same usage, calmer voice. */
+  --shadow-pop: 0 1px 2px 0 var(--shadow-color), 0 4px 14px -4px var(--shadow-color);
+  --shadow-pop-lg: 0 2px 4px 0 var(--shadow-color), 0 10px 28px -8px var(--shadow-color);
 }
 
 /* ---------------------------------------------------------------------------
    Legacy utility-scale remaps. The components are written with rose/stone/
-   slate/red utilities; remapping those scales onto the new palette applies
-   the theme cohesively everywhere without a thousand class edits.
+   slate/red utilities; remapping those scales onto the refined palette
+   applies the theme cohesively everywhere without a thousand class edits.
    (Static values — dark mode requires the semantic-token migration.)
-   - rose-*  → primary magenta ramp
-   - stone-* / slate-* → plum-tinted neutrals (text, borders, dark surfaces)
+   - rose-* / coral-* → refined raspberry-rose ramp
+   - stone-* / slate-* → neutral warm plum ramp (text, borders, espresso
+     surfaces — deliberately NOT pink, so dark buttons and scrims read
+     premium instead of candy)
    - red-*   → destructive berry ramp
    - amber/emerald stay default (gold premium accents, green success)
 --------------------------------------------------------------------------- */
 @theme {
-  --color-rose-50: #ffedf6;
-  --color-rose-100: #ffd9ec;
-  --color-rose-200: #ffc1e3;
-  --color-rose-300: #ff9ed1;
-  --color-rose-400: #f45ba6;
-  --color-rose-500: #e6067a;
-  --color-rose-600: #c40568;
-  --color-rose-700: #a10555;
-  --color-rose-800: #7d0443;
-  --color-rose-900: #5c0332;
+  --color-rose-50: #fdf2f6;
+  --color-rose-100: #fae3ec;
+  --color-rose-200: #f5cbdc;
+  --color-rose-300: #eda8c4;
+  --color-rose-400: #dd6f9e;
+  --color-rose-500: #c9457a;
+  --color-rose-600: #b03a68;
+  --color-rose-700: #933056;
+  --color-rose-800: #762645;
+  --color-rose-900: #5a1d35;
 
-  --color-coral-50: #ffedf6;
-  --color-coral-100: #ffd9ec;
-  --color-coral-200: #ffc1e3;
-  --color-coral-300: #ff9ed1;
-  --color-coral-400: #f45ba6;
-  --color-coral-500: #e6067a;
-  --color-coral-600: #c40568;
-  --color-coral-700: #a10555;
+  --color-coral-50: #fdf2f6;
+  --color-coral-100: #fae3ec;
+  --color-coral-200: #f5cbdc;
+  --color-coral-300: #eda8c4;
+  --color-coral-400: #dd6f9e;
+  --color-coral-500: #c9457a;
+  --color-coral-600: #b03a68;
+  --color-coral-700: #933056;
 
-  --color-stone-50: #fff7fc;
-  --color-stone-100: #ffe9f5;
-  --color-stone-200: #ffc7e6;
-  --color-stone-300: #f0aad2;
-  --color-stone-400: #bd4585;
-  --color-stone-500: #a83273;
-  --color-stone-600: #962a66;
-  --color-stone-700: #7f1c56;
-  --color-stone-800: #6b1247;
-  --color-stone-900: #570e3a;
-  --color-stone-950: #45082d;
+  --color-stone-50: #fbf7f8;
+  --color-stone-100: #f3edef;
+  --color-stone-200: #e5dade;
+  --color-stone-300: #cbbcc2;
+  --color-stone-400: #9d8791;
+  --color-stone-500: #7d6470;
+  --color-stone-600: #644e5a;
+  --color-stone-700: #4e3a47;
+  --color-stone-800: #3c2b36;
+  --color-stone-900: #2c1e27;
+  --color-stone-950: #1e131a;
 
-  --color-slate-50: #fff7fc;
-  --color-slate-100: #ffe9f5;
-  --color-slate-200: #ffc7e6;
-  --color-slate-300: #f0aad2;
-  --color-slate-400: #bd4585;
-  --color-slate-500: #a83273;
-  --color-slate-600: #962a66;
-  --color-slate-700: #7f1c56;
-  --color-slate-800: #6b1247;
-  --color-slate-900: #570e3a;
-  --color-slate-950: #45082d;
+  --color-slate-50: #fbf7f8;
+  --color-slate-100: #f3edef;
+  --color-slate-200: #e5dade;
+  --color-slate-300: #cbbcc2;
+  --color-slate-400: #9d8791;
+  --color-slate-500: #7d6470;
+  --color-slate-600: #644e5a;
+  --color-slate-700: #4e3a47;
+  --color-slate-800: #3c2b36;
+  --color-slate-900: #2c1e27;
+  --color-slate-950: #1e131a;
 
   --color-red-50: #ffeaf0;
   --color-red-100: #ffd6e2;
@@ -241,7 +247,7 @@
 @keyframes scaleUp {
   from {
     opacity: 0;
-    transform: scale(0.95);
+    transform: scale(0.97);
   }
   to {
     opacity: 1;
@@ -254,7 +260,7 @@
 }
 
 .animate-scale-up {
-  animation: scaleUp 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  animation: scaleUp 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 /* Editorial serif for headings — luxury voice (Playfair Display) */
@@ -270,8 +276,8 @@ html {
 
 body {
   font-family: var(--font-sans);
-  /* Bright blush canvas with soft candy accents (token-driven so the
-     ambient glow follows the theme) */
+  /* Porcelain canvas with the faintest blush wash (token-driven so the
+     ambient tint follows the theme) */
   background-color: var(--background);
   background-image:
     radial-gradient(at 88% -12%, var(--secondary) 0px, transparent 50%),
@@ -281,6 +287,42 @@ body {
   overflow-x: hidden;
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
+}
+
+/* ---------------------------------------------------------------------------
+   Micro-interaction baseline. Every interactive control answers the pointer
+   quickly and uniformly; components that declare their own transition or
+   transform utilities still win (utility layer beats base layer).
+--------------------------------------------------------------------------- */
+@layer base {
+  button,
+  [role="button"],
+  a,
+  select,
+  input,
+  textarea {
+    transition:
+      color 0.15s ease,
+      background-color 0.15s ease,
+      border-color 0.15s ease,
+      box-shadow 0.15s ease,
+      opacity 0.15s ease,
+      transform 0.15s ease;
+  }
+
+  /* A gentle uniform press. Kept subtle on purpose: tactile, not springy. */
+  button:active:not(:disabled) {
+    transform: scale(0.98);
+  }
+
+  button:not(:disabled),
+  [role="button"] {
+    touch-action: manipulation;
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+  }
 }
 
 /* Accessible, consistent keyboard focus */

@@ -2,13 +2,14 @@ import React, { useState, useEffect, useRef } from "react";
 import { UserProfile, Interests } from "../types";
 import { PREDEFINED_INTEREST_OPTIONS } from "../data";
 import { ANIMAL_EMOJI } from "../../shared/compatibility";
-import { ShieldCheck, User, Sparkles, Languages, Check, Mail, Upload, FileText, Globe, Search, Trash2, Edit, MapPin, ExternalLink, ShieldAlert, Eye } from "lucide-react";
+import { ShieldCheck, User, Sparkles, Check, Mail, Upload, FileText, Globe, Search, Trash2, Edit, MapPin, ExternalLink, ShieldAlert, Eye } from "lucide-react";
 import ProfilePreview from "./ProfilePreview";
 import { PhotoGalleryEditor } from "./PhotoGalleryEditor";
 import { ThemeToggle } from "./ThemeToggle";
 import { searchCountries } from "../../shared/countries";
 import { apiUrl } from "../lib/api";
 import VerifiedBadge from "./VerifiedBadge";
+import UniversitySelect from "./UniversitySelect";
 
 interface ProfileEditorProps {
   currentUser: UserProfile;
@@ -188,7 +189,6 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
   const [bio, setBio] = useState(currentUser.bio);
   const [tiktok, setTiktok] = useState(currentUser.tiktok || "");
   const [instagram, setInstagram] = useState(currentUser.instagram || "");
-  const [otherSocial, setOtherSocial] = useState(currentUser.otherSocial || "");
 
   // Interactive Multiple Nationalities
   const initialNationalities = currentUser.nationality
@@ -197,16 +197,6 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
   const [selectedNationalities, setSelectedNationalities] = useState<string[]>(initialNationalities);
   const [nationalitySearch, setNationalitySearch] = useState("");
   const [showNationalityDropdown, setShowNationalityDropdown] = useState(false);
-
-  // Interactive Languages with Fluency levels
-  const [languagesList, setLanguagesList] = useState<string[]>(currentUser.languages || []);
-  const [selectedLanguage, setSelectedLanguage] = useState("English");
-  const [selectedFluency, setSelectedFluency] = useState("Native");
-  const [customLanguage, setCustomLanguage] = useState("");
-
-
-  const COMMON_LANGUAGES = ["English", "Spanish", "French", "Italian", "German", "Japanese", "Korean", "Portuguese", "Chinese", "Arabic", "Russian"];
-  const FLUENCY_LEVELS = ["Native", "Fluent", "Conversational", "Learning / Beginner"];
 
   const handleTogglePresetNationality = (countryName: string, flag: string) => {
     const formatted = `${countryName} ${flag}`;
@@ -217,20 +207,6 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
         return [...prev, formatted];
       }
     });
-  };
-
-  const handleAddLanguage = () => {
-    const lang = customLanguage.trim() || selectedLanguage;
-    if (!lang) return;
-    const formatted = `${lang} (${selectedFluency})`;
-    if (!languagesList.includes(formatted)) {
-      setLanguagesList(prev => [...prev, formatted]);
-    }
-    setCustomLanguage("");
-  };
-
-  const handleRemoveLanguage = (formattedLang: string) => {
-    setLanguagesList(prev => prev.filter(l => l !== formattedLang));
   };
 
   const handleRemoveNationality = (formattedNat: string) => {
@@ -295,6 +271,58 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
     }, 4000);
   };
 
+  // Change password — the form stays collapsed behind one button so the
+  // Account section keeps its calm look. Passwords are sent to the existing
+  // secure endpoint and never stored or logged anywhere on the client.
+  const [showChangePassword, setShowChangePassword] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+
+  const closeChangePassword = () => {
+    setShowChangePassword(false);
+    setCurrentPassword("");
+    setNewPassword("");
+    setConfirmNewPassword("");
+  };
+
+  const handleChangePassword = async () => {
+    if (!currentPassword || !newPassword || !confirmNewPassword) {
+      showFeedback("Please fill out all three password fields.", "error");
+      return;
+    }
+    if (newPassword.length < 6) {
+      showFeedback("New password must be at least 6 characters.", "error");
+      return;
+    }
+    if (newPassword !== confirmNewPassword) {
+      showFeedback("The new passwords do not match.", "error");
+      return;
+    }
+    setIsChangingPassword(true);
+    try {
+      const res = await fetch(apiUrl("/api/auth/change-password"), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${localStorage.getItem("nest_token")}`
+        },
+        body: JSON.stringify({ currentPassword, newPassword })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Could not change password.");
+      }
+      closeChangePassword();
+      showFeedback("Password changed successfully.", "success");
+    } catch (err: any) {
+      showFeedback(err.message || "Could not change password.", "error");
+    } finally {
+      setIsChangingPassword(false);
+    }
+  };
+
   // The profile exactly as saving would publish it. The preview renders this
   // same object, so what she checks is what other members will get — edits
   // she has not saved yet included.
@@ -303,8 +331,12 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
     name: name.trim() || "User",
     age: Number(age) || 20,
     nationality: selectedNationalities.join(", "),
-    university: university.trim() || "IE University",
-    languages: languagesList,
+    // Falls back to the stored value (not a hardcoded university): the
+    // selector can only produce approved names, so empty means "unchanged".
+    university: university.trim() || currentUser.university,
+    // Languages are no longer collected or edited; stored data is passed
+    // through untouched so older profiles keep what they had.
+    languages: currentUser.languages || [],
     personalityType: "",
     friendshipType: friendshipType.trim() || "Outing planner",
     bio: bio.trim() || "Moving to Madrid!",
@@ -313,7 +345,8 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
     photos,
     tiktok: tiktok.trim() || undefined,
     instagram: instagram.trim() || undefined,
-    otherSocial: otherSocial.trim() || undefined,
+    // No longer editable; stored data is passed through so nothing is lost.
+    otherSocial: currentUser.otherSocial || undefined,
     interests: {
       activities: selectedActivities,
       music: selectedMusic,
@@ -335,11 +368,6 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
       showFeedback("Please select or add at least one Nationality!", "error");
       return;
     }
-    if (languagesList.length === 0) {
-      showFeedback("Please add at least one Language you speak!", "error");
-      return;
-    }
-
     const updatedProfile = draftProfile();
     savedSnapshot.current = JSON.stringify(updatedProfile);
     onSaveProfile(updatedProfile);
@@ -573,80 +601,13 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
             {/* University */}
             <div className="space-y-1">
               <span className="text-[10px] font-sans font-extrabold text-muted-foreground block">University in Madrid</span>
-              <input
-                type="text"
+              <UniversitySelect
                 value={university}
-                onChange={(e) => setUniversity(e.target.value)}
-                placeholder="e.g. IE University, Complutense"
-                className="w-full bg-card/40 border border-border/50 rounded-xl px-3.5 py-2 text-xs text-foreground placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                onChange={setUniversity}
+                triggerClassName="w-full bg-card/40 border border-border/50 hover:border-border rounded-xl px-3.5 py-2 text-xs flex items-center justify-between transition"
               />
             </div>
 
-            {/* Languages you speak & fluency level builder */}
-            <div className="space-y-2 bg-accent/30 p-4 rounded-2xl border border-border/40">
-              <span className="text-[10px] font-sans font-extrabold text-muted-foreground uppercase tracking-wider block">
-                Languages you speak & Fluency Levels 🗣️
-              </span>
-
-              {/* Selected Languages list */}
-              {languagesList.length > 0 ? (
-                <div className="flex flex-wrap gap-1.5 mb-2">
-                  {languagesList.map(item => (
-                    <span key={item} className="bg-primary text-primary-foreground font-sans text-[10px] font-black px-2.5 py-1 rounded-full flex items-center gap-1 shadow-sm">
-                      <span>{item}</span>
-                      <button type="button" onClick={() => handleRemoveLanguage(item)} className="text-white hover:opacity-80 font-extrabold text-[9px] ml-0.5 p-2 -m-1.5 inline-flex items-center justify-center" aria-label="Remove">✕</button>
-                    </span>
-                  ))}
-                </div>
-              ) : (
-                <span className="text-[10px] text-muted-foreground font-sans italic block mb-2">No languages added yet. Add at least one!</span>
-              )}
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                {/* Select Language */}
-                <select
-                  value={selectedLanguage}
-                  onChange={(e) => {
-                    setSelectedLanguage(e.target.value);
-                    setCustomLanguage("");
-                  }}
-                  className="bg-card border border-border rounded-lg px-2 py-1.5 text-xs text-foreground focus:outline-none"
-                >
-                  {COMMON_LANGUAGES.map(lang => (
-                    <option key={lang} value={lang}>{lang}</option>
-                  ))}
-                </select>
-
-                {/* Select Fluency */}
-                <select
-                  value={selectedFluency}
-                  onChange={(e) => setSelectedFluency(e.target.value)}
-                  className="bg-card border border-border rounded-lg px-2 py-1.5 text-xs text-foreground focus:outline-none"
-                >
-                  {FLUENCY_LEVELS.map(f => (
-                    <option key={f} value={f}>{f}</option>
-                  ))}
-                </select>
-
-                {/* Add button */}
-                <button
-                  type="button"
-                  onClick={handleAddLanguage}
-                  className="bg-primary text-primary-foreground font-sans text-xs font-bold px-2 py-2 rounded-lg hover:bg-primary/90 transition"
-                >
-                  ＋ Add Language
-                </button>
-              </div>
-
-              {/* Custom language field */}
-              <input
-                type="text"
-                placeholder="Or type custom language (e.g. Swedish)..."
-                value={customLanguage}
-                onChange={(e) => setCustomLanguage(e.target.value)}
-                className="w-full bg-card border border-border rounded-lg px-2.5 py-1.5 text-[10px] text-foreground mt-1.5 focus:outline-none"
-              />
-            </div>
           </div>
 
           {/* Friendship style */}
@@ -692,18 +653,6 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
                 />
               </div>
             </div>
-          </div>
-
-          {/* Other Social Handles */}
-          <div className="space-y-1">
-            <span className="text-[10px] font-sans font-extrabold text-muted-foreground block">Other Social Handles (Optional, e.g. Snapchat, Twitter) 🔗</span>
-            <input
-              type="text"
-              placeholder="e.g. Snapchat: maya_madrid"
-              value={otherSocial}
-              onChange={(e) => setOtherSocial(e.target.value)}
-              className="w-full bg-card/40 border border-border/50 rounded-xl px-3.5 py-2 text-xs text-foreground placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-            />
           </div>
 
           {/* Bio */}
@@ -964,6 +913,88 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
                 </p>
               </div>
               <ThemeToggle />
+            </div>
+
+            <div className="border-t border-border/60" />
+
+            <div className="space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-bold text-foreground">Password</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    Change the password you sign in with.
+                  </p>
+                </div>
+                {!showChangePassword && (
+                  <button
+                    type="button"
+                    onClick={() => setShowChangePassword(true)}
+                    className="w-full sm:w-auto shrink-0 bg-card border border-border hover:bg-muted/60 text-foreground font-sans text-xs font-bold px-5 py-2.5 rounded-xl transition cursor-pointer text-center"
+                  >
+                    Change Password
+                  </button>
+                )}
+              </div>
+
+              {showChangePassword && (
+                <div className="bg-muted/30 border border-border/60 p-4 rounded-xl space-y-3 animate-fade-in">
+                  <div className="space-y-1">
+                    <label htmlFor="current-password" className="text-[10px] font-sans font-extrabold text-muted-foreground block">Current Password</label>
+                    <input
+                      id="current-password"
+                      type="password"
+                      autoComplete="current-password"
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                      placeholder="••••••••"
+                      className="w-full bg-card border border-border rounded-lg px-3 py-2.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label htmlFor="new-password" className="text-[10px] font-sans font-extrabold text-muted-foreground block">New Password (Min 6 chars)</label>
+                      <input
+                        id="new-password"
+                        type="password"
+                        autoComplete="new-password"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        placeholder="••••••••"
+                        className="w-full bg-card border border-border rounded-lg px-3 py-2.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label htmlFor="confirm-new-password" className="text-[10px] font-sans font-extrabold text-muted-foreground block">Confirm New Password</label>
+                      <input
+                        id="confirm-new-password"
+                        type="password"
+                        autoComplete="new-password"
+                        value={confirmNewPassword}
+                        onChange={(e) => setConfirmNewPassword(e.target.value)}
+                        placeholder="••••••••"
+                        className="w-full bg-card border border-border rounded-lg px-3 py-2.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex gap-2 justify-end">
+                    <button
+                      type="button"
+                      onClick={closeChangePassword}
+                      className="bg-card border border-border px-3.5 py-2 rounded-lg text-[11px] font-bold text-foreground hover:bg-muted/60 transition cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleChangePassword}
+                      disabled={isChangingPassword}
+                      className="bg-primary hover:bg-primary/90 disabled:bg-primary/40 text-primary-foreground px-4 py-2 rounded-lg text-[11px] font-black transition cursor-pointer"
+                    >
+                      {isChangingPassword ? "Saving..." : "Save New Password"}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="border-t border-border/60" />

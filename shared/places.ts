@@ -111,7 +111,12 @@ const UNIVERSITY_AREAS: { match: string[]; areaId: string }[] = [
 ];
 
 export function universityAreaId(university: string | undefined): string | null {
-  const value = (university || "").toLowerCase();
+  // Fold accents so canonical names ("Politécnica", "Autónoma") match the
+  // unaccented needles above.
+  const value = (university || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
   if (!value) return null;
   for (const entry of UNIVERSITY_AREAS) {
     if (entry.match.some(needle => value.includes(needle))) return entry.areaId;

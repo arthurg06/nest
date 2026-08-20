@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { Recommendation, UserProfile } from "../types";
-import { 
-  Coffee, Utensils, BookOpen, TreePine, Sparkles, Plus, Star, 
-  Heart, MapPin, Search, Image as ImageIcon, Camera, ExternalLink, Trash2
+import {
+  Coffee, Utensils, BookOpen, TreePine, Sparkles, Plus, Star,
+  Heart, MapPin, Search, Image as ImageIcon, Camera, ExternalLink, Trash2, Martini
 } from "lucide-react";
 import { ImageUploader } from "./ImageUploader";
 import { apiUrl } from "../lib/api";
@@ -29,7 +29,7 @@ export default function CityDiscovery({
 
   // Form State
   const [placeName, setPlaceName] = useState("");
-  const [placeCategory, setPlaceCategory] = useState<"cafe" | "restaurant" | "study" | "activity" | "hidden_gem">("cafe");
+  const [placeCategory, setPlaceCategory] = useState<"cafe" | "restaurant" | "study" | "activity" | "hidden_gem" | "clubs_bars">("cafe");
   const [placeRating, setPlaceRating] = useState(5);
   const [placeTagsString, setPlaceTagsString] = useState("");
   const [placeImageUrl, setPlaceImageUrl] = useState("");
@@ -43,6 +43,7 @@ export default function CityDiscovery({
     { id: "study", label: "Study spots", icon: <BookOpen size={13} /> },
     { id: "activity", label: "Outdoors", icon: <TreePine size={13} /> },
     { id: "hidden_gem", label: "Hidden Gems", icon: <Sparkles size={13} /> },
+    { id: "clubs_bars", label: "Clubs & Bars", icon: <Martini size={13} /> },
   ];
 
   // Likes state handler
@@ -134,6 +135,7 @@ export default function CityDiscovery({
       case "study": return "bg-indigo-100/60 text-indigo-800 border-indigo-200/30";
       case "activity": return "bg-emerald-100/60 text-emerald-800 border-emerald-200/30";
       case "hidden_gem": return "bg-accent/50 text-accent-foreground border-border/30";
+      case "clubs_bars": return "bg-fuchsia-100/60 text-fuchsia-800 border-fuchsia-200/30";
       default: return "bg-muted/60 text-foreground border-border/30";
     }
   };
@@ -201,6 +203,7 @@ export default function CityDiscovery({
                 <option value="study">Quiet Study Spots</option>
                 <option value="activity">Outdoors / Gyms / Pilates</option>
                 <option value="hidden_gem">Hidden Gems / Sightseeing</option>
+                <option value="clubs_bars">Clubs & Bars</option>
               </select>
             </div>
           </div>
@@ -422,9 +425,10 @@ export default function CityDiscovery({
         ) : (
           <div className="col-span-full py-12 text-center bg-card/40 backdrop-blur-md border border-dashed border-border/60 rounded-[28px] max-w-sm mx-auto p-6 space-y-3">
             <span className="text-3xl select-none">🗺️☕</span>
-            <h4 className="font-sans font-bold text-sm text-foreground">No spots found in City Guide</h4>
             <p className="font-sans text-xs text-muted-foreground leading-relaxed max-w-xs mx-auto">
-              The City Guide is empty until verified students share their secret spots around Madrid. Why not post a recommendation above?
+              {recs.length === 0
+                ? "The City Guide is currently empty. Post a recommendation for others above."
+                : "No spots match your search."}
             </p>
           </div>
         )}

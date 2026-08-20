@@ -50,14 +50,12 @@ export interface CompatibilityInterests {
 
 export interface CompatibilityProfile {
   interests: CompatibilityInterests;
-  languages: string[];
   university: string;
 }
 
 export interface CompatibilityReport {
   score: number;
   sharedInterests: string[];
-  sharedLanguages: string[];
   matchingVibes: string[];
   explanation: string;
 }
@@ -89,9 +87,6 @@ export function calculateCompatibility(user: CompatibilityProfile, match: Compat
     score += 5;
   }
 
-  const sharedLanguages = user.languages.filter(l => match.languages.includes(l));
-  score += sharedLanguages.length * 2;
-
   if (user.university && match.university && user.university.toLowerCase() === match.university.toLowerCase()) {
     score += 10;
   }
@@ -113,7 +108,7 @@ export function calculateCompatibility(user: CompatibilityProfile, match: Compat
   } else if (allSharedInterests.length > 0) {
     explanation = `High overlap in social plans! You both love ${allSharedInterests.slice(0, 3).join(", ")}.`;
   } else if (matchingVibes.length > 0) {
-    explanation = `You share a similar lifestyle vibe as you are both "${matchingVibes[0]}" and speak ${sharedLanguages[0] || "English"}.`;
+    explanation = `You share a similar lifestyle vibe as you are both "${matchingVibes[0]}".`;
   } else {
     explanation = `You are both international students in Madrid looking for friendship and deep conversations.`;
   }
@@ -121,7 +116,6 @@ export function calculateCompatibility(user: CompatibilityProfile, match: Compat
   return {
     score,
     sharedInterests: allSharedInterests,
-    sharedLanguages,
     matchingVibes,
     explanation
   };

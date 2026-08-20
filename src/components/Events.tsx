@@ -515,7 +515,7 @@ export default function Events({ events, onToggleRsvp, isSubscribed, subscriptio
             {/* Brand header */}
             <div className="bg-slate-950 text-white p-6 pb-7 text-center relative overflow-hidden">
               <img
-                src="/icons/nest-192.png"
+                src="/icons/nest-logo.png"
                 alt="NEST logo"
                 className="w-14 h-14 rounded-2xl mx-auto mb-3 shadow-lg border border-border/10"
               />

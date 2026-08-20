@@ -61,7 +61,6 @@ export interface Match {
   compatibilityRating: number; // 0 to 100
   compatibilityReport: {
     sharedInterests: string[];
-    sharedLanguages: string[];
     matchingVibes: string[];
     explanation: string;
   };
@@ -86,7 +85,7 @@ export interface Event {
 export interface Recommendation {
   id: string;
   name: string;
-  category: "cafe" | "restaurant" | "study" | "activity" | "hidden_gem";
+  category: "cafe" | "restaurant" | "study" | "activity" | "hidden_gem" | "clubs_bars";
   description: string;
   rating: number;
   userTags: string[];

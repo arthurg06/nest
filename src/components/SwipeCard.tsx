@@ -2,8 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { UserProfile } from "../types";
 import { calculateCompatibility } from "../data";
 import { ANIMAL_EMOJI } from "../../shared/compatibility";
-import { avatarGradient } from "../../shared/avatar";
-import { X, Heart, MapPin, Languages, Sparkles, GraduationCap, ChevronDown, ChevronUp, Instagram, AtSign } from "lucide-react";
+import { X, Heart, MapPin, Sparkles, GraduationCap, ChevronDown, ChevronUp, Instagram, ArrowLeft } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import VerifiedBadge from "./VerifiedBadge";
 
@@ -60,6 +59,37 @@ export default function SwipeCard({ profile, currentUser, onSwipeLeft, onSwipeRi
   }, [profile.id]);
   const [swipeDirection, setSwipeDirection] = useState<"left" | "right" | null>(null);
 
+  // Focused photo viewer. Opening pushes one history entry so the device
+  // Back button (and Escape) closes the photos instead of leaving the page;
+  // every close path goes through history.back() → popstate → close, keeping
+  // the browser history balanced.
+  const [viewerOpen, setViewerOpen] = useState(false);
+
+  const openViewer = () => {
+    setViewerOpen(true);
+    window.history.pushState({ nestPhotoViewer: true }, "");
+  };
+
+  useEffect(() => {
+    if (!viewerOpen) return;
+    const onPop = () => setViewerOpen(false);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        window.history.back();
+      } else if (e.key === "ArrowLeft") {
+        setPhotoIndex(i => (i - 1 + gallery.length) % gallery.length);
+      } else if (e.key === "ArrowRight") {
+        setPhotoIndex(i => (i + 1) % gallery.length);
+      }
+    };
+    window.addEventListener("popstate", onPop);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("popstate", onPop);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [viewerOpen, gallery.length]);
+
   // Compatibility only exists relative to a viewer, so there is none to show
   // when she is looking at her own card.
   const report = currentUser ? calculateCompatibility(currentUser, profile) : null;
@@ -111,76 +141,28 @@ export default function SwipeCard({ profile, currentUser, onSwipeLeft, onSwipeRi
             showFullProfile ? "h-[640px] md:h-[720px]" : "h-[520px] md:h-[580px]"
           }`}
         >
-          {/* Real Portrait Photo Background */}
-          <div className={`relative bg-muted overflow-hidden shrink-0 transition-[height] duration-300 ${
-            showFullProfile ? "h-44 md:h-52" : "h-60 md:h-68"
-          }`}>
+          {/* Real Portrait Photo — deliberately unobstructed: no chips, badges
+              or gradients on top of it. Tapping it opens the focused photo
+              viewer; everything about her lives below the picture. */}
+          <button
+            type="button"
+            onClick={openViewer}
+            aria-label={
+              gallery.length > 1
+                ? `View ${profile.name}'s ${gallery.length} photos`
+                : `View ${profile.name}'s photo`
+            }
+            className={`relative w-full bg-muted overflow-hidden shrink-0 cursor-pointer transition-[height] duration-300 ${
+              showFullProfile ? "h-44 md:h-52" : "h-60 md:h-68"
+            }`}
+          >
             <img
               src={gallery[photoIndex]}
               alt={gallery.length > 1 ? `${profile.name}, photo ${photoIndex + 1} of ${gallery.length}` : profile.name}
               referrerPolicy="no-referrer"
               className="w-full h-full object-cover"
             />
-
-            {/* Photo gallery: tap either half to move through her photos */}
-            {gallery.length > 1 && (
-              <>
-                <button
-                  type="button"
-                  onClick={() => setPhotoIndex(i => (i - 1 + gallery.length) % gallery.length)}
-                  aria-label="Previous photo"
-                  className="absolute inset-y-0 left-0 w-1/3 z-20 cursor-pointer focus-visible:bg-foreground/5"
-                />
-                <button
-                  type="button"
-                  onClick={() => setPhotoIndex(i => (i + 1) % gallery.length)}
-                  aria-label="Next photo"
-                  className="absolute inset-y-0 right-0 w-1/3 z-20 cursor-pointer focus-visible:bg-foreground/5"
-                />
-                <div className="absolute top-2.5 left-0 w-full px-4 flex gap-1.5 z-20" aria-hidden="true">
-                  {gallery.map((_, i) => (
-                    <span
-                      key={i}
-                      className={`h-1 flex-1 rounded-full transition-colors ${
-                        i === photoIndex ? "bg-white" : "bg-white/35"
-                      }`}
-                    />
-                  ))}
-                </div>
-              </>
-            )}
-            {/* Dark gradient overlay for text readability on top and bottom */}
-            <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-transparent to-slate-950/30" />
-
-            {/* Banner Top Row */}
-            <div className="absolute top-4 left-0 w-full px-5 flex justify-between items-start z-10">
-              <span className="bg-slate-900/60 backdrop-blur-md text-white font-mono text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border border-border/10 shadow-sm">
-                {profile.nationality} ✈️
-              </span>
-
-              {/* Verification badge lives beside the name below, not on the photo */}
-            </div>
-
-            {/* Avatar & Matching score row */}
-            <div className="absolute bottom-3 left-0 w-full px-5 flex items-end justify-between z-10">
-              {/* Initials Small Circle on edge */}
-              <div className={`w-12 h-12 rounded-2xl bg-gradient-to-tr ${avatarGradient(profile)} shadow-lg flex items-center justify-center border-2 border-border/90`}>
-                <span className="font-sans font-extrabold text-white text-base select-none">
-                  {profile.name[0]}
-                </span>
-              </div>
-
-              {/* Compatibility score ring */}
-              <div className="flex flex-col items-center bg-card/90 backdrop-blur-md text-foreground rounded-2xl px-3 py-1.5 border border-border/75 shadow-md">
-                <div className="font-sans font-black text-sm md:text-base text-primary leading-tight">
-                  {report ? `${report.score}%` : "—"}
-                </div>
-                <div className="font-mono text-[8px] uppercase tracking-widest text-muted-foreground leading-none">
-                  Match
-                </div>
-              </div>
-            </div>
-          </div>
+          </button>
 
           {/* Profile Name & Primary Info Section */}
           <div className="px-6 pt-5 md:pt-8 pb-3 border-b border-border/20 shrink-0">
@@ -192,9 +174,26 @@ export default function SwipeCard({ profile, currentUser, onSwipeLeft, onSwipeRi
                 {profile.age}
               </span>
               <VerifiedBadge profile={profile} />
+
+              {/* Compatibility score — moved off the photo so it stays clear */}
+              <div className="ml-auto self-center flex flex-col items-center bg-card/90 text-foreground rounded-2xl px-3 py-1.5 border border-border/75 shadow-sm">
+                <div className="font-sans font-black text-sm text-primary leading-tight">
+                  {report ? `${report.score}%` : "—"}
+                </div>
+                <div className="font-mono text-[8px] uppercase tracking-widest text-muted-foreground leading-none">
+                  Match
+                </div>
+              </div>
             </div>
 
             <div className="flex flex-col gap-1 text-xs text-muted-foreground font-sans">
+              {/* Nationalities — below the picture, never on top of it */}
+              {profile.nationality && (
+                <div className="flex items-center gap-1.5">
+                  <span className="select-none" aria-hidden="true">✈️</span>
+                  <span>{profile.nationality}</span>
+                </div>
+              )}
               <div className="flex items-center gap-1.5 font-medium text-foreground">
                 <GraduationCap size={14} className="text-primary" />
                 <span>{profile.university}</span>
@@ -202,10 +201,6 @@ export default function SwipeCard({ profile, currentUser, onSwipeLeft, onSwipeRi
               <div className="flex items-center gap-1.5">
                 <MapPin size={14} className="text-muted-foreground" />
                 <span>Currently in {profile.currentCity}</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <Languages size={14} className="text-muted-foreground" />
-                <span>Speaks: {profile.languages.join(", ")}</span>
               </div>
               {/* Handles reach this component only for a member she has matched
                   with, or in her own preview — the server withholds them from
@@ -221,12 +216,6 @@ export default function SwipeCard({ profile, currentUser, onSwipeLeft, onSwipeRi
                 <div className="flex items-center gap-1.5 font-bold text-foreground mt-0.5">
                   <span className="w-4.5 h-4.5 rounded bg-black flex items-center justify-center text-[10px] text-rose-400 font-mono font-black shrink-0 select-none">𝅘𝅥𝅮</span>
                   <span>TikTok: <span className="text-primary hover:underline">@{profile.tiktok}</span></span>
-                </div>
-              )}
-              {profile.otherSocial && (
-                <div className="flex items-start gap-1.5 font-bold text-foreground mt-0.5">
-                  <AtSign size={14} className="text-muted-foreground shrink-0 mt-px" />
-                  <span className="min-w-0 break-words">{profile.otherSocial}</span>
                 </div>
               )}
             </div>
@@ -464,6 +453,73 @@ export default function SwipeCard({ profile, currentUser, onSwipeLeft, onSwipeRi
           </div>
         </motion.div>
       </AnimatePresence>
+
+      {/* Focused photo viewer — the photograph is the whole screen; the only
+          chrome is Back, the position indicators, and (for galleries) two
+          invisible tap zones. It sits above everything, so a tap here can
+          never reach the like/pass buttons underneath. */}
+      {viewerOpen && (
+        <div
+          className="fixed inset-0 z-[100] bg-slate-950/95 flex flex-col animate-fade-in"
+          role="dialog"
+          aria-modal="true"
+          aria-label={`${profile.name}'s photos`}
+        >
+          <div className="shrink-0 pt-[max(0.75rem,env(safe-area-inset-top))] px-4 pb-2 flex items-center gap-4">
+            <button
+              type="button"
+              onClick={() => window.history.back()}
+              className="text-white/90 hover:text-white flex items-center gap-1.5 font-sans text-xs font-bold px-2 py-2 -mx-2 cursor-pointer"
+            >
+              <ArrowLeft size={18} />
+              <span>Back</span>
+            </button>
+            {gallery.length > 1 && (
+              <div className="flex gap-1.5 flex-1" aria-hidden="true">
+                {gallery.map((_, i) => (
+                  <span
+                    key={i}
+                    className={`h-1 flex-1 rounded-full transition-colors ${
+                      i === photoIndex ? "bg-white" : "bg-white/30"
+                    }`}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="relative flex-1 min-h-0 flex items-center justify-center px-2 pb-2">
+            <img
+              src={gallery[photoIndex]}
+              alt={gallery.length > 1 ? `${profile.name}, photo ${photoIndex + 1} of ${gallery.length}` : profile.name}
+              referrerPolicy="no-referrer"
+              className="max-w-full max-h-full object-contain select-none"
+            />
+            {gallery.length > 1 && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setPhotoIndex(i => (i - 1 + gallery.length) % gallery.length)}
+                  aria-label="Previous photo"
+                  className="absolute inset-y-0 left-0 w-1/3 cursor-pointer focus-visible:bg-white/5"
+                />
+                <button
+                  type="button"
+                  onClick={() => setPhotoIndex(i => (i + 1) % gallery.length)}
+                  aria-label="Next photo"
+                  className="absolute inset-y-0 right-0 w-1/3 cursor-pointer focus-visible:bg-white/5"
+                />
+              </>
+            )}
+          </div>
+
+          {gallery.length > 1 && (
+            <div className="shrink-0 pb-[max(1rem,env(safe-area-inset-bottom))] text-center text-white/60 font-mono text-[10px] uppercase tracking-widest select-none">
+              {photoIndex + 1} / {gallery.length}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

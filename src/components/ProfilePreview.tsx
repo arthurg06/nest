@@ -35,7 +35,7 @@ function suggestionsFor(profile: UserProfile): string[] {
     profile.interests.lifestyle.length;
   if (picked === 0) {
     notes.push(
-      "You haven't picked any interests. The match score is built from those, your languages and your university."
+      "You haven't picked any interests. The match score is built from those and your university."
     );
   }
 
@@ -76,7 +76,7 @@ export default function ProfilePreview({ profile, onClose, unsaved = false }: Pr
   // original.
   const visible = profileFor(profile, audience) as UserProfile;
 
-  const hasHandles = Boolean(profile.instagram || profile.tiktok || profile.otherSocial);
+  const hasHandles = Boolean(profile.instagram || profile.tiktok);
   const suggestions = suggestionsFor(profile);
 
   return (

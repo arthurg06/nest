@@ -23,7 +23,9 @@ export async function signup(overrides: Record<string, unknown> = {}): Promise<T
       name: `Test User ${counter}`,
       age: 22,
       nationality: "Spain 🇪🇸",
-      university: "Test University",
+      // Must be an approved Madrid university (see shared/universities.ts) —
+      // sign-up rejects anything else since the selector shipped.
+      university: "IE University",
       languages: ["English (Native)"],
       bio: "Test bio",
       photo: "https://example.com/photo.jpg",

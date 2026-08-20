@@ -15,6 +15,7 @@ import { getStripe, isStripeConfigured, isWebhookConfigured, premiumPriceId } fr
 import { saveImage, deleteImage, isAppIssuedImage } from "./server/images.js";
 import { PREMIUM_PLAN, PREMIUM_PRICE_LABEL } from "./shared/subscription.js";
 import { profileFor } from "./shared/visibility.js";
+import { canonicalUniversity, universityKey } from "./shared/universities.js";
 import { avatarGradient } from "./shared/avatar.js";
 
 dotenv.config({ quiet: true });
@@ -29,7 +30,7 @@ const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || "")
   .split(",")
   .map(e => e.trim().toLowerCase())
   .filter(Boolean);
-const isAdminEmail = (email: string) => ADMIN_EMAILS.includes(email.toLowerCase());
+const isAdminEmail = (email: string) => ADMIN_EMAILS.includes(email.trim().toLowerCase());
 
 // A member's own profile: verification info visible minus internal-only
 // fields (admin notes, reviewer identity).
@@ -432,12 +433,24 @@ app.post("/api/auth/signup", async (req, res) => {
   try {
     const { email, password, name, age, nationality, university, currentCity, languages, personalityType, friendshipType, bio, photo, tiktok, instagram, otherSocial, interests } = req.body;
 
-    if (!email || !password || !name) {
+    // Trim as well as lowercase: a stray space from mobile autocomplete would
+    // otherwise create an account nobody can log into.
+    const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
+
+    if (!normalizedEmail || !password || !name) {
       return res.status(400).json({ error: "Email, password, and name are required" });
     }
 
     if (typeof password !== "string" || password.length < 6) {
       return res.status(400).json({ error: "Password must be at least 6 characters" });
+    }
+
+    // University must be one of the approved Madrid universities
+    // (shared/universities.ts). Abbreviations and accent/case variants are
+    // resolved to the canonical name so every profile stores the same value.
+    const universityName = canonicalUniversity(university);
+    if (!universityName) {
+      return res.status(400).json({ error: "Please select your university from the Madrid list" });
     }
 
     if (!isTestEnv && !signupLimiter.check(clientIp(req))) {
@@ -447,18 +460,18 @@ app.post("/api/auth/signup", async (req, res) => {
     const db = await dbManager.readDb();
     
     // Check if user already exists
-    if (db.users.some(u => u.email.toLowerCase() === email.toLowerCase())) {
+    if (db.users.some(u => u.email.trim().toLowerCase() === normalizedEmail)) {
       return res.status(400).json({ error: "Account with this email already exists" });
     }
 
     const userId = generateId();
     const profileId = generateId();
 
-    const isAdmin = isAdminEmail(email);
+    const isAdmin = isAdminEmail(normalizedEmail);
 
     const newUser: User = {
       id: userId,
-      email: email.toLowerCase(),
+      email: normalizedEmail,
       passwordHash: await hashPassword(password),
       isAdmin: isAdmin,
       role: isAdmin ? "admin" : "member",
@@ -482,7 +495,7 @@ app.post("/api/auth/signup", async (req, res) => {
       name: name,
       age: Number(age) || 20,
       nationality: nationality || "",
-      university: university || "IE University",
+      university: universityName,
       currentCity: currentCity || "Madrid",
       languages: languages || [],
       personalityType: personalityType || "",
@@ -544,16 +557,20 @@ app.post("/api/auth/login", async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    if (!email || !password) {
+    // Same normalization as sign-up (trim + lowercase), and the stored side is
+    // trimmed too so legacy records saved with stray whitespace stay reachable.
+    const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
+
+    if (!normalizedEmail || !password) {
       return res.status(400).json({ error: "Email and password are required" });
     }
 
-    if (!isTestEnv && !loginLimiter.check(`${clientIp(req)}:${String(email).toLowerCase()}`)) {
+    if (!isTestEnv && !loginLimiter.check(`${clientIp(req)}:${normalizedEmail}`)) {
       return res.status(429).json({ error: "Too many login attempts. Please try again in a few minutes." });
     }
 
     const db = await dbManager.readDb();
-    const user = db.users.find(u => u.email.toLowerCase() === email.toLowerCase());
+    const user = db.users.find(u => u.email.trim().toLowerCase() === normalizedEmail);
 
     if (!user || !(await verifyPassword(password, user.passwordHash))) {
       return res.status(401).json({ error: "Invalid email or password" });
@@ -785,6 +802,43 @@ app.post("/api/auth/logout", authenticate, async (req, res) => {
   }
 });
 
+// Change password for the logged-in member. Requires the current password,
+// applies the same scrypt hashing as sign-up, and revokes every other session
+// so a stolen token elsewhere stops working — this one stays valid.
+app.post("/api/auth/change-password", authenticate, async (req, res) => {
+  try {
+    const userId = (req as any).userId;
+    const { currentPassword, newPassword } = req.body;
+
+    if (typeof currentPassword !== "string" || !currentPassword) {
+      return res.status(400).json({ error: "Current password is required" });
+    }
+    if (typeof newPassword !== "string" || newPassword.length < 6) {
+      return res.status(400).json({ error: "New password must be at least 6 characters" });
+    }
+
+    const db = await dbManager.readDb();
+    const user = db.users.find(u => u.id === userId);
+    if (!user) {
+      return res.status(404).json({ error: "Account not found" });
+    }
+
+    if (!(await verifyPassword(currentPassword, user.passwordHash))) {
+      return res.status(401).json({ error: "Current password is incorrect" });
+    }
+
+    user.passwordHash = await hashPassword(newPassword);
+
+    const currentToken = (req.headers.authorization || "").replace(/^Bearer\s+/i, "");
+    db.sessions = db.sessions.filter(s => s.userId !== userId || s.token === currentToken);
+
+    await dbManager.writeDb(db);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: "Error changing password" });
+  }
+});
+
 // ----------------------------------------------------
 // PROFILE ENDPOINTS
 // ----------------------------------------------------
@@ -802,12 +856,25 @@ app.post("/api/profiles/update", authenticate, async (req, res) => {
       return res.status(404).json({ error: "Profile not found" });
     }
 
+    // A changed university must come from the approved Madrid list; a value
+    // equal to what is already stored is kept verbatim so profiles saved
+    // before the list existed keep displaying their original text.
+    let nextUniversity = db.profiles[profileIdx].university;
+    if (typeof data.university === "string" && data.university.trim()) {
+      const canonical = canonicalUniversity(data.university);
+      if (canonical) {
+        nextUniversity = canonical;
+      } else if (universityKey(data.university) !== universityKey(nextUniversity)) {
+        return res.status(400).json({ error: "Please select your university from the Madrid list" });
+      }
+    }
+
     db.profiles[profileIdx] = {
       ...db.profiles[profileIdx],
       name: boundedText(data.name, LIMITS.name) ?? db.profiles[profileIdx].name,
       age: Number(data.age) || db.profiles[profileIdx].age,
       nationality: data.nationality || db.profiles[profileIdx].nationality,
-      university: data.university || db.profiles[profileIdx].university,
+      university: nextUniversity,
       currentCity: data.currentCity || db.profiles[profileIdx].currentCity,
       languages: data.languages || db.profiles[profileIdx].languages,
       personalityType: data.personalityType || db.profiles[profileIdx].personalityType,
@@ -1089,7 +1156,6 @@ app.get("/api/matches", authenticate, async (req, res) => {
         : {
             score: 75,
             sharedInterests: [] as string[],
-            sharedLanguages: [] as string[],
             matchingVibes: [] as string[],
             explanation: "You are both international students in Madrid looking for friendship."
           };
@@ -1103,7 +1169,6 @@ app.get("/api/matches", authenticate, async (req, res) => {
         compatibilityRating: report.score,
         compatibilityReport: {
           sharedInterests: report.sharedInterests,
-          sharedLanguages: report.sharedLanguages,
           matchingVibes: report.matchingVibes,
           explanation: report.explanation
         }

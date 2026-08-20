@@ -14,8 +14,8 @@ export const THEME_STORAGE_KEY = "nest_theme";
 // Keep in sync with --background in src/index.css (used for the browser
 // chrome / PWA title bar via <meta name="theme-color">).
 const THEME_COLOR: Record<ResolvedTheme, string> = {
-  light: "#fff0f8",
-  dark: "#1a0922",
+  light: "#fdf8f7",
+  dark: "#171015",
 };
 
 export function isThemePreference(value: unknown): value is ThemePreference {

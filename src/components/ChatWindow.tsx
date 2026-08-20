@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Match, UserProfile, Plan, Recommendation } from "../types";
-import { Send, MapPin, Clock, Calendar, X, Check, Instagram, AtSign } from "lucide-react";
+import { Send, MapPin, Clock, Calendar, X, Check, Instagram } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { isOwnMessage } from "../lib/chat";
 import VerifiedBadge from "./VerifiedBadge";
@@ -182,7 +182,7 @@ export default function ChatWindow({
           Instagram and have it seen by nobody, ever. Shown as plain text
           rather than links: the value is hers to type, and it is not turning
           into a URL this app follows. */}
-      {(activeMatch.profile.instagram || activeMatch.profile.tiktok || activeMatch.profile.otherSocial) && (
+      {(activeMatch.profile.instagram || activeMatch.profile.tiktok) && (
         <div className="px-4 md:px-5 py-2 border-b border-border/30 bg-card/20 shrink-0 flex flex-wrap items-center gap-x-3 gap-y-1 select-text">
           <span className="text-[9px] font-mono uppercase tracking-widest text-muted-foreground shrink-0">
             Find her on
@@ -199,12 +199,6 @@ export default function ChatWindow({
                 T
               </span>
               <span className="break-all">@{activeMatch.profile.tiktok}</span>
-            </span>
-          )}
-          {activeMatch.profile.otherSocial && (
-            <span className="inline-flex items-center gap-1 text-[11px] font-sans font-bold text-foreground">
-              <AtSign size={12} className="text-muted-foreground shrink-0" />
-              <span className="break-all">{activeMatch.profile.otherSocial}</span>
             </span>
           )}
         </div>

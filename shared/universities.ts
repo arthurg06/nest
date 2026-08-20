@@ -1,0 +1,85 @@
+// Canonical list of Madrid universities, shared by the client (the university
+// selector on sign-up and profile editing) and the server (validation), so the
+// approved values live in exactly one place.
+//
+// Scope — institutions a NEST member can actually study at in Madrid:
+// the six public universities of the Comunidad de Madrid, the national
+// institutions headquartered in Madrid (UNED, UIMP), the church university
+// (Comillas), the private universities recognized by the Comunidad de Madrid,
+// and IE University's Madrid campus. Universities based elsewhere in Spain or
+// abroad are intentionally absent — do not add them.
+
+export interface MadridUniversity {
+  /** Canonical name — exactly what is stored on the profile and displayed. */
+  name: string;
+  /** Alternate names and abbreviations that search and validation also accept. */
+  aliases: string[];
+}
+
+export const MADRID_UNIVERSITIES: MadridUniversity[] = [
+  // Public universities of the Comunidad de Madrid
+  { name: "Universidad Complutense de Madrid", aliases: ["UCM", "Complutense"] },
+  { name: "Universidad Autónoma de Madrid", aliases: ["UAM", "Autonoma"] },
+  { name: "Universidad Politécnica de Madrid", aliases: ["UPM", "Politecnica"] },
+  { name: "Universidad Carlos III de Madrid", aliases: ["UC3M", "Carlos III"] },
+  { name: "Universidad Rey Juan Carlos", aliases: ["URJC"] },
+  { name: "Universidad de Alcalá", aliases: ["UAH", "Alcala"] },
+  // National public institutions headquartered in Madrid
+  { name: "Universidad Nacional de Educación a Distancia", aliases: ["UNED"] },
+  { name: "Universidad Internacional Menéndez Pelayo", aliases: ["UIMP", "Menendez Pelayo"] },
+  // Church-affiliated
+  { name: "Universidad Pontificia Comillas", aliases: ["Comillas", "ICADE", "ICAI"] },
+  // Private universities (plus IE University's Madrid campus)
+  { name: "IE University", aliases: ["IE", "Instituto de Empresa", "IE School of Science and Technology"] },
+  { name: "Universidad CEU San Pablo", aliases: ["CEU", "San Pablo CEU"] },
+  { name: "Universidad Francisco de Vitoria", aliases: ["UFV"] },
+  { name: "Universidad Europea de Madrid", aliases: ["UEM", "Europea"] },
+  { name: "Universidad Nebrija", aliases: ["Antonio de Nebrija"] },
+  { name: "Universidad Alfonso X el Sabio", aliases: ["UAX"] },
+  { name: "Universidad Camilo José Cela", aliases: ["UCJC"] },
+  { name: "Universidad Villanueva", aliases: ["Internacional Villanueva"] },
+  { name: "CUNEF Universidad", aliases: ["CUNEF"] },
+  { name: "ESIC University", aliases: ["ESIC", "ESIC Universidad"] },
+  { name: "UNIE Universidad", aliases: ["UNIE", "Universidad Internacional de la Empresa"] },
+  { name: "Universidad a Distancia de Madrid", aliases: ["UDIMA"] },
+  { name: "Universidad de Diseño, Innovación y Tecnología", aliases: ["UDIT", "ESNE"] },
+];
+
+export const MADRID_UNIVERSITY_NAMES = MADRID_UNIVERSITIES.map(u => u.name);
+
+// Accent/case/whitespace-insensitive key so "universidad politécnica de
+// madrid" and "Universidad  Politecnica de Madrid" resolve to the same entry.
+export function universityKey(value: unknown): string {
+  return String(value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+const CANONICAL_BY_KEY = new Map<string, string>();
+for (const uni of MADRID_UNIVERSITIES) {
+  CANONICAL_BY_KEY.set(universityKey(uni.name), uni.name);
+  for (const alias of uni.aliases) {
+    CANONICAL_BY_KEY.set(universityKey(alias), uni.name);
+  }
+}
+
+/**
+ * Resolve arbitrary input to the canonical university name, or null when the
+ * value is not an approved Madrid university.
+ */
+export function canonicalUniversity(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  return CANONICAL_BY_KEY.get(universityKey(value)) ?? null;
+}
+
+/** Filter for the searchable selector: matches the name or any alias. */
+export function searchUniversities(query: string): MadridUniversity[] {
+  const q = universityKey(query);
+  if (!q) return MADRID_UNIVERSITIES;
+  return MADRID_UNIVERSITIES.filter(
+    u => universityKey(u.name).includes(q) || u.aliases.some(a => universityKey(a).includes(q))
+  );
+}

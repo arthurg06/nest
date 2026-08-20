@@ -2,13 +2,18 @@ import { describe, it, expect } from "vitest";
 import request from "supertest";
 import { app, signup, auth, createMatchedPair } from "./helpers";
 
+// Computed, not hardcoded: the server refuses past dates, so a fixed date
+// would silently expire and fail the whole suite one day.
+const nextWeek = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+const nextWeekIso = `${nextWeek.getFullYear()}-${String(nextWeek.getMonth() + 1).padStart(2, "0")}-${String(nextWeek.getDate()).padStart(2, "0")}`;
+
 const validPlan = {
   activity: "coffee",
   title: "Coffee at Federal Café",
   placeName: "Federal Café",
   placeArea: "Malasaña",
   placeAddress: "Plaza de las Comendadoras, 9",
-  date: "2026-07-25",
+  date: nextWeekIso,
   time: "17:00",
   note: "Does Saturday work?"
 };

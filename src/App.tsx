@@ -474,7 +474,7 @@ export default function App() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4 select-none">
         <img
-          src="/icons/nest-512.png"
+          src="/icons/nest-logo.png"
           alt="NEST logo"
           className="w-24 h-24 rounded-[28px] shadow-xl animate-pulse"
         />
@@ -506,7 +506,7 @@ export default function App() {
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           {/* Logo */}
           <div className="flex items-center gap-2.5">
-            <img src="/icons/nest-192.png" alt="NEST logo" className="w-9 h-9 rounded-xl object-cover shadow-sm border border-border/50" />
+            <img src="/icons/nest-logo.png" alt="NEST logo" className="w-9 h-9 rounded-xl object-cover shadow-sm border border-border/50" />
             <div>
               <span className="font-display font-semibold tracking-tight text-foreground text-lg lowercase">nest</span>
               <span className="font-mono text-[9px] font-bold text-primary tracking-widest block -mt-1 uppercase">Madrid</span>
@@ -584,7 +584,7 @@ export default function App() {
                   Find your people
                 </h2>
                 <p className="font-sans text-xs text-muted-foreground leading-normal">
-                  Matched by shared interests, lifestyle, and languages.
+                  Find your people, find your nest.
                 </p>
               </div>
 
