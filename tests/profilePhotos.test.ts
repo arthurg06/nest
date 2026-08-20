@@ -74,13 +74,16 @@ describe("profile photos", () => {
     expect(res.body.photos).toEqual([]);
   });
 
-  it("caps the gallery at four", async () => {
+  it("caps the gallery at six", async () => {
     const user = await signup();
     const res = await update(user.token, {
-      photos: ["/uploads/a.jpg", "/uploads/b.jpg", "/uploads/c.jpg", "/uploads/d.jpg", "/uploads/e.jpg"]
+      photos: [
+        "/uploads/a.jpg", "/uploads/b.jpg", "/uploads/c.jpg", "/uploads/d.jpg",
+        "/uploads/e.jpg", "/uploads/f.jpg", "/uploads/g.jpg"
+      ]
     }).expect(200);
 
-    expect(res.body.photos).toHaveLength(4);
+    expect(res.body.photos).toHaveLength(6);
   });
 
   it("keeps a photo she already had, even if it predates uploads", async () => {

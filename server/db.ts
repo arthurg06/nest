@@ -74,7 +74,7 @@ export interface UserProfile {
   avatarColor: string;
   /** Primary photo — always mirrors photos[0]. */
   photo: string;
-  /** Up to 4 photos, primary first. */
+  /** Up to 6 photos, primary first. */
   photos?: string[];
   tiktok?: string;
   instagram?: string;

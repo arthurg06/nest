@@ -37,7 +37,7 @@ export interface UserProfile {
   avatarSeed: string; // Seed to generate or load a beautiful avatar
   avatarColor: string; // Color palette for avatar
   photo: string; // Primary profile photo URL (mirrors photos[0])
-  photos?: string[]; // Up to 4 photos, primary first
+  photos?: string[]; // Up to 6 photos, primary first
   tiktok?: string; // Optional TikTok handle
   instagram?: string; // Optional Instagram handle
   otherSocial?: string; // Optional other social handles

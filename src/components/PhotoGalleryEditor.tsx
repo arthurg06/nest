@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Plus, Star, Trash2, Loader2 } from "lucide-react";
 import { apiUrl } from "../lib/api";
 
-export const MAX_PROFILE_PHOTOS = 4;
+export const MAX_PROFILE_PHOTOS = 6;
 
 interface PhotoGalleryEditorProps {
   photos: string[];

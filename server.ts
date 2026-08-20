@@ -84,7 +84,7 @@ function sanitizeInterests(raw: unknown) {
 
 // Profile photos: at most MAX_PROFILE_PHOTOS, each an app-issued URL
 // (uploads path or Blob) or an https URL, primary first.
-const MAX_PROFILE_PHOTOS = 4;
+const MAX_PROFILE_PHOTOS = 6;
 
 // Only URLs this app issued are accepted, plus any the member already has on
 // her profile (older records predate uploads and hold external URLs). Without

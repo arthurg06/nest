@@ -2,8 +2,10 @@ import React, { useState, useRef } from "react";
 import { UserProfile } from "../types";
 import { PREDEFINED_INTEREST_OPTIONS } from "../data";
 import { ANIMAL_EMOJI } from "../../shared/compatibility";
-import { ShieldCheck, ArrowRight, Lock, Mail } from "lucide-react";
+import { ShieldCheck, ArrowRight, Lock, Mail, Globe, Check, Search } from "lucide-react";
 import UniversitySelect from "./UniversitySelect";
+import { ImageUploader } from "./ImageUploader";
+import { searchCountries } from "../../shared/countries";
 import { apiUrl } from "../lib/api";
 import { ForgotPassword, ResetPassword } from "./PasswordRecovery";
 
@@ -14,7 +16,9 @@ interface OnboardingSignUpProps {
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // Unauthenticated experience: a minimal welcome page that branches into
-// Log In or the three-page sign-up flow (account → about you → interests).
+// Log In or the four-page sign-up flow (account → about you → interests →
+// profile setup). The last page collects what a complete NEST profile
+// requires — photo, bio, nationalities — so nobody enters the deck empty.
 // All steps live in one component so entered data survives Back/Continue.
 export default function OnboardingSignUp({ onAuthSuccess }: OnboardingSignUpProps) {
   const [view, setView] = useState<"welcome" | "login" | "signup">("welcome");
@@ -62,10 +66,28 @@ export default function OnboardingSignUp({ onAuthSuccess }: OnboardingSignUpProp
   const [animals, setAnimals] = useState("");
   const [spendingStyle] = useState("middle range baddie");
 
+  // Profile setup (step 4) — required before the account is created
+  const [photo, setPhoto] = useState("");
+  const [bio, setBio] = useState("");
+  const [selectedNationalities, setSelectedNationalities] = useState<string[]>([]);
+  const [nationalitySearch, setNationalitySearch] = useState("");
+  const [showNationalityDropdown, setShowNationalityDropdown] = useState(false);
+
   const handleToggleActivity = (act: string) => {
     setSelectedActivities(prev =>
       prev.includes(act) ? prev.filter(x => x !== act) : [...prev, act]
     );
+  };
+
+  const handleTogglePresetNationality = (countryName: string, flag: string) => {
+    const formatted = `${countryName} ${flag}`;
+    setSelectedNationalities(prev =>
+      prev.includes(formatted) ? prev.filter(c => c !== formatted) : [...prev, formatted]
+    );
+  };
+
+  const handleRemoveNationality = (formattedNat: string) => {
+    setSelectedNationalities(prev => prev.filter(n => n !== formattedNat));
   };
 
   // Login handler
@@ -124,6 +146,9 @@ export default function OnboardingSignUp({ onAuthSuccess }: OnboardingSignUpProp
         return;
       }
       setStep(3);
+    } else if (step === 3) {
+      // Interests stay optional, exactly as before.
+      setStep(4);
     }
   };
 
@@ -133,14 +158,17 @@ export default function OnboardingSignUp({ onAuthSuccess }: OnboardingSignUpProp
     else setView("welcome");
   };
 
-  // The profile half of the sign-up request. Everything else (photo, bio,
-  // nationality, socials) is added afterwards from the profile page — the
-  // account is created once, here, with the existing secure endpoint.
+  // The profile half of the sign-up request. Social handles remain optional
+  // and are added afterwards from the profile page — the account is created
+  // once, here, with the existing secure endpoint.
   const profileFields = () => ({
     name: name.trim(),
     age: Number(age) || 20,
     university: university.trim(),
     currentCity: "Madrid",
+    nationality: selectedNationalities.join(", "),
+    bio: bio.trim(),
+    photo,
     interests: {
       // Only what she actually picked. Inventing tastes here meant her card
       // advertised music and habits she never chose, and compatibility
@@ -154,9 +182,22 @@ export default function OnboardingSignUp({ onAuthSuccess }: OnboardingSignUpProp
     }
   });
 
-  // Sign up submission
+  // Sign up submission. The profile-setup requirements gate account
+  // creation: she cannot enter NEST with an empty card.
   const handleSubmitSignUp = async () => {
     setError("");
+    if (!photo) {
+      reportError("A profile photo is mandatory! Please upload an image from your device.");
+      return;
+    }
+    if (!bio.trim()) {
+      reportError("Please write a short bio to introduce yourself to other students!");
+      return;
+    }
+    if (selectedNationalities.length === 0) {
+      reportError("Please select at least one Nationality.");
+      return;
+    }
     setLoading(true);
     try {
       const res = await fetch(apiUrl("/api/auth/signup"), {
@@ -338,15 +379,16 @@ export default function OnboardingSignUp({ onAuthSuccess }: OnboardingSignUpProp
                 </div>
               </form>
             ) : (
-              // SIGN UP — three simple pages: account, about you, interests.
+              // SIGN UP — four simple pages: account, about you, interests,
+              // profile setup.
               <div className="flex-1 flex flex-col justify-between">
                 {/* Minimal progress indicator */}
                 <div className="flex items-center justify-between pb-4 border-b border-border/60 shrink-0 select-none">
                   <span className="font-mono text-[10px] font-black tracking-widest text-primary uppercase">
-                    {step} / 3
+                    {step} / 4
                   </span>
                   <div className="flex gap-1.5">
-                    {[1, 2, 3].map(s => (
+                    {[1, 2, 3, 4].map(s => (
                       <span
                         key={s}
                         className={`w-6 h-1.5 rounded-full transition-all duration-300 ${
@@ -499,6 +541,123 @@ export default function OnboardingSignUp({ onAuthSuccess }: OnboardingSignUpProp
                       </div>
                     </div>
                   )}
+
+                  {step === 4 && (
+                    <div className="space-y-4 animate-fade-in">
+                      <div>
+                        <h3 className="font-sans font-black text-foreground text-lg tracking-tight">Set up your profile</h3>
+                        <p className="text-xs text-muted-foreground font-sans mt-0.5">A photo, a few words, and where you're from — then you're in.</p>
+                      </div>
+
+                      <div className="max-w-xs mx-auto">
+                        <ImageUploader
+                          value={photo}
+                          onChange={(url) => setPhoto(url)}
+                          onRemove={() => setPhoto("")}
+                          label="Your Profile Photo"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label htmlFor="signup-bio" className="text-[10px] font-mono font-bold text-muted-foreground uppercase block">Short Student Bio (Mandatory)</label>
+                        <textarea
+                          id="signup-bio"
+                          value={bio}
+                          onChange={(e) => setBio(e.target.value)}
+                          rows={3}
+                          placeholder="e.g. Dual degree student at IE. Obsessed with art galleries, cute coffee shops, and looking for brunch buddies! xx"
+                          className="w-full bg-card/60 border border-border rounded-xl p-3 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-none"
+                        />
+                      </div>
+
+                      {/* Nationalities Picker */}
+                      <div className="space-y-1.5 relative">
+                        <label className="text-[10px] font-mono font-bold text-muted-foreground uppercase block">
+                          Nationalities 🗺️
+                        </label>
+
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            const opening = !showNationalityDropdown;
+                            setShowNationalityDropdown(opening);
+                            // The panel opens inside the step scroller — bring
+                            // the field to the top so the whole panel is in view.
+                            if (opening) e.currentTarget.scrollIntoView({ block: "start", behavior: "smooth" });
+                          }}
+                          className="w-full bg-card/60 border border-border hover:border-border rounded-xl px-3.5 py-3 text-sm text-foreground font-medium flex items-center justify-between transition"
+                        >
+                          <span>Select Nationalities</span>
+                          <Globe size={14} className="text-muted-foreground" />
+                        </button>
+
+                        {selectedNationalities.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5 mt-2">
+                            {selectedNationalities.map(nat => (
+                              <span key={nat} className="bg-slate-900 text-rose-300 font-sans text-[11px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1 shadow-sm">
+                                <span>{nat}</span>
+                                <button type="button" onClick={(e) => { e.stopPropagation(); handleRemoveNationality(nat); }} className="text-white hover:text-rose-200 font-extrabold text-[10px] ml-0.5 p-2 -m-1.5 inline-flex items-center justify-center" aria-label="Remove">✕</button>
+                              </span>
+                            ))}
+                          </div>
+                        )}
+
+                        {showNationalityDropdown && (
+                          <div className="absolute z-50 left-0 right-0 mt-1 bg-card border border-border/60 rounded-2xl shadow-xl p-3.5 space-y-2 animate-fade-in">
+                            <div className="flex items-center justify-between pb-1.5 border-b border-border/60">
+                              <span className="text-[10px] font-mono font-bold text-muted-foreground uppercase">Search Countries</span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setShowNationalityDropdown(false);
+                                  setNationalitySearch("");
+                                }}
+                                className="text-[10px] font-extrabold text-primary hover:text-primary uppercase"
+                              >
+                                Close
+                              </button>
+                            </div>
+
+                            <div className="relative">
+                              <input
+                                type="text"
+                                placeholder="Type to search country..."
+                                value={nationalitySearch}
+                                onChange={(e) => setNationalitySearch(e.target.value)}
+                                className="w-full bg-card border border-border rounded-lg pl-8 pr-2.5 py-1.5 text-xs focus:outline-none"
+                              />
+                              <Search size={12} className="text-muted-foreground absolute left-2.5 top-2.5" />
+                            </div>
+
+                            <div className="max-h-40 overflow-y-auto space-y-0.5 -mx-1.5 px-1.5">
+                              {searchCountries(nationalitySearch).map(opt => {
+                                const formatted = `${opt.name} ${opt.flag}`;
+                                const isSelected = selectedNationalities.includes(formatted);
+                                return (
+                                  <button
+                                    key={opt.name}
+                                    type="button"
+                                    onClick={() => handleTogglePresetNationality(opt.name, opt.flag)}
+                                    className={`w-full text-left py-1.5 px-2.5 rounded-lg text-xs font-medium flex items-center justify-between transition ${
+                                      isSelected
+                                        ? "bg-accent/30 text-primary font-bold"
+                                        : "hover:bg-muted/60 text-foreground"
+                                    }`}
+                                  >
+                                    <span className="flex items-center gap-1.5">
+                                      <span>{opt.flag}</span>
+                                      <span>{opt.name}</span>
+                                    </span>
+                                    {isSelected && <Check size={12} className="text-primary" />}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Footer controls */}
@@ -511,7 +670,7 @@ export default function OnboardingSignUp({ onAuthSuccess }: OnboardingSignUpProp
                     Back
                   </button>
 
-                  {step < 3 ? (
+                  {step < 4 ? (
                     <button
                       type="button"
                       onClick={handleNextStep}
