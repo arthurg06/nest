@@ -33,7 +33,11 @@
       href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Poppins:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap"
     />
 
-    <!-- ?v=2 busts caches of the old-logo icons after the rebrand -->
+    <!-- ?v=2 busts caches of the old-logo icons after the rebrand.
+         favicon.ico exists as a real file because Safari requests it at the
+         domain root regardless of these links — without it, the SPA rewrite
+         answered with HTML and Safari kept its stale cached icon. -->
+    <link rel="icon" href="/favicon.ico" sizes="any" />
     <link rel="icon" type="image/png" href="/favicon.png?v=2" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=2" />
     <link rel="manifest" href="/manifest.webmanifest?v=2" />
