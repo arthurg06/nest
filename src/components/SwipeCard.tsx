@@ -3,7 +3,7 @@ import { UserProfile } from "../types";
 import { calculateCompatibility } from "../data";
 import { displayUniversity } from "../../shared/universities";
 import { ANIMAL_EMOJI } from "../../shared/compatibility";
-import { X, Heart, MapPin, Sparkles, GraduationCap, ChevronDown, ChevronUp, Instagram, ArrowLeft } from "lucide-react";
+import { X, Heart, MapPin, Sparkles, GraduationCap, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Instagram, ArrowLeft } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import VerifiedBadge from "./VerifiedBadge";
 
@@ -158,28 +158,60 @@ export default function SwipeCard({ profile, currentUser, onSwipeLeft, onSwipeRi
               : "h-[max(500px,min(600px,calc(100dvh-16rem)))] md:h-[580px]"
           }`}
         >
-          {/* Real Portrait Photo — deliberately unobstructed: no chips, badges
-              or gradients on top of it. Tapping it opens the focused photo
-              viewer; everything about her lives below the picture. */}
-          <button
-            type="button"
-            onClick={openViewer}
-            aria-label={
-              gallery.length > 1
-                ? `View ${profile.name}'s ${gallery.length} photos`
-                : `View ${profile.name}'s photo`
-            }
-            className={`relative w-full bg-muted overflow-hidden shrink-0 cursor-pointer transition-[height] duration-300 ${
+          {/* Real Portrait Photo — kept unobstructed by profile info.
+              Tapping the photo opens the focused viewer; for galleries, two
+              small edge arrows browse the photos right on the card (looping,
+              like the viewer), with a quiet position counter. */}
+          <div
+            className={`relative w-full bg-muted overflow-hidden shrink-0 transition-[height] duration-300 ${
               showFullProfile ? "h-44 md:h-52" : "h-60 md:h-68"
             }`}
           >
-            <img
-              src={gallery[photoIndex]}
-              alt={gallery.length > 1 ? `${profile.name}, photo ${photoIndex + 1} of ${gallery.length}` : profile.name}
-              referrerPolicy="no-referrer"
-              className="w-full h-full object-cover"
-            />
-          </button>
+            <button
+              type="button"
+              onClick={openViewer}
+              aria-label={
+                gallery.length > 1
+                  ? `View ${profile.name}'s ${gallery.length} photos`
+                  : `View ${profile.name}'s photo`
+              }
+              className="absolute inset-0 w-full h-full cursor-pointer"
+            >
+              <img
+                src={gallery[photoIndex]}
+                alt={gallery.length > 1 ? `${profile.name}, photo ${photoIndex + 1} of ${gallery.length}` : profile.name}
+                referrerPolicy="no-referrer"
+                className="w-full h-full object-cover"
+              />
+            </button>
+
+            {gallery.length > 1 && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setPhotoIndex(i => (i - 1 + gallery.length) % gallery.length)}
+                  aria-label="Previous photo"
+                  className="absolute left-2 top-1/2 -translate-y-1/2 z-10 w-10 h-10 md:w-9 md:h-9 rounded-full bg-slate-950/35 backdrop-blur-sm text-white flex items-center justify-center hover:bg-slate-950/55 active:scale-95 transition cursor-pointer"
+                >
+                  <ChevronLeft size={18} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPhotoIndex(i => (i + 1) % gallery.length)}
+                  aria-label="Next photo"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 z-10 w-10 h-10 md:w-9 md:h-9 rounded-full bg-slate-950/35 backdrop-blur-sm text-white flex items-center justify-center hover:bg-slate-950/55 active:scale-95 transition cursor-pointer"
+                >
+                  <ChevronRight size={18} />
+                </button>
+                <span
+                  className="absolute bottom-2 right-2.5 z-10 bg-slate-950/45 backdrop-blur-sm text-white font-mono text-[9px] font-bold px-2 py-0.5 rounded-full select-none"
+                  aria-hidden="true"
+                >
+                  {photoIndex + 1} / {gallery.length}
+                </span>
+              </>
+            )}
+          </div>
 
           {/* Profile Name & Primary Info Section */}
           <div className="px-5 pt-4 pb-2.5 md:px-6 md:pt-8 md:pb-3 border-b border-border/20 shrink-0">
