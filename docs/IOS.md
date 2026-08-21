@@ -24,7 +24,7 @@
 1. Host the API on a stable HTTPS domain (blocked by the JSON-DB migration below).
 2. `npm i @capacitor/core @capacitor/cli @capacitor/ios && npx cap init && npx cap add ios`.
 3. Build with `VITE_API_BASE_URL=https://<api-domain>`; `npx cap sync ios`.
-4. Generate icon/splash sets from `logo/NEST_OFFICIAL_LOGO.png` (`@capacitor/assets`).
+4. Generate icon/splash sets from `logo/NEST_CLUB_LOGO.png` (`@capacitor/assets`).
 5. Configure `Info.plist` permission strings: `NSCameraUsageDescription`, `NSPhotoLibraryUsageDescription` (profile photos).
 6. Review external links (Google Maps links should open in the system browser via `@capacitor/browser`).
 7. Push notifications (if wanted): `@capacitor/push-notifications` + APNs key + a server-side sender.

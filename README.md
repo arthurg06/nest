@@ -78,7 +78,7 @@ The server auto-creates an empty `db.json` on first run and migrates older recor
 
 ```
 ├── index.html / public/       # SPA shell, PWA manifest, brand icons
-├── logo/NEST_OFFICIAL_LOGO.png  # Brand master (2000×2000)
+├── logo/NEST_CLUB_LOGO.png      # Brand master (2000×2000)
 ├── src/                       # React app (components, lib, theme)
 ├── shared/                    # Code shared client+server: subscription
 │                              #   plan, countries dataset, compatibility

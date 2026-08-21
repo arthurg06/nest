@@ -21,8 +21,8 @@ self.addEventListener("push", (event) => {
     self.registration.showNotification(note.title, {
       body: note.body,
       tag: note.tag,
-      icon: "/icons/nest-192.png?v=2",
-      badge: "/icons/nest-192.png?v=2",
+      icon: "/icons/nest-192.png?v=3",
+      badge: "/icons/nest-192.png?v=3",
       data: { url: note.url },
     })
   );
