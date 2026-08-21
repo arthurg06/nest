@@ -20,6 +20,7 @@ function emptyDb(): DbSchema {
     passwordResets: [],
     adminAudit: [],
     processedStripeEvents: [],
+    pushSubscriptions: [],
   };
 }
 

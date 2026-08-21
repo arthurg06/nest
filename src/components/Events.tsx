@@ -62,11 +62,12 @@ export default function Events({ events, onToggleRsvp, isSubscribed, subscriptio
 
   const stripeReady = subscription?.stripeConfigured === true;
 
-  // "My Events" — the member's own upcoming confirmed plans, scoped to her
-  // account by the server.
+  // "My Upcoming Events" — the member's own upcoming confirmed plans,
+  // scoped to her account by the server; shown in a dedicated modal.
+  const [showMyEvents, setShowMyEvents] = useState(false);
   const [myEvents, setMyEvents] = useState<MyEventItem[] | null>(null);
   React.useEffect(() => {
-    if (activeTab !== "mine") return;
+    if (!showMyEvents) return;
     let alive = true;
     fetch(apiUrl("/api/my-events"), {
       headers: { "Authorization": `Bearer ${localStorage.getItem("nest_token")}` }
@@ -75,7 +76,7 @@ export default function Events({ events, onToggleRsvp, isSubscribed, subscriptio
       .then(d => { if (alive && d) setMyEvents(d.items); })
       .catch(() => {});
     return () => { alive = false; };
-  }, [activeTab, events]);
+  }, [showMyEvents, events]);
 
   // NEST Memories — Premium members' personal outing archive, computed
   // server-side from real attendance data.
@@ -154,8 +155,7 @@ export default function Events({ events, onToggleRsvp, isSubscribed, subscriptio
     { id: "all", label: "All Events" },
     { id: "social", label: "Social Mixer" },
     { id: "study", label: "Study & Coffee" },
-    { id: "wellness", label: "Wellness & Sports" },
-    { id: "mine", label: "My Events" }
+    { id: "wellness", label: "Wellness & Sports" }
   ];
 
   const filteredEvents = tabFilter(activeTab);
@@ -403,6 +403,17 @@ export default function Events({ events, onToggleRsvp, isSubscribed, subscriptio
         </form>
       )}
 
+      {/* MY UPCOMING EVENTS — a personal shortcut, deliberately styled
+          apart from the category tabs below it. */}
+      <button
+        type="button"
+        onClick={() => setShowMyEvents(true)}
+        className="w-full sm:w-auto bg-slate-900 hover:bg-slate-800 text-rose-300 font-sans text-xs font-black px-5 py-3 rounded-2xl transition shadow-pop flex items-center justify-center gap-2 cursor-pointer"
+      >
+        <span className="text-sm select-none">🪺</span>
+        <span>My Upcoming Events</span>
+      </button>
+
       {/* Filter tabs */}
       <div className="flex gap-1 overflow-x-auto pb-1 select-none border-b border-border/30">
         {categories.map(tab => (
@@ -423,49 +434,8 @@ export default function Events({ events, onToggleRsvp, isSubscribed, subscriptio
         ))}
       </div>
 
-      {/* MY EVENTS — only the member's own upcoming confirmed plans */}
-      {activeTab === "mine" ? (
-        <div className="space-y-3 max-w-2xl">
-          {(myEvents || []).map(item => (
-            <button
-              key={item.kind + item.id}
-              type="button"
-              onClick={() => {
-                if (item.kind === "plan" && item.matchId) {
-                  onOpenPlanChat?.(item.matchId);
-                } else {
-                  setActiveTab("all");
-                  window.setTimeout(() => {
-                    document.getElementById(`event-card-${item.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
-                  }, 150);
-                }
-              }}
-              className="w-full text-left bg-card/40 backdrop-blur-md rounded-2xl border border-border/60 p-4 flex items-center gap-3.5 shadow-sm hover:bg-card/60 hover:shadow-md transition animate-fade-in"
-            >
-              <span className="text-2xl select-none shrink-0">
-                {item.kind === "plan" ? "💌" : getCategoryImageEmoji(item.category || "")}
-              </span>
-              <div className="flex-1 min-w-0">
-                <h4 className="font-sans font-bold text-sm text-foreground leading-snug truncate">{item.title}</h4>
-                <p className="font-sans text-[11px] text-muted-foreground mt-0.5 truncate">
-                  {item.kind === "plan"
-                    ? `${new Date(`${item.date}T12:00:00`).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })} at ${item.time} · ${item.placeName} · with ${item.withName}`
-                    : [item.date, item.time, item.location].filter(Boolean).join(" · ")}
-                </p>
-              </div>
-              <span className="text-[9px] font-mono font-black uppercase tracking-widest text-primary shrink-0">
-                {item.kind === "plan" ? "Outing" : "NEST event"}
-              </span>
-            </button>
-          ))}
-          {myEvents && myEvents.length === 0 && (
-            <div className="bg-card/40 backdrop-blur-md rounded-[28px] border border-dashed border-border/60 p-8 text-center space-y-1 max-w-sm mx-auto">
-              <p className="font-sans text-xs font-bold text-foreground">No upcoming events yet.</p>
-              <p className="font-sans text-xs text-muted-foreground">Your confirmed NEST plans will appear here.</p>
-            </div>
-          )}
-        </div>
-      ) : filteredEvents.length > 0 ? (
+      {/* Events Grid layout */}
+      {filteredEvents.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {filteredEvents.map(event => event.teaser ? (
             /* Premium teaser — the server sent only the category; there is
@@ -696,6 +666,79 @@ export default function Events({ events, onToggleRsvp, isSubscribed, subscriptio
               <p className="font-sans text-xs font-bold text-foreground">Your first one is waiting. 🪺</p>
             </div>
           )}
+        </div>
+      )}
+
+      {/* MY UPCOMING EVENTS modal — mobile-first sheet listing only the
+          member's own confirmed upcoming plans (server-scoped). */}
+      {showMyEvents && (
+        <div
+          className="fixed inset-0 z-[75] bg-slate-950/60 backdrop-blur-sm flex items-end md:items-center justify-center animate-fade-in"
+          role="dialog"
+          aria-modal="true"
+          aria-label="My Upcoming Events"
+        >
+          <div className="bg-card w-full md:max-w-md max-h-[85vh] rounded-t-[32px] md:rounded-[32px] border-t md:border border-border/70 shadow-2xl flex flex-col overflow-hidden">
+            <div className="px-5 py-4 border-b border-border/40 flex items-center justify-between gap-3 shrink-0">
+              <h3 className="font-sans font-black text-base text-foreground">My Upcoming Events</h3>
+              <button
+                type="button"
+                onClick={() => setShowMyEvents(false)}
+                aria-label="Close"
+                className="text-muted-foreground hover:text-foreground p-2 -m-2 cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-5 py-4 space-y-2.5 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
+              {myEvents === null ? (
+                <p className="text-xs text-muted-foreground font-sans italic py-4 text-center">Loading…</p>
+              ) : myEvents.length === 0 ? (
+                <div className="text-center py-10 space-y-2">
+                  <span className="text-4xl block select-none">🪺</span>
+                  <p className="font-sans text-sm font-bold text-foreground">You don't have any upcoming events yet 🪺</p>
+                  <p className="font-sans text-xs text-muted-foreground leading-relaxed max-w-[240px] mx-auto">
+                    Explore the outings curated by the NEST team, or plan one with a match from your chats.
+                  </p>
+                </div>
+              ) : (
+                myEvents.map(item => (
+                  <button
+                    key={item.kind + item.id}
+                    type="button"
+                    onClick={() => {
+                      setShowMyEvents(false);
+                      if (item.kind === "plan" && item.matchId) {
+                        onOpenPlanChat?.(item.matchId);
+                      } else {
+                        setActiveTab("all");
+                        window.setTimeout(() => {
+                          document.getElementById(`event-card-${item.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+                        }, 200);
+                      }
+                    }}
+                    className="w-full text-left bg-card/60 rounded-2xl border border-border/60 p-4 flex items-center gap-3.5 shadow-sm hover:bg-muted/40 hover:shadow-md transition animate-fade-in cursor-pointer"
+                  >
+                    <span className="text-2xl select-none shrink-0">
+                      {item.kind === "plan" ? "💌" : getCategoryImageEmoji(item.category || "")}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-sans font-bold text-sm text-foreground leading-snug truncate">{item.title}</h4>
+                      <p className="font-sans text-[11px] text-muted-foreground mt-0.5 truncate">
+                        {item.kind === "plan"
+                          ? `${new Date(`${item.date}T12:00:00`).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })} at ${item.time} · ${item.placeName} · with ${item.withName}`
+                          : [item.date, item.time, item.location].filter(Boolean).join(" · ")}
+                      </p>
+                    </div>
+                    <span className="text-[9px] font-mono font-black uppercase tracking-widest text-primary shrink-0">
+                      {item.kind === "plan" ? "Outing" : "NEST event"}
+                    </span>
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
         </div>
       )}
 

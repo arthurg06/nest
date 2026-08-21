@@ -11,6 +11,7 @@ import { apiUrl } from "../lib/api";
 import VerifiedBadge from "./VerifiedBadge";
 import UniversitySelect from "./UniversitySelect";
 import { displayUniversity } from "../../shared/universities";
+import NotificationSettings from "./NotificationSettings";
 
 interface ProfileEditorProps {
   currentUser: UserProfile;
@@ -776,6 +777,10 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
                 </div>
               )}
             </div>
+
+            <div className="border-t border-border/60" />
+
+            <NotificationSettings />
 
             <div className="border-t border-border/60" />
 

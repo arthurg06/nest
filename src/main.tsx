@@ -2,6 +2,10 @@ import {StrictMode} from 'react';
 import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
+import { registerServiceWorker } from './lib/push';
+
+// Push + PWA plumbing: harmless where unsupported.
+registerServiceWorker();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

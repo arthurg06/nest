@@ -19,6 +19,7 @@ export const COLLECTION_KEYS: Record<keyof DbSchema, string> = {
   passwordResets: "tokenHash",
   adminAudit: "id",
   processedStripeEvents: "",
+  pushSubscriptions: "id",
 };
 
 export const COLLECTIONS = Object.keys(COLLECTION_KEYS) as (keyof DbSchema)[];

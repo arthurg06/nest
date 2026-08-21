@@ -17,9 +17,11 @@ import { PREMIUM_PLAN, PREMIUM_PRICE_LABEL } from "./shared/subscription.js";
 import { profileFor } from "./shared/visibility.js";
 import { canonicalUniversity, universityKey } from "./shared/universities.js";
 import { TERMS_VERSION } from "./shared/terms.js";
+import { initPush, isPushConfigured, vapidPublicKey, sendPushToUser, prefsFor, DEFAULT_NOTIFICATION_PREFS } from "./server/push.js";
 import { avatarGradient } from "./shared/avatar.js";
 
 dotenv.config({ quiet: true });
+initPush();
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
@@ -1140,6 +1142,26 @@ app.post("/api/swipe", authenticate, async (req, res) => {
           read: false,
           createdAt: new Date().toISOString()
         });
+
+        await sendPushToUser(db, userId, "matches", {
+          title: "It's a match! 💕",
+          body: `You and ${receiverProfile?.name || "someone"} matched! 💕`,
+          url: `/?open=chat&match=${matchId}`
+        });
+        await sendPushToUser(db, toUserId, "matches", {
+          title: "It's a match! 💕",
+          body: `You and ${senderProfile?.name || "someone"} matched! 💕`,
+          url: `/?open=chat&match=${matchId}`
+        });
+      } else {
+        // A like that has not (yet) matched: tell her someone noticed —
+        // deliberately without saying who, matching the deck's rules.
+        await sendPushToUser(db, toUserId, "likes", {
+          title: "NEST 👀",
+          body: "Someone new liked you 👀",
+          url: "/?open=swipe",
+          tag: "likes"
+        });
       }
     }
 
@@ -1271,6 +1293,16 @@ app.post("/api/chats/:matchId/messages", authenticate, async (req, res) => {
     };
 
     db.messages.push(newMessage);
+
+    const receiverId = match.user1Id === userId ? match.user2Id : match.user1Id;
+    const senderName = db.profiles.find(p => p.userId === userId)?.name || "Someone";
+    await sendPushToUser(db, receiverId, "messages", {
+      title: "NEST 💌",
+      body: `${senderName} sent you a message 💌`,
+      url: `/?open=chat&match=${matchId}`,
+      tag: `chat-${matchId}`
+    });
+
     await dbManager.writeDb(db);
 
     res.json(newMessage);
@@ -1364,6 +1396,13 @@ app.post("/api/chats/:matchId/plans", authenticate, async (req, res) => {
       createdAt: now
     });
 
+    await sendPushToUser(db, receiverId, "outings", {
+      title: "New outing invite 🪺",
+      body: `${senderName} suggested an outing: ${plan.title}`,
+      url: `/?open=chat&match=${matchId}`,
+      tag: `plan-${planId}`
+    });
+
     await dbManager.writeDb(db);
     res.json(plan);
   } catch (error) {
@@ -1410,17 +1449,26 @@ app.post("/api/plans/:planId/respond", authenticate, async (req, res) => {
     plan.respondedAt = now;
 
     const responderName = db.profiles.find(p => p.userId === userId)?.name || "Your match";
+    const planNoteText = status === "accepted"
+      ? `${responderName} accepted: ${plan.title}`
+      : status === "cancelled"
+      ? `${responderName} ${wasAccepted ? "cancelled" : "withdrew"}: ${plan.title}`
+      : `${responderName} can't make it to: ${plan.title}`;
+    const planNoteTo = status === "cancelled" ? plan.receiverId : plan.senderId;
     db.notifications.push({
       id: generateId(),
-      userId: status === "cancelled" ? plan.receiverId : plan.senderId,
-      text: status === "accepted"
-        ? `${responderName} accepted: ${plan.title}`
-        : status === "cancelled"
-        ? `${responderName} ${wasAccepted ? "cancelled" : "withdrew"}: ${plan.title}`
-        : `${responderName} can't make it to: ${plan.title}`,
+      userId: planNoteTo,
+      text: planNoteText,
       timestamp: now,
       read: false,
       createdAt: now
+    });
+
+    await sendPushToUser(db, planNoteTo, "outings", {
+      title: status === "accepted" ? "It's on! 🪺" : "Outing update 🪺",
+      body: planNoteText,
+      url: `/?open=chat&match=${plan.matchId}`,
+      tag: `plan-${plan.id}`
     });
 
     await dbManager.writeDb(db);
@@ -1654,6 +1702,166 @@ app.get("/api/my-events", authenticate, async (req, res) => {
   }
 });
 
+// ----------------------------------------------------
+// WEB PUSH (real background notifications)
+// ----------------------------------------------------
+
+// The VAPID public key is public by design; whether push is configured at
+// all is useful for the client's messaging.
+app.get("/api/push/public-key", (req, res) => {
+  res.json({ configured: isPushConfigured(), publicKey: vapidPublicKey() });
+});
+
+// Register this browser's push subscription for the logged-in member.
+// Multi-device by design: one row per endpoint, upserted, owner-scoped.
+app.post("/api/push/subscribe", authenticate, async (req, res) => {
+  try {
+    const userId = (req as any).userId;
+    const { subscription } = req.body;
+
+    if (!isPushConfigured()) {
+      return res.status(503).json({ error: "Push notifications are not configured on this server yet" });
+    }
+    if (
+      !subscription ||
+      typeof subscription.endpoint !== "string" ||
+      !subscription.endpoint.startsWith("https://") ||
+      typeof subscription.keys?.p256dh !== "string" ||
+      typeof subscription.keys?.auth !== "string"
+    ) {
+      return res.status(400).json({ error: "A valid push subscription is required" });
+    }
+
+    const db = await dbManager.readDb();
+    const existing = db.pushSubscriptions.find(s => s.endpoint === subscription.endpoint);
+    if (existing) {
+      // The endpoint belongs to whoever is signed in on that browser now.
+      existing.userId = userId;
+      existing.keys = { p256dh: subscription.keys.p256dh, auth: subscription.keys.auth };
+    } else {
+      db.pushSubscriptions.push({
+        id: generateId(),
+        userId,
+        endpoint: subscription.endpoint,
+        keys: { p256dh: subscription.keys.p256dh, auth: subscription.keys.auth },
+        userAgent: boundedText(req.headers["user-agent"], 200) ?? undefined,
+        createdAt: new Date().toISOString()
+      });
+    }
+    await dbManager.writeDb(db);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: "Error saving push subscription" });
+  }
+});
+
+app.post("/api/push/unsubscribe", authenticate, async (req, res) => {
+  try {
+    const userId = (req as any).userId;
+    const { endpoint } = req.body;
+    if (typeof endpoint !== "string") {
+      return res.status(400).json({ error: "endpoint is required" });
+    }
+    const db = await dbManager.readDb();
+    // Only the owner can remove a subscription record.
+    db.pushSubscriptions = db.pushSubscriptions.filter(
+      s => !(s.endpoint === endpoint && s.userId === userId)
+    );
+    await dbManager.writeDb(db);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: "Error removing push subscription" });
+  }
+});
+
+// Notification preferences — read and update; the send path checks these.
+app.get("/api/notifications/preferences", authenticate, async (req, res) => {
+  try {
+    const userId = (req as any).userId;
+    const db = await dbManager.readDb();
+    const user = db.users.find(u => u.id === userId);
+    if (!user) return res.status(404).json({ error: "User not found" });
+    const hasSubscription = db.pushSubscriptions.some(s => s.userId === userId);
+    res.json({ preferences: prefsFor(user), hasSubscription, pushConfigured: isPushConfigured() });
+  } catch (error) {
+    res.status(500).json({ error: "Error loading notification preferences" });
+  }
+});
+
+app.post("/api/notifications/preferences", authenticate, async (req, res) => {
+  try {
+    const userId = (req as any).userId;
+    const incoming = req.body?.preferences;
+    if (!incoming || typeof incoming !== "object") {
+      return res.status(400).json({ error: "preferences object is required" });
+    }
+    const db = await dbManager.readDb();
+    const user = db.users.find(u => u.id === userId);
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    // Only known boolean fields are taken; anything else is ignored.
+    const next = { ...prefsFor(user) };
+    for (const key of Object.keys(DEFAULT_NOTIFICATION_PREFS) as (keyof typeof DEFAULT_NOTIFICATION_PREFS)[]) {
+      if (typeof incoming[key] === "boolean") next[key] = incoming[key];
+    }
+    user.notificationPrefs = next;
+    await dbManager.writeDb(db);
+    res.json({ preferences: next });
+  } catch (error) {
+    res.status(500).json({ error: "Error saving notification preferences" });
+  }
+});
+
+// Outing reminders — invoked by the Vercel cron (Authorization: Bearer
+// CRON_SECRET) or by an admin. Sends "starts soon" pushes for accepted
+// plans happening within the window, at most once per plan.
+app.post("/api/push/run-reminders", async (req, res) => {
+  try {
+    const cronSecret = process.env.CRON_SECRET;
+    const header = req.headers.authorization || "";
+    const viaCron = !!cronSecret && header === `Bearer ${cronSecret}`;
+    if (!viaCron) {
+      // Fall back to admin authentication for manual runs.
+      const token = header.startsWith("Bearer ") ? header.substring(7) : "";
+      const db0 = await dbManager.readDb();
+      const session = db0.sessions.find(sess => sess.token === token);
+      const caller = session && db0.users.find(u => u.id === session.userId);
+      if (!caller || caller.role !== "admin") {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+    }
+
+    const windowHours = Math.min(24, Math.max(1, Number(req.query.windowHours) || 18));
+    const now = Date.now();
+    const db = await dbManager.readDb();
+
+    let sent = 0;
+    for (const plan of db.plans) {
+      if (plan.status !== "accepted" || plan.reminderSentAt) continue;
+      const start = new Date(`${plan.date}T${plan.time || "00:00"}:00`).getTime();
+      if (isNaN(start) || start < now || start > now + windowHours * 3600 * 1000) continue;
+
+      const hoursAway = Math.max(1, Math.round((start - now) / 3600000));
+      const when = hoursAway <= 2 ? `in ${hoursAway * 60 <= 90 ? "about an hour" : "2 hours"}` : `today at ${plan.time}`;
+      for (const memberId of [plan.senderId, plan.receiverId]) {
+        await sendPushToUser(db, memberId, "outingReminders", {
+          title: "Outing coming up 🪺",
+          body: `Your NEST outing ${when}: ${plan.title}`,
+          url: `/?open=chat&match=${plan.matchId}`,
+          tag: `reminder-${plan.id}`
+        });
+      }
+      plan.reminderSentAt = new Date().toISOString();
+      sent++;
+    }
+
+    await dbManager.writeDb(db);
+    res.json({ success: true, remindersSent: sent, pushConfigured: isPushConfigured() });
+  } catch (error) {
+    res.status(500).json({ error: "Error running reminders" });
+  }
+});
+
 // NEST Memories — a Premium member's personal archive of the outings she
 // attended. Every number is computed from real records (RSVPs, event albums,
 // matches); nothing is ever fabricated. Premium-gated like the outings
@@ -1752,9 +1960,23 @@ app.delete("/api/events/:id", authenticateAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const db = await dbManager.readDb();
-    
+
+    const removed = db.events.find(e => e.id === id);
+    const attendees = db.rsvps.filter(r => r.eventId === id).map(r => r.userId);
+
     db.events = db.events.filter(e => e.id !== id);
     db.rsvps = db.rsvps.filter(r => r.eventId !== id);
+
+    if (removed) {
+      for (const attendeeId of attendees) {
+        await sendPushToUser(db, attendeeId, "eventUpdates", {
+          title: "Outing cancelled 🪺",
+          body: `${removed.title} was cancelled.`,
+          url: "/?open=events",
+          tag: `event-${id}`
+        });
+      }
+    }
 
     await dbManager.writeDb(db);
     res.json({ success: true });
@@ -1812,6 +2034,14 @@ app.post("/api/events/:id/rsvp", authenticate, async (req, res) => {
         createdAt: new Date().toISOString()
       };
       db.rsvps.push(newRsvp);
+
+      await sendPushToUser(db, userId, "eventUpdates", {
+        title: "You're going! 🪺",
+        body: `RSVP confirmed: ${event.title} — ${event.date} at ${event.time}.`,
+        url: `/?open=events&event=${id}`,
+        tag: `rsvp-${id}`
+      });
+
       await dbManager.writeDb(db);
       return res.json({ success: true, userRsvped: true, rsvpsCount: rsvps.length + 1 });
     }

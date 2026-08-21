@@ -27,6 +27,19 @@ export interface User {
   /** When the member accepted the Terms & Conditions, and which version. */
   termsAcceptedAt?: string;
   termsVersion?: string;
+  /** Push-notification preferences; absent means "all enabled". */
+  notificationPrefs?: NotificationPrefs;
+}
+
+/** Which push categories a member wants. The master switch wins over all. */
+export interface NotificationPrefs {
+  enabled: boolean;
+  messages: boolean;
+  matches: boolean;
+  likes: boolean;
+  outings: boolean;
+  outingReminders: boolean;
+  eventUpdates: boolean;
 }
 
 export interface Interests {
@@ -141,6 +154,8 @@ export interface Plan {
   status: PlanStatus;
   createdAt: string;
   respondedAt?: string;
+  /** Set when the "starts soon" push reminder went out (sent at most once). */
+  reminderSentAt?: string;
 }
 
 export interface Recommendation {
@@ -212,6 +227,21 @@ export interface Notification {
   createdAt: string;
 }
 
+/**
+ * One browser push subscription. A member may hold several (phone, laptop);
+ * dead endpoints are pruned when the push service rejects them. The keys are
+ * public key material from the browser, not secrets, but records are only
+ * ever returned to their owner.
+ */
+export interface PushSubscriptionRecord {
+  id: string;
+  userId: string;
+  endpoint: string;
+  keys: { p256dh: string; auth: string };
+  userAgent?: string;
+  createdAt: string;
+}
+
 export interface Session {
   token: string;
   userId: string;
@@ -251,6 +281,7 @@ export interface DbSchema {
   adminAudit: AdminAuditEntry[];
   /** Processed Stripe webhook event IDs (idempotency guard, capped). */
   processedStripeEvents: string[];
+  pushSubscriptions: PushSubscriptionRecord[];
 }
 
 const initialDb: DbSchema = {
@@ -269,6 +300,7 @@ const initialDb: DbSchema = {
   passwordResets: [],
   adminAudit: [],
   processedStripeEvents: [],
+  pushSubscriptions: [],
 };
 
 // Fills in fields introduced after the prototype era so records written by
@@ -293,6 +325,11 @@ function migrateDb(db: DbSchema): boolean {
 
   if (!Array.isArray(db.passwordResets)) {
     db.passwordResets = [];
+    changed = true;
+  }
+
+  if (!Array.isArray(db.pushSubscriptions)) {
+    db.pushSubscriptions = [];
     changed = true;
   }
 

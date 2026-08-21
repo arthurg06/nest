@@ -16,6 +16,8 @@ import {
 import { apiUrl } from "./lib/api";
 import { avatarGradient } from "../shared/avatar";
 import { displayUniversity } from "../shared/universities";
+import NestOnboarding, { ONBOARD_INSTALL_KEY, ONBOARD_NOTIFY_KEY } from "./components/NestOnboarding";
+import { resyncSubscriptionIfGranted, isStandalone } from "./lib/push";
 
 export default function App() {
   // Navigation State: "swipe" | "chat" | "city" | "events" | "profile" | "admin"
@@ -46,6 +48,56 @@ export default function App() {
 
   // UI Match Alert Overlay Modal
   const [newMatchAlert, setNewMatchAlert] = useState<UserProfile | null>(null);
+
+  // First-open onboarding (Home Screen install, then notifications). Each
+  // step remembers its completion per device and never re-appears.
+  const [onboardingStep, setOnboardingStep] = useState<"install" | "notify" | null>(null);
+
+  useEffect(() => {
+    if (!currentUser) return;
+
+    // A device that already granted permission quietly re-registers its
+    // push subscription so the account stays reachable on it.
+    resyncSubscriptionIfGranted();
+
+    // Already running from the Home Screen — the install step is moot.
+    const installDone = localStorage.getItem(ONBOARD_INSTALL_KEY) === "done" || isStandalone();
+    let notifyDone = localStorage.getItem(ONBOARD_NOTIFY_KEY) === "done";
+    if (!notifyDone && "Notification" in window && Notification.permission === "granted") {
+      localStorage.setItem(ONBOARD_NOTIFY_KEY, "done");
+      notifyDone = true;
+    }
+    if (installDone && notifyDone) return;
+    setOnboardingStep(installDone ? "notify" : "install");
+  }, [currentUser ? "in" : "out"]);
+
+  // Notification deep links: "/?open=chat&match=…", "/?open=events&event=…",
+  // "/?open=swipe" — land directly on the relevant screen, then clean the URL.
+  useEffect(() => {
+    if (!currentUser) return;
+    const params = new URLSearchParams(window.location.search);
+    const open = params.get("open");
+    if (!open) return;
+    if (open === "chat") {
+      setActiveTab("chat");
+      const m = params.get("match");
+      if (m) setActiveMatchId(m);
+    } else if (open === "events") {
+      setActiveTab("events");
+      const e = params.get("event");
+      if (e) {
+        window.setTimeout(() => {
+          document.getElementById(`event-card-${e}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+        }, 800);
+      }
+    } else if (open === "swipe") {
+      setActiveTab("swipe");
+    }
+    ["open", "match", "event"].forEach(k => params.delete(k));
+    const url = new URL(window.location.href);
+    url.search = params.toString();
+    window.history.replaceState({}, "", url.toString());
+  }, [currentUser ? "in" : "out"]);
   
   // Search matches filter query
   const [searchMatchQuery, setSearchMatchQuery] = useState("");
@@ -1005,6 +1057,10 @@ export default function App() {
 
         </div>
       </nav>
+
+      {onboardingStep && (
+        <NestOnboarding startAt={onboardingStep} onFinished={() => setOnboardingStep(null)} />
+      )}
 
     </div>
   );
