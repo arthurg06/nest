@@ -243,10 +243,12 @@ export default function SwipeCard({ profile, currentUser, onSwipeLeft, onSwipeRi
                   <span>{profile.nationality}</span>
                 </div>
               )}
-              <div className="flex items-center gap-1.5 font-medium text-foreground">
-                <GraduationCap size={14} className="text-primary" />
-                <span>{displayUniversity(profile.university)}</span>
-              </div>
+              {profile.university && (
+                <div className="flex items-center gap-1.5 font-medium text-foreground">
+                  <GraduationCap size={14} className="text-primary" />
+                  <span>{displayUniversity(profile.university)}</span>
+                </div>
+              )}
               <div className="flex items-center gap-1.5">
                 <MapPin size={14} className="text-muted-foreground" />
                 <span>Currently in {profile.currentCity}</span>

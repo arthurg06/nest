@@ -62,6 +62,9 @@ export default function OnboardingSignUp({ onAuthSuccess }: OnboardingSignUpProp
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [age, setAge] = useState("");
+  // "What are you currently doing?" — university members pick their campus,
+  // working members carry no university at all (and no job questions either).
+  const [occupation, setOccupation] = useState<"" | "university" | "working">("");
   const [university, setUniversity] = useState("");
   const [selectedActivities, setSelectedActivities] = useState<string[]>([]);
   const [animals, setAnimals] = useState("");
@@ -147,7 +150,11 @@ export default function OnboardingSignUp({ onAuthSuccess }: OnboardingSignUpProp
         reportError("NEST is designed for university-aged students (18-35).");
         return;
       }
-      if (!university.trim()) {
+      if (!occupation) {
+        reportError("Please tell us what you're currently doing.");
+        return;
+      }
+      if (occupation === "university" && !university.trim()) {
         reportError("Please select your university from the list.");
         return;
       }
@@ -170,7 +177,7 @@ export default function OnboardingSignUp({ onAuthSuccess }: OnboardingSignUpProp
   const profileFields = () => ({
     name: name.trim(),
     age: Number(age) || 20,
-    university: university.trim(),
+    university: occupation === "working" ? "" : university.trim(),
     currentCity: "Madrid",
     nationality: selectedNationalities.join(", "),
     bio: bio.trim(),
@@ -475,7 +482,7 @@ export default function OnboardingSignUp({ onAuthSuccess }: OnboardingSignUpProp
                     <div className="space-y-4 animate-fade-in">
                       <div>
                         <h3 className="font-sans font-black text-foreground text-lg tracking-tight">About you</h3>
-                        <p className="text-xs text-muted-foreground font-sans mt-0.5">Your age and where you study in Madrid.</p>
+                        <p className="text-xs text-muted-foreground font-sans mt-0.5">Your age and what you're currently doing.</p>
                       </div>
 
                       <div className="space-y-1">
@@ -494,9 +501,46 @@ export default function OnboardingSignUp({ onAuthSuccess }: OnboardingSignUpProp
                       </div>
 
                       <div className="space-y-1">
-                        <label className="text-[10px] font-mono font-bold text-muted-foreground uppercase block">Madrid University</label>
-                        <UniversitySelect value={university} onChange={setUniversity} />
+                        <label className="text-[10px] font-mono font-bold text-muted-foreground uppercase block">What are you currently doing?</label>
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setOccupation("university")}
+                            aria-pressed={occupation === "university"}
+                            className={`rounded-xl px-3.5 py-3 text-sm font-bold transition border cursor-pointer ${
+                              occupation === "university"
+                                ? "bg-primary text-primary-foreground border-primary shadow-pop"
+                                : "bg-card/60 text-foreground border-border hover:bg-card"
+                            }`}
+                          >
+                            🎓 University
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setOccupation("working");
+                              // No university (and no job questions) for
+                              // working members — drop any earlier pick.
+                              setUniversity("");
+                            }}
+                            aria-pressed={occupation === "working"}
+                            className={`rounded-xl px-3.5 py-3 text-sm font-bold transition border cursor-pointer ${
+                              occupation === "working"
+                                ? "bg-primary text-primary-foreground border-primary shadow-pop"
+                                : "bg-card/60 text-foreground border-border hover:bg-card"
+                            }`}
+                          >
+                            💼 Working
+                          </button>
+                        </div>
                       </div>
+
+                      {occupation === "university" && (
+                        <div className="space-y-1 animate-fade-in">
+                          <label className="text-[10px] font-mono font-bold text-muted-foreground uppercase block">Madrid University</label>
+                          <UniversitySelect value={university} onChange={setUniversity} />
+                        </div>
+                      )}
                     </div>
                   )}
 

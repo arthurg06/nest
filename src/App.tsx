@@ -817,9 +817,11 @@ export default function App() {
                                   {m.compatibilityRating}% Match
                                 </span>
                               </div>
-                              <p className="text-[10px] text-muted-foreground truncate leading-tight font-mono">
-                                {displayUniversity(m.profile.university)}
-                              </p>
+                              {m.profile.university && (
+                                <p className="text-[10px] text-muted-foreground truncate leading-tight font-mono">
+                                  {displayUniversity(m.profile.university)}
+                                </p>
+                              )}
                               {lastMsg ? (
                                 <p className="text-[10px] text-muted-foreground truncate mt-1.5 leading-snug font-sans">
                                   {lastMsg.senderId === accountUser?.id ? "You: " : ""}{lastMsg.text}

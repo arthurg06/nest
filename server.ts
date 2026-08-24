@@ -451,11 +451,13 @@ app.post("/api/auth/signup", async (req, res) => {
       return res.status(400).json({ error: "Password must be at least 6 characters" });
     }
 
-    // University must be one of the approved Madrid universities
+    // University is optional — working members sign up without one. When a
+    // university IS given it must be one of the approved Madrid universities
     // (shared/universities.ts). Abbreviations and accent/case variants are
     // resolved to the canonical name so every profile stores the same value.
-    const universityName = canonicalUniversity(university);
-    if (!universityName) {
+    const hasUniversity = typeof university === "string" && university.trim().length > 0;
+    const universityName = hasUniversity ? canonicalUniversity(university) : "";
+    if (hasUniversity && !universityName) {
       return res.status(400).json({ error: "Please select your university from the Madrid list" });
     }
 
@@ -510,7 +512,7 @@ app.post("/api/auth/signup", async (req, res) => {
       name: name,
       age: Number(age) || 20,
       nationality: nationality || "",
-      university: universityName,
+      university: universityName || "",
       currentCity: currentCity || "Madrid",
       languages: languages || [],
       personalityType: personalityType || "",

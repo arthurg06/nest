@@ -47,9 +47,16 @@ describe("sign-up university validation", () => {
     expect(res.body.error).toMatch(/Madrid/);
   });
 
-  it("rejects a missing university", async () => {
+  it("accepts a missing university (working member)", async () => {
     const res = await request(app).post("/api/auth/signup").send(signupBody({ university: undefined }));
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(200);
+    expect(res.body.profile.university).toBe("");
+  });
+
+  it("accepts an empty-string university (working member)", async () => {
+    const res = await request(app).post("/api/auth/signup").send(signupBody({ university: "  " }));
+    expect(res.status).toBe(200);
+    expect(res.body.profile.university).toBe("");
   });
 
   it("stores the canonical name whatever variant was submitted", async () => {
