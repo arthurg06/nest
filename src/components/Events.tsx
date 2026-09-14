@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { Event } from "../types";
-import { Calendar, Clock, MapPin, Sparkles, Check, Bookmark, Crown, X, Trash2, Plus, Lock } from "lucide-react";
-import PremiumInfoModal from "./PremiumInfoModal";
+import { Calendar, Clock, MapPin, Sparkles, Check, Bookmark, X, Trash2, Plus } from "lucide-react";
 import { apiUrl } from "../lib/api";
 
 interface MyEventItem {
@@ -30,20 +29,9 @@ interface MemoriesData {
   totals: { photos: number; attendees: number; connections: number };
 }
 
-export interface SubscriptionInfo {
-  stripeConfigured: boolean;
-  premium: boolean;
-  subscriptionStatus: string | null;
-  hasStripeCustomer: boolean;
-  plan: { name: string; priceCents: number; currency: string; interval: string; label: string };
-}
-
 interface EventsProps {
   events: Event[];
   onToggleRsvp: (eventId: string) => void;
-  isSubscribed: boolean;
-  subscription: SubscriptionInfo | null;
-  onSyncOfficialEvents?: () => void;
   isAdmin: boolean;
   onAddEvent: (title: string, description: string, date: string, time: string, location: string, category: string, price: string, maxParticipants?: number) => void;
   onDeleteEvent?: (id: string) => void;
@@ -51,16 +39,8 @@ interface EventsProps {
   onOpenPlanChat?: (matchId: string) => void;
 }
 
-export default function Events({ events, onToggleRsvp, isSubscribed, subscription, onSyncOfficialEvents, isAdmin, onAddEvent, onDeleteEvent, onOpenPlanChat }: EventsProps) {
+export default function Events({ events, onToggleRsvp, isAdmin, onAddEvent, onDeleteEvent, onOpenPlanChat }: EventsProps) {
   const [activeTab, setActiveTab] = React.useState<string>("all");
-  // Small upsell when a non-Premium member tries to RSVP; the full Premium
-  // page opens from its "More Information" button (and from the banner).
-  const [showUpsell, setShowUpsell] = useState(false);
-  const [showPremiumInfo, setShowPremiumInfo] = useState(false);
-  const [isRedirecting, setIsRedirecting] = useState(false);
-  const [paymentError, setPaymentError] = useState("");
-
-  const stripeReady = subscription?.stripeConfigured === true;
 
   // "My Upcoming Events" — the member's own upcoming confirmed plans,
   // scoped to her account by the server; shown in a dedicated modal.
@@ -78,14 +58,10 @@ export default function Events({ events, onToggleRsvp, isSubscribed, subscriptio
     return () => { alive = false; };
   }, [showMyEvents, events]);
 
-  // NEST Memories — Premium members' personal outing archive, computed
+  // NEST Memories — the member's personal experience archive, computed
   // server-side from real attendance data.
   const [memoriesData, setMemoriesData] = useState<MemoriesData | null>(null);
   React.useEffect(() => {
-    if (!isSubscribed) {
-      setMemoriesData(null);
-      return;
-    }
     let alive = true;
     fetch(apiUrl("/api/memories"), {
       headers: { "Authorization": `Bearer ${localStorage.getItem("nest_token")}` }
@@ -94,51 +70,7 @@ export default function Events({ events, onToggleRsvp, isSubscribed, subscriptio
       .then(d => { if (alive && d) setMemoriesData(d); })
       .catch(() => {});
     return () => { alive = false; };
-  }, [isSubscribed, events]);
-
-  // Stripe-hosted checkout: the browser is redirected to Stripe; no card
-  // data is ever collected in this app.
-  const handleStartCheckout = async () => {
-    setPaymentError("");
-    setIsRedirecting(true);
-    try {
-      const res = await fetch(apiUrl("/api/subscription/checkout"), {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${localStorage.getItem("nest_token")}`
-        }
-      });
-      const data = await res.json();
-      if (!res.ok || !data.url) {
-        throw new Error(data.error || "Checkout is unavailable right now.");
-      }
-      window.location.href = data.url;
-    } catch (err: any) {
-      setPaymentError(err.message || "Checkout is unavailable right now.");
-      setIsRedirecting(false);
-    }
-  };
-
-  const handleOpenPortal = async () => {
-    setPaymentError("");
-    try {
-      const res = await fetch(apiUrl("/api/subscription/portal"), {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${localStorage.getItem("nest_token")}`
-        }
-      });
-      const data = await res.json();
-      if (!res.ok || !data.url) {
-        throw new Error(data.error || "The billing portal is unavailable right now.");
-      }
-      window.location.href = data.url;
-    } catch (err: any) {
-      setPaymentError(err.message || "The billing portal is unavailable right now.");
-    }
-  };
+  }, [events]);
 
   // Admin form state
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -152,7 +84,7 @@ export default function Events({ events, onToggleRsvp, isSubscribed, subscriptio
   const [newMaxPart, setNewMaxPart] = useState("");
 
   const categories = [
-    { id: "all", label: "All Events" },
+    { id: "all", label: "All Experiences" },
     { id: "social", label: "Social Mixer" },
     { id: "study", label: "Study & Coffee" },
     { id: "wellness", label: "Wellness & Sports" }
@@ -171,14 +103,6 @@ export default function Events({ events, onToggleRsvp, isSubscribed, subscriptio
       case "study": return "📚☕";
       case "wellness": return "🧘‍♀️🤸‍♀️";
       default: return "🏛️🌅";
-    }
-  };
-
-  const handleRsvpClick = (eventId: string) => {
-    if (!isSubscribed) {
-      setShowUpsell(true);
-    } else {
-      onToggleRsvp(eventId);
     }
   };
 
@@ -209,58 +133,30 @@ export default function Events({ events, onToggleRsvp, isSubscribed, subscriptio
   return (
     <div className="space-y-6 max-w-4xl mx-auto relative">
       
-      {/* Premium Subscription Banner Indicator */}
-      <div className={`p-4 rounded-2xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm ${
-        isSubscribed 
-          ? "bg-gradient-to-r from-amber-50 to-orange-50 border-amber-200 text-amber-800" 
-          : "bg-card border-border text-foreground"
-      }`}>
-        <div className="flex items-center gap-3">
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-            isSubscribed ? "bg-amber-500 text-white" : "bg-muted text-muted-foreground"
-          }`}>
-            <Crown size={20} className={isSubscribed ? "animate-bounce" : ""} />
-          </div>
-          <div>
-            <h4 className="font-sans font-black text-xs uppercase tracking-wider">
-              {isSubscribed ? "NEST Premium Membership Active 👑" : "NEST Basic Student Account"}
-            </h4>
-            <p className="font-sans text-[11px] text-muted-foreground leading-tight mt-0.5">
-              {isSubscribed
-                ? "Full access to every official NEST outing. Enjoy Madrid!"
-                : "Outings are a Premium experience — membership unlocks the details."
-              }
-            </p>
-          </div>
-        </div>
-
-        {isSubscribed ? (
-          subscription?.hasStripeCustomer && (
-            <button
-              onClick={handleOpenPortal}
-              className="bg-card hover:bg-card text-foreground border border-border font-sans text-xs font-bold px-4 py-2 rounded-xl transition"
-            >
-              Manage subscription
-            </button>
-          )
-        ) : (
-          <button
-            onClick={() => setShowPremiumInfo(true)}
-            className="bg-slate-900 hover:bg-slate-800 text-rose-300 border border-slate-700 font-sans text-xs font-bold px-4 py-2 rounded-xl transition shadow-pop"
-          >
-            Join NEST Premium
-          </button>
-        )}
+      {/* NEST EXPERIENCES — free app, individually priced real-life events.
+          No membership, no subscription: you only pay when you book. */}
+      <div className="bg-card/50 backdrop-blur-md p-6 rounded-[28px] border border-border/60 shadow-sm space-y-2 animate-fade-in">
+        <span className="font-mono text-[10px] font-black tracking-widest text-primary uppercase">NEST Experiences</span>
+        <h2 className="font-display text-3xl text-foreground leading-tight">
+          Meet your people IRL.
+        </h2>
+        <p className="font-sans text-xs text-muted-foreground leading-relaxed max-w-md">
+          From dinners and nights out to wellness, creative experiences and spontaneous
+          plans — NEST Experiences are designed to take your friendships offline.
+        </p>
+        <p className="font-sans text-[11px] font-bold text-foreground">
+          NEST is free. You only pay for the experiences you choose to book.
+        </p>
       </div>
 
-      {/* Header text with Host Gathering Button removed, official badges only */}
+      {/* Section header + admin publishing */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-fade-in">
         <div>
-          <h2 className="font-display text-3xl text-foreground">
-            Official outings
-          </h2>
+          <h3 className="font-display text-2xl text-foreground">
+            Upcoming experiences
+          </h3>
           <p className="font-sans text-xs text-muted-foreground mt-1">
-            Curated by the NEST team. Membership unlocks the outings.
+            Curated by NEST. Each experience has its own price — many are free.
           </p>
         </div>
         {isAdmin && (
@@ -269,7 +165,7 @@ export default function Events({ events, onToggleRsvp, isSubscribed, subscriptio
             className="bg-primary hover:bg-primary/90 text-primary-foreground font-sans text-xs font-black px-4 py-2 rounded-xl transition flex items-center gap-1 cursor-pointer shrink-0"
           >
             <Plus size={14} />
-            <span>Publish outing</span>
+            <span>Publish experience</span>
           </button>
         )}
       </div>
@@ -280,7 +176,7 @@ export default function Events({ events, onToggleRsvp, isSubscribed, subscriptio
           <div className="flex items-center justify-between border-b border-border/70 pb-2.5">
             <h3 className="font-sans font-black text-foreground text-xs uppercase tracking-wider flex items-center gap-1.5">
               <Sparkles size={16} className="text-primary" />
-              <span>Admin: Publish Curated Outing</span>
+              <span>Admin: Publish NEST Experience</span>
             </h3>
             <button type="button" onClick={() => setShowCreateForm(false)} aria-label="Close" className="text-muted-foreground hover:text-foreground p-2 -m-2 rounded-lg">
               <X size={16} />
@@ -289,7 +185,7 @@ export default function Events({ events, onToggleRsvp, isSubscribed, subscriptio
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1">
-              <label className="text-[10px] font-mono font-bold text-muted-foreground uppercase block">Outing Title</label>
+              <label className="text-[10px] font-mono font-bold text-muted-foreground uppercase block">Experience Title</label>
               <input
                 type="text"
                 required
@@ -315,13 +211,13 @@ export default function Events({ events, onToggleRsvp, isSubscribed, subscriptio
           </div>
 
           <div className="space-y-1">
-            <label className="text-[10px] font-mono font-bold text-muted-foreground uppercase block">Outing Description</label>
+            <label className="text-[10px] font-mono font-bold text-muted-foreground uppercase block">Experience Description</label>
             <textarea
               required
               rows={2}
               value={newDesc}
               onChange={(e) => setNewDesc(e.target.value)}
-              placeholder="Provide a warm description of the outing, meetups spots, etc."
+              placeholder="Provide a warm description of the experience, meeting spots, etc."
               className="w-full bg-card border border-border rounded-xl p-3 text-xs text-foreground focus:outline-none resize-none"
             />
           </div>
@@ -369,7 +265,7 @@ export default function Events({ events, onToggleRsvp, isSubscribed, subscriptio
                 type="text"
                 value={newPrice}
                 onChange={(e) => setNewPrice(e.target.value)}
-                placeholder="e.g. Free or €5"
+                placeholder="e.g. Free or €38"
                 className="w-full bg-card border border-border rounded-xl px-3 py-2 text-xs text-foreground focus:outline-none"
               />
             </div>
@@ -397,7 +293,7 @@ export default function Events({ events, onToggleRsvp, isSubscribed, subscriptio
               type="submit"
               className="px-5 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl text-xs font-bold shadow-md shadow-rose-200/50"
             >
-              Publish Outing
+              Publish Experience
             </button>
           </div>
         </form>
@@ -434,53 +330,10 @@ export default function Events({ events, onToggleRsvp, isSubscribed, subscriptio
         ))}
       </div>
 
-      {/* Events Grid layout */}
+      {/* Experiences grid */}
       {filteredEvents.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          {filteredEvents.map(event => event.teaser ? (
-            /* Premium teaser — the server sent only the category; there is
-               genuinely nothing else here to reveal. */
-            <div
-              key={event.id}
-              className="bg-card/40 backdrop-blur-md rounded-[28px] border border-border/60 overflow-hidden shadow-sm flex flex-col animate-fade-in"
-            >
-              <div className="h-32 relative flex items-center justify-center overflow-hidden">
-                <div className={`absolute inset-0 bg-gradient-to-tr ${
-                  event.category === "social"
-                    ? "from-rose-200 to-amber-100"
-                    : event.category === "study"
-                    ? "from-indigo-100 to-sky-100"
-                    : "from-emerald-100 to-teal-50"
-                } opacity-40`} />
-                <div className="z-10 text-center">
-                  <span className="text-3xl block mb-1.5 select-none blur-[1px]">{getCategoryImageEmoji(event.category)}</span>
-                  <span className="bg-card/50 backdrop-blur-md border border-border/40 text-foreground text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full font-mono tracking-widest">
-                    {event.category}
-                  </span>
-                </div>
-              </div>
-
-              <div className="p-5 flex-1 flex flex-col items-center justify-center text-center space-y-1.5">
-                <span className="inline-flex items-center gap-1.5 text-[9px] font-mono font-black uppercase tracking-widest text-primary">
-                  <Lock size={11} />
-                  <span>Premium outing</span>
-                </span>
-                <h3 className="font-display text-lg text-foreground">Something special is planned…</h3>
-                <p className="font-sans text-xs text-muted-foreground leading-relaxed max-w-[240px]">
-                  Curated by the NEST team. The where, the when, and who's coming are revealed to Premium members.
-                </p>
-              </div>
-
-              <div className="px-5 py-3.5 bg-card/30 border-t border-border/20 flex justify-center">
-                <button
-                  onClick={() => setShowUpsell(true)}
-                  className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-rose-300 font-sans text-xs font-bold shadow-pop transition"
-                >
-                  Unlock with Premium
-                </button>
-              </div>
-            </div>
-          ) : (
+          {filteredEvents.map(event => (
             <div
               key={event.id}
               id={`event-card-${event.id}`}
@@ -537,6 +390,39 @@ export default function Events({ events, onToggleRsvp, isSubscribed, subscriptio
                       <span className="truncate">{event.location}</span>
                     </div>
                   </div>
+
+                  {/* Price transparency — rendered only when the experience
+                      declares what its price does (and does not) cover. */}
+                  {(event.includes?.length || event.notIncluded?.length) ? (
+                    <div className="bg-muted/40 border border-border/40 rounded-xl p-3 space-y-1.5">
+                      {event.includes && event.includes.length > 0 && (
+                        <div>
+                          <span className="text-[9px] font-mono font-black uppercase tracking-widest text-muted-foreground block mb-1">Includes</span>
+                          <ul className="space-y-0.5">
+                            {event.includes.map(item => (
+                              <li key={item} className="flex items-start gap-1.5 text-[11px] text-muted-foreground font-sans">
+                                <Check size={11} className="text-success shrink-0 mt-0.5" />
+                                <span>{item}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      {event.notIncluded && event.notIncluded.length > 0 && (
+                        <div>
+                          <span className="text-[9px] font-mono font-black uppercase tracking-widest text-muted-foreground block mb-1">Not included</span>
+                          <ul className="space-y-0.5">
+                            {event.notIncluded.map(item => (
+                              <li key={item} className="flex items-start gap-1.5 text-[11px] text-muted-foreground font-sans">
+                                <X size={11} className="text-muted-foreground shrink-0 mt-0.5" />
+                                <span>{item}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  ) : null}
                 </div>
               </div>
 
@@ -569,7 +455,7 @@ export default function Events({ events, onToggleRsvp, isSubscribed, subscriptio
                     return (
                       <button
                         disabled={isFull && !event.userRsvped}
-                        onClick={() => handleRsvpClick(event.id)}
+                        onClick={() => onToggleRsvp(event.id)}
                         className={`px-4 py-2 rounded-xl font-sans text-xs font-bold shadow-md transition-all flex items-center gap-1 active:scale-95 ${
                           event.userRsvped
                             ? "bg-slate-950 text-rose-400 border border-slate-800 hover:bg-slate-900"
@@ -584,11 +470,11 @@ export default function Events({ events, onToggleRsvp, isSubscribed, subscriptio
                             <span>Attending</span>
                           </>
                         ) : isFull ? (
-                          <span>Event Full</span>
+                          <span>Fully booked</span>
                         ) : (
                           <>
                             <Bookmark size={12} />
-                            <span>RSVP Now</span>
+                            <span>Book your spot</span>
                           </>
                         )}
                       </button>
@@ -600,26 +486,21 @@ export default function Events({ events, onToggleRsvp, isSubscribed, subscriptio
           ))}
         </div>
       ) : (
+        /* Coming soon — the honest state while no experience is scheduled.
+           No fake cards, dates, prices, or availability. */
         <div className="bg-card/40 backdrop-blur-xl rounded-[28px] border border-border p-8 text-center max-w-md mx-auto space-y-4 py-12 animate-fade-in">
-          <span className="text-4xl select-none block">🗓️</span>
-          <h3 className="font-display text-lg text-foreground">No outings scheduled yet</h3>
+          <span className="text-4xl select-none block">🪺✨</span>
+          <h3 className="font-display text-xl text-foreground">Coming soon.</h3>
           <p className="font-sans text-xs text-muted-foreground leading-relaxed max-w-xs mx-auto">
-            New outings from the NEST team will appear here.
+            We're currently putting together the first NEST experiences in Madrid.
+            They'll appear right here — you'll be the first to know.
           </p>
-          {onSyncOfficialEvents && (
-            <button
-              onClick={onSyncOfficialEvents}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground font-sans text-xs font-black px-5 py-2.5 rounded-xl shadow-md transition-all active:scale-95 cursor-pointer mt-2"
-            >
-              Sync NEST Curated Outings
-            </button>
-          )}
         </div>
       )}
 
-      {/* NEST MEMORIES — Premium members' personal archive of attended
-          outings. Every number comes from the server's real records. */}
-      {isSubscribed && (
+      {/* NEST MEMORIES — the member's personal archive of attended
+          experiences. Every number comes from the server's real records. */}
+      {memoriesData && (
         <div className="bg-card/40 backdrop-blur-md rounded-[28px] border border-border/60 p-6 shadow-sm space-y-4 animate-fade-in">
           <div className="flex items-center gap-2 border-b border-border/30 pb-3">
             <span className="text-lg select-none">🪺</span>
@@ -740,45 +621,6 @@ export default function Events({ events, onToggleRsvp, isSubscribed, subscriptio
             </div>
           </div>
         </div>
-      )}
-
-      {/* Premium upsell — shown when a non-Premium member tries to RSVP */}
-      {showUpsell && (
-        <div className="fixed inset-0 bg-slate-950/75 backdrop-blur-md flex items-center justify-center p-4 z-[80] animate-fade-in select-text">
-          <div className="bg-card rounded-[32px] border border-border max-w-sm w-full shadow-2xl p-6 pt-8 text-center space-y-3 animate-scale-up relative">
-            <button
-              onClick={() => setShowUpsell(false)}
-              aria-label="Close"
-              className="absolute top-3 right-3 text-muted-foreground hover:text-foreground p-2.5 rounded-full hover:bg-muted transition"
-            >
-              <X size={16} />
-            </button>
-            <span className="text-3xl block select-none">🪺</span>
-            <h3 className="font-sans font-black text-base text-foreground leading-snug">
-              Oops! This feature is only for NEST Premium users.
-            </h3>
-            <p className="font-sans text-xs text-muted-foreground leading-relaxed">
-              Join NEST Premium and get access to exclusive events curated by our official NEST team.
-            </p>
-            <button
-              onClick={() => { setShowUpsell(false); setShowPremiumInfo(true); }}
-              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-sans text-xs font-black py-3 rounded-2xl transition shadow-pop"
-            >
-              More Information
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Dedicated NEST Premium page */}
-      {showPremiumInfo && (
-        <PremiumInfoModal
-          onClose={() => setShowPremiumInfo(false)}
-          stripeReady={stripeReady}
-          onStartCheckout={handleStartCheckout}
-          isRedirecting={isRedirecting}
-          paymentError={paymentError}
-        />
       )}
 
     </div>

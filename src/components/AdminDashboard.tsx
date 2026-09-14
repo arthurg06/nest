@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { ShieldCheck, Trash2, Users, MapPin, Search, ExternalLink, Ban, RotateCcw, BadgeCheck, XCircle, Key, Pencil, Crown } from "lucide-react";
+import { ShieldCheck, Trash2, Users, MapPin, Search, ExternalLink, Ban, RotateCcw, BadgeCheck, XCircle, Key, Pencil } from "lucide-react";
 import { Recommendation, UserProfile } from "../types";
 import { apiUrl } from "../lib/api";
 import MemberProfileModal from "./MemberProfileModal";
@@ -13,8 +13,6 @@ interface AdminUser {
   role: "admin" | "member";
   status: "active" | "suspended";
   source: string;
-  isPremium: boolean;
-  premiumExpiresAt?: string;
   lastActiveAt?: string;
   createdAt: string;
   profile: {
@@ -103,36 +101,6 @@ export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboar
     }
   };
 
-  // Manual Premium grant/revoke — how membership is managed until payments
-  // are connected. Server-enforced admin-only; every change is audited.
-  // The confirmation is an inline row, NOT window.confirm(): the desktop
-  // app's webview suppresses native dialogs (confirm silently returns
-  // false), which is why the crown appeared to do nothing.
-  const [confirmingPremiumUserId, setConfirmingPremiumUserId] = useState<string | null>(null);
-
-  const handlePremiumToggle = async (u: AdminUser) => {
-    const granting = !u.isPremium;
-    setConfirmingPremiumUserId(null);
-    setBusyUserId(u.id);
-    try {
-      const res = await fetch(apiUrl(`/api/admin/users/${u.id}/premium`), {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...authHeaders() },
-        body: JSON.stringify({ isPremium: granting })
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        notify(data.error || "Could not update Premium status.");
-        return;
-      }
-      setUsers(prev => prev.map(x => (x.id === u.id ? { ...x, isPremium: data.isPremium } : x)));
-      notify(granting ? `👑 Premium granted to ${u.email}.` : `Premium revoked from ${u.email}.`);
-    } catch {
-      notify("Could not update Premium status.");
-    } finally {
-      setBusyUserId(null);
-    }
-  };
 
   const startEditingUniversity = (u: AdminUser) => {
     setEditingUniversityUserId(u.id);
@@ -386,7 +354,6 @@ export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboar
     const matchesStatus =
       userStatusFilter === "all" ? true :
       userStatusFilter === "suspended" ? u.status === "suspended" :
-      userStatusFilter === "premium" ? u.isPremium :
       userStatusFilter === "admins" ? u.role === "admin" :
       (u.profile?.verificationStatus || "unsubmitted") === userStatusFilter;
     return matchesTerm && matchesStatus;
@@ -630,7 +597,6 @@ export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboar
               <option value="rejected">Verification rejected</option>
               <option value="unsubmitted">Not submitted</option>
               <option value="suspended">Suspended</option>
-              <option value="premium">Premium</option>
               <option value="admins">Admins</option>
             </select>
           </div>
@@ -684,7 +650,7 @@ export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboar
                           <div>
                             <h4 className={`font-sans font-bold text-foreground ${u.profile ? "hover:text-primary" : ""}`}>{u.profile?.name || "Unfinished profile"}</h4>
                             <span className="text-[10px] text-muted-foreground font-sans">
-                              {u.profile ? `Age ${u.profile.age}` : ""}{u.isPremium ? " · Premium" : ""}{u.role === "admin" ? " · Admin" : ""}
+                              {u.profile ? `Age ${u.profile.age}` : ""}{u.role === "admin" ? " · Admin" : ""}
                             </span>
                           </div>
                         </button>
@@ -756,39 +722,6 @@ export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboar
                           <span className="text-[10px] text-muted-foreground italic font-sans pr-2">Admin</span>
                         ) : (
                           <div className="flex items-center justify-end gap-1.5">
-                            {confirmingPremiumUserId === u.id ? (
-                              <span className="inline-flex items-center gap-1.5 bg-card border border-border rounded-lg px-2 py-1 animate-fade-in">
-                                <span className="text-[10px] font-bold text-foreground whitespace-nowrap">
-                                  {u.isPremium ? "Revoke Premium?" : "Grant Premium?"}
-                                </span>
-                                <button
-                                  onClick={() => setConfirmingPremiumUserId(null)}
-                                  className="text-[10px] font-bold text-muted-foreground hover:text-foreground px-1.5 py-1 cursor-pointer"
-                                >
-                                  No
-                                </button>
-                                <button
-                                  onClick={() => handlePremiumToggle(u)}
-                                  disabled={busyUserId !== null}
-                                  className="text-[10px] font-black bg-primary text-primary-foreground rounded px-2 py-1 hover:bg-primary/90 cursor-pointer"
-                                >
-                                  Yes
-                                </button>
-                              </span>
-                            ) : (
-                              <button
-                                onClick={() => setConfirmingPremiumUserId(u.id)}
-                                disabled={busyUserId !== null}
-                                className={`p-2 rounded-lg border transition cursor-pointer ${
-                                  u.isPremium
-                                    ? "bg-amber-50 hover:bg-amber-100 text-amber-600 border-amber-200"
-                                    : "bg-card hover:bg-muted text-muted-foreground border-border"
-                                }`}
-                                title={u.isPremium ? "Revoke NEST Premium" : "Grant NEST Premium"}
-                              >
-                                <Crown size={13} />
-                              </button>
-                            )}
                             <button
                               onClick={() => handleResetLink(u)}
                               disabled={busyUserId !== null}

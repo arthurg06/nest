@@ -56,8 +56,11 @@ only when Diana explicitly asks for the change.
   tokens, manual admin verification of students, server-side authorization on
   every admin and event action, and the existing account-deletion behavior.
 - The **Verified Student** badge shows only for admin-approved users.
-- Premium is **€20 / month**. The Stripe integration is built but dormant (live
-  keys not set yet). Don't change pricing or the payment model on your own.
+- **NEST has no subscription** (since Sep 2026). The app is free; **NEST
+  Experiences** are individually priced real-life events (price = experience
+  cost + NEST's curation margin; simple community events can be free). The old
+  Stripe subscription code is dormant infrastructure kept for a future
+  per-experience checkout. Don't change the monetization model on your own.
 - No fake content: no canned chat messages, no fake matches, no raw credit-card
   form (payments go through Stripe when it's enabled).
 - "Sign out" and "delete account" are separate actions — never merge them.
@@ -68,7 +71,7 @@ only when Diana explicitly asks for the change.
 Big scope, privacy, or App-Store implications — confirm with Diana before
 building any of these; don't add them speculatively: communities backend, group
 chat, live location sharing, public user-created events, push notifications,
-calendar sync, Spotify, contacts access, changes to payments/Premium, a native
+calendar sync, Spotify, contacts access, changes to payments/monetization, a native
 app, AI-generated messages, facial recognition.
 
 ## Gotchas worth knowing

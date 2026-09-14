@@ -1,4 +1,11 @@
-# Stripe — NEST Premium (€20/month)
+# Stripe — legacy subscription integration (dormant)
+
+> **Superseded (Sep 2026):** NEST no longer sells a subscription. The app is
+> free and **NEST Experiences** are individually priced events (experience
+> cost + NEST's curation margin). The integration below remains dormant,
+> disconnected from the UI, and is kept only as plumbing a future
+> per-experience checkout can reuse. The rest of this document describes the
+> old Premium model as built.
 
 The integration is fully implemented behind environment variables and stays
 **dormant until credentials are provided**. While unconfigured, every payment

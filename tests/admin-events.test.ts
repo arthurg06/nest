@@ -1,5 +1,4 @@
 import { describe, it, expect } from "vitest";
-import fs from "fs";
 import request from "supertest";
 import { app, auth, signup, getAdmin, approveUser } from "./helpers";
 
@@ -12,16 +11,6 @@ const eventBody = {
   category: "social",
   price: "Free"
 };
-
-// Test-only helper to grant premium directly in the DB until Stripe drives
-// entitlement (the client-facing self-subscribe endpoint no longer exists).
-function grantPremium(userId: string) {
-  const db = JSON.parse(fs.readFileSync(process.env.DB_PATH!, "utf-8"));
-  const user = db.users.find((u: any) => u.id === userId);
-  user.isPremium = true;
-  user.premiumExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
-  fs.writeFileSync(process.env.DB_PATH!, JSON.stringify(db));
-}
 
 describe("admin API authorization", () => {
   it("regular users cannot access the admin user list", async () => {
@@ -71,21 +60,20 @@ describe("event management authorization", () => {
   });
 });
 
-describe("event RSVP entitlement (server-side)", () => {
-  it("non-premium members cannot RSVP", async () => {
+describe("experience booking (server-side)", () => {
+  it("any member can book a spot — no subscription required", async () => {
     const admin = await getAdmin();
     const event = await request(app).post("/api/events").set(auth(admin.token)).send(eventBody).expect(200);
 
     const user = await signup();
     await approveUser(user.userId);
-    const res = await request(app).post(`/api/events/${event.body.id}/rsvp`).set(auth(user.token));
-    expect(res.status).toBe(403);
-    expect(res.body.requiresPremium).toBe(true);
+    const res = await request(app).post(`/api/events/${event.body.id}/rsvp`).set(auth(user.token)).expect(200);
+    expect(res.body.userRsvped).toBe(true);
 
     await request(app).delete(`/api/events/${event.body.id}`).set(auth(admin.token)).expect(200);
   });
 
-  it("premium members can RSVP and capacity is enforced", async () => {
+  it("capacity is enforced", async () => {
     const admin = await getAdmin();
     const event = await request(app)
       .post("/api/events")
@@ -95,8 +83,6 @@ describe("event RSVP entitlement (server-side)", () => {
 
     const first = await signup();
     const second = await signup();
-    grantPremium(first.userId);
-    grantPremium(second.userId);
 
     const ok = await request(app).post(`/api/events/${event.body.id}/rsvp`).set(auth(first.token)).expect(200);
     expect(ok.body.userRsvped).toBe(true);

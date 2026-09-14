@@ -1,5 +1,10 @@
 # NEST — Product Roadmap (derived from PRODUCT_RESEARCH.md)
 
+> **Model change (Sep 2026):** the Premium subscription described below was
+> removed. NEST is free; monetization is **NEST Experiences** — individually
+> priced, optionally free, curated events (currently in a "coming soon"
+> state). Read Premium/subscription items below through that lens.
+
 **Prepared:** 2026-07-18 · **Basis:** competitive research of 2026-07-18 (see `docs/PRODUCT_RESEARCH.md`).
 **Product today:** React SPA + Express API · profiles (interests, languages, university) · swipe discovery with compatibility % · matches + 1:1 chat · admin-curated events with RSVP · Madrid city guide · manual admin student verification · dormant Stripe Premium (€20/month) · no communities backend, no push, no reporting/blocking.
 

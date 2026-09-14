@@ -78,11 +78,18 @@ export interface Event {
   organizer: string;
   rsvpsCount: number;
   userRsvped: boolean;
-  price: string; // e.g., "Free" or "€5"
+  price: string; // e.g., "Free" or "€38" — each experience carries its own price
   maxParticipants?: number; // Maximum amount of people (for study sessions, etc)
-  /** True when the server sent a Premium teaser: only id and category are
-      real — every other field is absent for non-Premium members. */
-  teaser?: boolean;
+  // Future NEST Experiences fields — optional so today's events need none of
+  // them; the card renders each one only when it is present.
+  /** Cover image URL. */
+  image?: string;
+  /** What the price covers, one line per item (e.g. "Pilates session"). */
+  includes?: string[];
+  /** What the price does NOT cover, stated just as clearly. */
+  notIncluded?: string[];
+  /** External booking/payment page, once paid checkout exists. */
+  bookingUrl?: string;
 }
 
 export interface Recommendation {

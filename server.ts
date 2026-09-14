@@ -1597,24 +1597,15 @@ app.post("/api/recommendations/:id/like", authenticate, async (req, res) => {
 // OFFICIAL NEST EVENTS ENDPOINTS
 // ----------------------------------------------------
 
-// Get Events. Everyone may browse; RSVPs require an active NEST Premium
-// subscription (see shared/subscription.ts for the plan definition).
+// Get Events (NEST Experiences). Every member sees every experience in
+// full — the app is free, and each experience carries its own price. The
+// old Premium teaser shape is gone.
 app.get("/api/events", authenticate, async (req, res) => {
   try {
     const userId = (req as any).userId;
     const db = await dbManager.readDb();
-    const user = db.users.find(u => u.id === userId);
-
-    // Outings are a Premium experience. Non-Premium members get a teaser
-    // only — no date, time, location, description, attendee info, or
-    // anything else that would let them identify or join the outing. This
-    // is the API's shape, not a frontend hide: there is nothing to bypass.
-    const premiumAccess = !!user && (hasActiveSubscription(user) || user.role === "admin");
 
     const list = db.events.map(evt => {
-      if (!premiumAccess) {
-        return { id: evt.id, category: evt.category, teaser: true };
-      }
       const rsvps = db.rsvps.filter(r => r.eventId === evt.id);
       const isRsvped = rsvps.some(r => r.userId === userId);
       return {
@@ -1864,23 +1855,16 @@ app.post("/api/push/run-reminders", async (req, res) => {
   }
 });
 
-// NEST Memories — a Premium member's personal archive of the outings she
+// NEST Memories — a member's personal archive of the experiences she
 // attended. Every number is computed from real records (RSVPs, event albums,
-// matches); nothing is ever fabricated. Premium-gated like the outings
-// themselves; admins retain access.
+// matches); nothing is ever fabricated. Open to every member — it only ever
+// shows her own attendance.
 app.get("/api/memories", authenticate, async (req, res) => {
   try {
     const userId = (req as any).userId;
     const db = await dbManager.readDb();
     const user = db.users.find(u => u.id === userId);
     if (!user) return res.status(404).json({ error: "User not found" });
-
-    if (!hasActiveSubscription(user) && user.role !== "admin") {
-      return res.status(403).json({
-        error: "Premium membership required",
-        requiresPremium: true
-      });
-    }
 
     const myRsvps = db.rsvps.filter(r => r.userId === userId);
     const myEventIds = new Set(myRsvps.map(r => r.eventId));
@@ -1987,7 +1971,7 @@ app.delete("/api/events/:id", authenticateAdmin, async (req, res) => {
   }
 });
 
-// RSVP to Event (requires active Premium subscription)
+// Book a spot at an experience (free for every member; toggles attendance)
 app.post("/api/events/:id/rsvp", authenticate, async (req, res) => {
   try {
     const userId = (req as any).userId;
@@ -2000,15 +1984,9 @@ app.post("/api/events/:id/rsvp", authenticate, async (req, res) => {
       return res.status(404).json({ error: "User not found" });
     }
 
-    // RSVPs require an active NEST Premium membership (server-side entitlement)
-    if (!hasActiveSubscription(user)) {
-      return res.status(403).json({
-        error: "Premium membership required",
-        requiresPremium: true,
-        message: "An active NEST Premium membership is required to RSVP to official events."
-      });
-    }
-
+    // Booking a spot is open to every member — experiences are individually
+    // priced, and free ones need no payment at all. (Paid-experience checkout
+    // is future work; nothing is charged here.)
     const event = db.events.find(e => e.id === id);
     if (!event) {
       return res.status(404).json({ error: "Event not found" });
@@ -2054,7 +2032,9 @@ app.post("/api/events/:id/rsvp", authenticate, async (req, res) => {
 });
 
 // ----------------------------------------------------
-// PREMIUM SUBSCRIPTION (Stripe)
+// LEGACY SUBSCRIPTION (Stripe) — dormant infrastructure. NEST no longer
+// sells a subscription; nothing in the UI calls these endpoints. Kept so a
+// future per-experience checkout can reuse the Stripe plumbing.
 // ----------------------------------------------------
 
 // Membership + plan status. Safe to call whether or not Stripe is

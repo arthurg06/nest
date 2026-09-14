@@ -3,6 +3,11 @@ import request from "supertest";
 import { app, auth, signup } from "./helpers";
 import { PREMIUM_PLAN, PREMIUM_PRICE_LABEL, formatPrice } from "../shared/subscription";
 
+// LEGACY — these endpoints are dormant infrastructure: the product no longer
+// sells a subscription (NEST Experiences are individually priced events) and
+// no UI calls them. The tests remain to pin their safe, non-charging behavior
+// until a per-experience checkout replaces them.
+
 describe("premium plan configuration", () => {
   it("is €20 per month, stored in integer euro cents", () => {
     expect(PREMIUM_PLAN.priceCents).toBe(2000);
