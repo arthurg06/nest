@@ -663,10 +663,11 @@ async function issueResetToken(db: DbSchema, userId: string, issuedBy: "self" | 
   }
 
   const token = generateResetToken();
+  const expiresAt = new Date(now + RESET_TTL_MINUTES * 60 * 1000).toISOString();
   db.passwordResets.push({
     tokenHash: hashResetToken(token),
     userId,
-    expiresAt: new Date(now + RESET_TTL_MINUTES * 60 * 1000).toISOString(),
+    expiresAt,
     createdAt: new Date(now).toISOString(),
     issuedBy
   });
@@ -675,7 +676,7 @@ async function issueResetToken(db: DbSchema, userId: string, issuedBy: "self" | 
   const cutoff = now - 24 * 60 * 60 * 1000;
   db.passwordResets = db.passwordResets.filter(r => new Date(r.expiresAt).getTime() > cutoff);
 
-  return token;
+  return { token, expiresAt };
 }
 
 // Request a reset link. The response never reveals whether the address is
@@ -705,7 +706,15 @@ app.post("/api/auth/forgot-password", async (req, res) => {
       return res.json(genericResponse);
     }
 
-    const token = await issueResetToken(db, user.id, "self");
+    // Without email delivery there is no way to hand the member her token,
+    // so none is issued — issuing one anyway would only invalidate an
+    // admin-made link she may be about to receive. The response is the same
+    // either way; the client explains that the NEST team can help directly.
+    if (!isEmailConfigured()) {
+      return res.json(genericResponse);
+    }
+
+    const { token } = await issueResetToken(db, user.id, "self");
     await dbManager.writeDb(db);
 
     const mail = passwordResetEmail(resetUrlFor(token), RESET_TTL_MINUTES);
@@ -2705,18 +2714,49 @@ app.post("/api/admin/users/:userId/reset-link", authenticateAdmin, async (req, r
     const user = db.users.find(u => u.id === userId);
     if (!user) return res.status(404).json({ error: "User not found" });
 
-    const token = await issueResetToken(db, user.id, "admin");
+    const { token, expiresAt } = await issueResetToken(db, user.id, "admin");
     recordAudit(db, adminId, "user.reset_link", userId);
     await dbManager.writeDb(db);
 
     res.json({
       resetUrl: resetUrlFor(token),
+      expiresAt,
       expiresInMinutes: RESET_TTL_MINUTES,
       note: "Single use. Send it to her directly and never post it anywhere public."
     });
   } catch (error) {
     console.error("Admin reset-link error:", error);
     res.status(500).json({ error: "Could not create a reset link" });
+  }
+});
+
+// Recovery status for the admin panel: whether the newest link for this
+// member is still active, already spent, or expired. Metadata only — the
+// raw link is unrecoverable by design (only its digest is stored), so a
+// fresh link must be generated if the old one was lost.
+app.get("/api/admin/users/:userId/reset-link", authenticateAdmin, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const db = await dbManager.readDb();
+    const user = db.users.find(u => u.id === userId);
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    const newest = db.passwordResets
+      .filter(r => r.userId === userId)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+
+    if (!newest) return res.json({ exists: false });
+    res.json({
+      exists: true,
+      active: !newest.usedAt && new Date(newest.expiresAt).getTime() > Date.now(),
+      used: Boolean(newest.usedAt),
+      createdAt: newest.createdAt,
+      expiresAt: newest.expiresAt,
+      issuedBy: newest.issuedBy
+    });
+  } catch (error) {
+    console.error("Admin reset-link status error:", error);
+    res.status(500).json({ error: "Could not load recovery status" });
   }
 });
 

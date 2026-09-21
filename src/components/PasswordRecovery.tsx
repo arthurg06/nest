@@ -39,18 +39,29 @@ export function ForgotPassword({ onBack }: ForgotPasswordProps) {
     }
   };
 
+  // Two honest outcomes: with email delivery on, the classic "check your
+  // inbox" (which never confirms the address exists); without it, no email
+  // is coming and no token was issued — the NEST team hands out secure
+  // reset links directly instead.
   if (sent) {
     return (
       <div className="space-y-4">
-        <h3 className="font-sans font-black text-foreground text-lg tracking-tight">Check your inbox</h3>
-        <p className="text-xs text-muted-foreground leading-relaxed">
-          If that address belongs to a NEST account, a reset link is on its way. It works once and expires in an hour.
-        </p>
-        {!emailConfigured && (
-          <p className="text-[11px] text-foreground bg-accent/40 border border-border/70 rounded-xl p-3 leading-relaxed">
-            Heads up: email delivery isn't switched on yet, so the message won't actually arrive.
-            Ask the NEST team directly and they can send you a reset link.
-          </p>
+        {emailConfigured ? (
+          <>
+            <h3 className="font-sans font-black text-foreground text-lg tracking-tight">Check your inbox</h3>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              If that address belongs to a NEST account, a reset link is on its way. It works once and expires in an hour.
+            </p>
+          </>
+        ) : (
+          <>
+            <h3 className="font-sans font-black text-foreground text-lg tracking-tight">Contact the NEST team</h3>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Email password recovery isn't available yet. If you need to regain access to your
+              account, contact the NEST team and we'll provide a secure reset link — it works
+              once and expires in an hour.
+            </p>
+          </>
         )}
         <button
           type="button"
@@ -68,7 +79,7 @@ export function ForgotPassword({ onBack }: ForgotPasswordProps) {
       <div>
         <h3 className="font-sans font-black text-foreground text-lg tracking-tight">Forgot your password?</h3>
         <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-          Enter the email you sign in with and we'll send you a link to choose a new password.
+          Enter the email associated with your NEST account.
         </p>
       </div>
 
@@ -202,9 +213,10 @@ export function ResetPassword({ token, onDone }: ResetPasswordProps) {
     return (
       <div className="space-y-4 text-center">
         <span className="text-4xl block select-none">⏳</span>
-        <h3 className="font-sans font-black text-foreground text-lg">This link has expired</h3>
+        <h3 className="font-sans font-black text-foreground text-lg">This reset link has expired</h3>
         <p className="text-xs text-muted-foreground leading-relaxed">
-          Reset links work once and last an hour. Ask for a new one and it'll be ready in a moment.
+          Reset links work once and expire after an hour. Please contact the NEST team to
+          request a new password reset link.
         </p>
         <button
           type="button"

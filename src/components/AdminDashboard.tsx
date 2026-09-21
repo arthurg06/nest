@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { ShieldCheck, Trash2, Users, MapPin, Search, ExternalLink, Ban, RotateCcw, BadgeCheck, XCircle, Key, Pencil } from "lucide-react";
+import { ShieldCheck, Trash2, Users, MapPin, Search, ExternalLink, Ban, RotateCcw, BadgeCheck, XCircle, Key, Pencil, Copy, X } from "lucide-react";
 import { Recommendation, UserProfile } from "../types";
 import { apiUrl } from "../lib/api";
 import MemberProfileModal from "./MemberProfileModal";
@@ -47,6 +47,16 @@ interface VerificationRequest {
     reviewedAt?: string;
     rejectionReason?: string;
   };
+}
+
+/** Metadata about a member's newest reset link — never the link itself. */
+interface RecoveryStatus {
+  exists: boolean;
+  active?: boolean;
+  used?: boolean;
+  createdAt?: string;
+  expiresAt?: string;
+  issuedBy?: "self" | "admin";
 }
 
 interface AdminDashboardProps {
@@ -245,13 +255,49 @@ export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboar
     }
   };
 
-  // Recovery without email delivery: the admin generates a one-time link and
-  // passes it to the member through a channel she already trusts. The admin
-  // never sees or sets the password herself.
-  const handleResetLink = async (user: AdminUser) => {
-    setBusyUserId(user.id);
+  // ACCOUNT RECOVERY — email delivery is off, so the admin generates a
+  // one-time reset link here and passes it to the member through a channel
+  // she already trusts. The admin never sees or sets a password; the server
+  // stores only the token's digest, so a lost link cannot be re-displayed —
+  // only replaced (which invalidates the previous one).
+  const [recoveryUser, setRecoveryUser] = useState<AdminUser | null>(null);
+  const [recoveryStatus, setRecoveryStatus] = useState<RecoveryStatus | null>(null);
+  const [recoveryLink, setRecoveryLink] = useState<{ url: string; expiresAt: string } | null>(null);
+  const [recoveryBusy, setRecoveryBusy] = useState(false);
+  const [recoveryCopied, setRecoveryCopied] = useState(false);
+  const [recoveryNow, setRecoveryNow] = useState(Date.now());
+
+  // Keep the "expires in X min" figures honest while the panel is open.
+  useEffect(() => {
+    if (!recoveryUser) return;
+    const timer = window.setInterval(() => setRecoveryNow(Date.now()), 30000);
+    return () => window.clearInterval(timer);
+  }, [recoveryUser]);
+
+  const loadRecoveryStatus = async (userId: string) => {
     try {
-      const res = await fetch(apiUrl(`/api/admin/users/${user.id}/reset-link`), {
+      const res = await fetch(apiUrl(`/api/admin/users/${userId}/reset-link`), { headers: authHeaders() });
+      const data = await res.json();
+      if (res.ok) setRecoveryStatus(data);
+    } catch {
+      /* the panel keeps its neutral "checking" state */
+    }
+  };
+
+  const openRecovery = (user: AdminUser) => {
+    setRecoveryUser(user);
+    setRecoveryStatus(null);
+    setRecoveryLink(null);
+    setRecoveryCopied(false);
+    setRecoveryNow(Date.now());
+    loadRecoveryStatus(user.id);
+  };
+
+  const handleGenerateResetLink = async () => {
+    if (!recoveryUser) return;
+    setRecoveryBusy(true);
+    try {
+      const res = await fetch(apiUrl(`/api/admin/users/${recoveryUser.id}/reset-link`), {
         method: "POST",
         headers: authHeaders()
       });
@@ -260,18 +306,29 @@ export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboar
         notify(data.error || "Could not create a reset link.");
         return;
       }
-      try {
-        await navigator.clipboard.writeText(data.resetUrl);
-        notify(`Reset link copied — send it to ${user.profile?.name || "her"} directly. It works once, for ${data.expiresInMinutes} minutes.`);
-      } catch {
-        window.prompt("Copy this single-use reset link and send it to her directly:", data.resetUrl);
-      }
+      setRecoveryLink({ url: data.resetUrl, expiresAt: data.expiresAt });
+      setRecoveryCopied(false);
+      setRecoveryNow(Date.now());
+      loadRecoveryStatus(recoveryUser.id);
     } catch {
       notify("Could not create a reset link — network error.");
     } finally {
-      setBusyUserId(null);
+      setRecoveryBusy(false);
     }
   };
+
+  const handleCopyResetLink = async () => {
+    if (!recoveryLink) return;
+    try {
+      await navigator.clipboard.writeText(recoveryLink.url);
+      setRecoveryCopied(true);
+      window.setTimeout(() => setRecoveryCopied(false), 2500);
+    } catch {
+      window.prompt("Copy this single-use reset link:", recoveryLink.url);
+    }
+  };
+
+  const minutesLeft = (iso: string) => Math.max(0, Math.ceil((new Date(iso).getTime() - recoveryNow) / 60000));
 
   const handleSuspendToggle = async (user: AdminUser) => {
     const action = user.status === "suspended" ? "restore" : "suspend";
@@ -723,11 +780,11 @@ export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboar
                         ) : (
                           <div className="flex items-center justify-end gap-1.5">
                             <button
-                              onClick={() => handleResetLink(u)}
+                              onClick={() => openRecovery(u)}
                               disabled={busyUserId !== null}
                               className="bg-card hover:bg-muted text-foreground border border-border rounded-lg p-2 transition cursor-pointer"
-                              title="Create a single-use password reset link"
-                              aria-label="Create a password reset link"
+                              title="Account recovery — generate a single-use password reset link"
+                              aria-label="Open account recovery"
                             >
                               <Key size={13} />
                             </button>
@@ -831,6 +888,108 @@ export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboar
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* ACCOUNT RECOVERY — generate, inspect, and copy a single-use
+          password reset link for one member. The link itself appears only
+          right after generation; the server keeps just its digest. */}
+      {recoveryUser && (
+        <div
+          className="fixed inset-0 z-[80] bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in select-text"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Account Recovery"
+        >
+          <div className="bg-card w-full max-w-md rounded-[28px] border border-border/70 shadow-2xl p-6 space-y-4">
+            <div className="flex items-start justify-between gap-3 border-b border-border/40 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-accent/40 border border-border/50 text-primary flex items-center justify-center shrink-0">
+                  <Key size={16} />
+                </div>
+                <div>
+                  <h3 className="font-sans font-black text-base text-foreground leading-tight">Account Recovery</h3>
+                  <p className="font-mono text-[11px] text-muted-foreground mt-0.5 select-text">{recoveryUser.email}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setRecoveryUser(null)}
+                aria-label="Close"
+                className="text-muted-foreground hover:text-foreground p-2 -m-2 cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Current link status, from the server's records */}
+            <div className="bg-muted/40 border border-border/40 rounded-xl p-3 text-[11px] font-sans leading-relaxed text-muted-foreground">
+              {recoveryStatus === null ? (
+                "Checking the current link status…"
+              ) : !recoveryStatus.exists ? (
+                "No reset link exists for this account right now."
+              ) : recoveryStatus.active ? (
+                <>
+                  An active reset link exists — <span className="font-bold text-foreground">expires in {minutesLeft(recoveryStatus.expiresAt!)} min</span>{" "}
+                  ({recoveryStatus.issuedBy === "admin" ? "created by an admin" : "requested by the member"}).
+                  Generating a new one invalidates it.
+                </>
+              ) : recoveryStatus.used ? (
+                "The last reset link was already used. Generate a new one if she needs to reset again."
+              ) : (
+                "The last reset link expired unused. Generate a new one."
+              )}
+            </div>
+
+            {/* Freshly generated link — shown once, with a copy control */}
+            {recoveryLink && (
+              <div className="bg-accent/30 border border-border/50 rounded-xl p-3.5 space-y-2.5 animate-fade-in">
+                <p className="text-[11px] font-bold text-foreground font-sans">
+                  Reset link generated — single use, expires in {minutesLeft(recoveryLink.expiresAt)} min.
+                </p>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    readOnly
+                    value={recoveryLink.url}
+                    onFocus={e => e.currentTarget.select()}
+                    className="flex-1 min-w-0 bg-card border border-border rounded-lg px-2.5 py-2 text-[10px] font-mono text-foreground focus:outline-none"
+                    aria-label="Password reset link"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleCopyResetLink}
+                    className="bg-slate-900 hover:bg-slate-800 text-rose-300 font-sans text-[11px] font-black px-3 py-2 rounded-lg transition shadow-pop flex items-center gap-1.5 shrink-0 cursor-pointer"
+                  >
+                    <Copy size={12} />
+                    <span>{recoveryCopied ? "Copied!" : "Copy Link"}</span>
+                  </button>
+                </div>
+                <p className="text-[10px] text-muted-foreground leading-normal">
+                  Send it to her directly through a channel she already trusts — never post it
+                  anywhere public. It can't be shown again after this panel closes.
+                </p>
+              </div>
+            )}
+
+            <div className="flex items-center justify-between gap-3 pt-1">
+              <p className="text-[10px] text-muted-foreground leading-normal font-sans">
+                Passwords are never visible to admins — the member chooses her own on the reset page.
+              </p>
+              <button
+                type="button"
+                onClick={handleGenerateResetLink}
+                disabled={recoveryBusy}
+                className="bg-primary hover:bg-primary/90 disabled:opacity-50 text-primary-foreground font-sans text-xs font-black px-4 py-2.5 rounded-xl transition shadow-pop shrink-0 cursor-pointer"
+              >
+                {recoveryBusy
+                  ? "Generating…"
+                  : recoveryLink || recoveryStatus?.active
+                  ? "Generate new link"
+                  : "Generate Reset Link"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
