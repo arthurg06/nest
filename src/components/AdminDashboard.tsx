@@ -634,7 +634,7 @@ export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboar
         <div className="bg-card/40 backdrop-blur-xl rounded-[28px] border border-border/60 p-5 shadow-xl space-y-4">
           <div className="flex flex-col md:flex-row md:items-center gap-3">
             <div className="flex items-center gap-2 bg-card/60 border border-border/80 rounded-xl px-3 py-1.5 max-w-sm w-full">
-              <Search size={14} className="text-muted-foreground" />
+              <Search size={14} className="text-muted-foreground shrink-0" />
               <input
                 type="text"
                 placeholder="Search by name, email, or university…"
@@ -642,6 +642,17 @@ export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboar
                 onChange={(e) => setUserSearch(e.target.value)}
                 className="bg-transparent text-xs text-foreground placeholder-muted-foreground focus:outline-none w-full"
               />
+              {userSearch && (
+                <button
+                  type="button"
+                  onClick={() => setUserSearch("")}
+                  aria-label="Clear search"
+                  title="Clear search"
+                  className="text-muted-foreground hover:text-foreground p-1 -m-1 shrink-0 cursor-pointer"
+                >
+                  <X size={13} />
+                </button>
+              )}
             </div>
             <select
               value={userStatusFilter}
