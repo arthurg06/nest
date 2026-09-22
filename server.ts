@@ -26,6 +26,11 @@ initPush();
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 
+// Every request runs in its own database read scope (see server/db.ts):
+// the auth middleware and the handler share one snapshot instead of each
+// loading the full table from Neon. First middleware, so it wraps everything.
+app.use((req, res, next) => dbManager.runWithRequestScope(() => next()));
+
 // Emails listed in ADMIN_EMAILS (comma-separated) are granted the admin role
 // at sign-up and on login. Configured via environment so no personal data
 // lives in the codebase.
@@ -1246,48 +1251,70 @@ app.post("/api/swipe/undo", authenticate, async (req, res) => {
 });
 
 // Get active matches for current user
+// The matches list as one member sees it — shared by /api/matches and the
+// combined /api/poll refresh.
+function buildMatchesList(db: DbSchema, userId: string) {
+  const myMatches = db.matches.filter(m => m.user1Id === userId || m.user2Id === userId);
+
+  const myProfile = db.profiles.find(p => p.userId === userId);
+
+  return myMatches.map(m => {
+    const otherUserId = m.user1Id === userId ? m.user2Id : m.user1Id;
+    const otherProfile = db.profiles.find(p => p.userId === otherUserId);
+    const messages = db.messages.filter(msg => msg.matchId === m.id);
+
+    // Stable, deterministic score using the same logic as the swipe deck
+    const report = myProfile && otherProfile
+      ? calculateCompatibility(myProfile, otherProfile)
+      : {
+          score: 75,
+          sharedInterests: [] as string[],
+          matchingVibes: [] as string[],
+          explanation: "You are both international students in Madrid looking for friendship."
+        };
+
+    return {
+      id: m.id,
+      otherUserId,
+      profile: otherProfile ? matchedProfileView(otherProfile) : undefined,
+      messages: messages.sort((a,b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()),
+      plans: db.plans.filter(p => p.matchId === m.id),
+      compatibilityRating: report.score,
+      compatibilityReport: {
+        sharedInterests: report.sharedInterests,
+        matchingVibes: report.matchingVibes,
+        explanation: report.explanation
+      }
+    };
+  }).filter(m => m.profile !== undefined); // filter out deleted profiles if any
+}
+
 app.get("/api/matches", authenticate, async (req, res) => {
   try {
     const userId = (req as any).userId;
     const db = await dbManager.readDb();
-
-    const myMatches = db.matches.filter(m => m.user1Id === userId || m.user2Id === userId);
-
-    const myProfile = db.profiles.find(p => p.userId === userId);
-
-    const matchesList = myMatches.map(m => {
-      const otherUserId = m.user1Id === userId ? m.user2Id : m.user1Id;
-      const otherProfile = db.profiles.find(p => p.userId === otherUserId);
-      const messages = db.messages.filter(msg => msg.matchId === m.id);
-
-      // Stable, deterministic score using the same logic as the swipe deck
-      const report = myProfile && otherProfile
-        ? calculateCompatibility(myProfile, otherProfile)
-        : {
-            score: 75,
-            sharedInterests: [] as string[],
-            matchingVibes: [] as string[],
-            explanation: "You are both international students in Madrid looking for friendship."
-          };
-
-      return {
-        id: m.id,
-        otherUserId,
-        profile: otherProfile ? matchedProfileView(otherProfile) : undefined,
-        messages: messages.sort((a,b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()),
-        plans: db.plans.filter(p => p.matchId === m.id),
-        compatibilityRating: report.score,
-        compatibilityReport: {
-          sharedInterests: report.sharedInterests,
-          matchingVibes: report.matchingVibes,
-          explanation: report.explanation
-        }
-      };
-    }).filter(m => m.profile !== undefined); // filter out deleted profiles if any
-
-    res.json(matchesList);
+    res.json(buildMatchesList(db, userId));
   } catch (error) {
     res.status(500).json({ error: "Error loading matches" });
+  }
+});
+
+// Combined poll refresh: everything the client's background poll needs in
+// ONE request (and, with the request read scope, one database read) instead
+// of separate matches + notifications calls. The single steady source of
+// database traffic, kept as small as possible.
+app.get("/api/poll", authenticate, async (req, res) => {
+  try {
+    const userId = (req as any).userId;
+    const db = await dbManager.readDb();
+    res.json({
+      matches: buildMatchesList(db, userId),
+      notifications: db.notifications
+        .filter(n => n.userId === userId)
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    });
+  } catch (error) {
+    res.status(500).json({ error: "Error refreshing" });
   }
 });
 

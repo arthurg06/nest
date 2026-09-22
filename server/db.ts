@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from "node:async_hooks";
 import { normalizeStoredNationalities } from "../shared/countries.js";
 import { selectBackend } from "./storage/index.js";
 
@@ -413,10 +414,25 @@ function seedFromEnv(): DbSchema | null {
 // concurrent requests in one process never share a baseline).
 const baselines = new WeakMap<DbSchema, DbSchema>();
 
+// One database read per request. The authenticate middleware and the route
+// handler each call readDb, which used to mean two full-table loads from
+// Neon for every authenticated request. Inside a request scope the first
+// snapshot is reused — the same object, so writes still diff against the
+// baseline captured at the actual read. Scopes never span requests, so
+// concurrent requests keep isolated snapshots exactly as before.
+const requestScope = new AsyncLocalStorage<{ db?: DbSchema }>();
+
+export function runWithRequestScope<T>(fn: () => T): T {
+  return requestScope.run({}, fn);
+}
+
 // Load the database. A store that has never been written is hydrated from
 // DB_SEED (or starts empty) and persisted, so the seed applies at most once
 // per store lifetime — reseeding a persistent database is impossible.
 export async function readDb(): Promise<DbSchema> {
+  const scope = requestScope.getStore();
+  if (scope?.db) return scope.db;
+
   const backend = selectBackend();
 
   let db = await backend.load();
@@ -435,6 +451,7 @@ export async function readDb(): Promise<DbSchema> {
   }
 
   baselines.set(db, structuredClone(db));
+  if (scope) scope.db = db;
   return db;
 }
 

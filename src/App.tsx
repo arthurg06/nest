@@ -266,25 +266,52 @@ export default function App() {
   // Periodic polls and loader triggers when currentUser changes
   useEffect(() => {
     if (currentUser) {
+      // One combined request refreshes matches + notifications together.
+      const refresh = async () => {
+        try {
+          const res = await fetchWithAuth("/api/poll");
+          if (!res.ok) return;
+          const data = await res.json();
+          setMatches(data.matches);
+          setNotifications(data.notifications);
+        } catch {
+          /* transient — the next tick retries */
+        }
+      };
+
       loadDiscoveryQueue();
-      loadMatches();
       loadEvents();
       loadRecommendations();
-      loadNotifications();
+      refresh();
 
-      // Poll for new messages and notifications. Every poll costs a full
-      // database read server-side, so it pauses while the tab is in the
-      // background and refreshes immediately when she comes back.
+      // Background refresh is the app's only steady database traffic, so it
+      // is deliberately frugal: one combined request per minute, and only
+      // while the tab is visible AND she has interacted within the last ten
+      // minutes. An open-but-idle tab goes quiet — that lets the serverless
+      // database suspend instead of billing compute around the clock — and
+      // returning to the tab (or any interaction) refreshes immediately.
+      const IDLE_LIMIT_MS = 10 * 60 * 1000;
+      let lastActivity = Date.now();
+      const markActivity = () => { lastActivity = Date.now(); };
+
       const poll = () => {
-        if (document.hidden) return;
-        loadMatches();
-        loadNotifications();
+        if (document.hidden || Date.now() - lastActivity > IDLE_LIMIT_MS) return;
+        refresh();
       };
-      const timer = setInterval(poll, 15000);
-      document.addEventListener("visibilitychange", poll);
+      const onVisible = () => {
+        if (document.hidden) return;
+        markActivity();
+        refresh();
+      };
+      const timer = setInterval(poll, 60000);
+      document.addEventListener("visibilitychange", onVisible);
+      window.addEventListener("pointerdown", markActivity);
+      window.addEventListener("keydown", markActivity);
       return () => {
         clearInterval(timer);
-        document.removeEventListener("visibilitychange", poll);
+        document.removeEventListener("visibilitychange", onVisible);
+        window.removeEventListener("pointerdown", markActivity);
+        window.removeEventListener("keydown", markActivity);
       };
     }
   }, [currentUser]);
