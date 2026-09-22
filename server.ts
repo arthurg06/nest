@@ -359,6 +359,21 @@ function clientIp(req: express.Request): string {
   return req.socket.remoteAddress || "unknown";
 }
 
+// When the database itself is unreachable (Neon quota exhausted, outage,
+// rotated credentials), every handler's catch would otherwise answer with
+// its generic 500 — which on the login form reads like a wrong password.
+// A NeonDbError can only come from the storage layer, so those requests
+// get an honest 503 instead; the real cause stays in the server logs.
+const DB_UNAVAILABLE_MESSAGE =
+  "NEST is temporarily unavailable — please try again in a few minutes. Your account and password are unaffected.";
+function respondDbUnavailable(res: express.Response, error: unknown): boolean {
+  if (error instanceof Error && error.name === "NeonDbError") {
+    res.status(503).json({ error: DB_UNAVAILABLE_MESSAGE });
+    return true;
+  }
+  return false;
+}
+
 // Authentication Middleware. Async (storage may be remote); Express 4 does
 // not catch async errors, so the body is fully wrapped.
 async function authenticate(req: express.Request, res: express.Response, next: express.NextFunction) {
@@ -407,6 +422,7 @@ async function authenticate(req: express.Request, res: express.Response, next: e
     next();
   } catch (error) {
     console.error("Authentication error:", error);
+    if (respondDbUnavailable(res, error)) return;
     res.status(500).json({ error: "Authentication failed" });
   }
 }
@@ -565,6 +581,7 @@ app.post("/api/auth/signup", async (req, res) => {
 
   } catch (error: any) {
     console.error("Sign Up Error:", error);
+    if (respondDbUnavailable(res, error)) return;
     res.status(500).json({ error: "Error during sign up" });
   }
 });
@@ -637,6 +654,7 @@ app.post("/api/auth/login", async (req, res) => {
 
   } catch (error: any) {
     console.error("Login Error:", error);
+    if (respondDbUnavailable(res, error)) return;
     res.status(500).json({ error: "Error during login" });
   }
 });
@@ -723,6 +741,7 @@ app.post("/api/auth/forgot-password", async (req, res) => {
     res.json(genericResponse);
   } catch (error) {
     console.error("Forgot-password error:", error);
+    if (respondDbUnavailable(res, error)) return;
     res.status(500).json({ error: "Could not start the reset. Please try again." });
   }
 });
@@ -775,6 +794,7 @@ app.post("/api/auth/reset-password", async (req, res) => {
     res.json({ success: true, message: "Your password has been changed. You can sign in with it now." });
   } catch (error) {
     console.error("Reset-password error:", error);
+    if (respondDbUnavailable(res, error)) return;
     res.status(500).json({ error: "Could not reset the password. Please try again." });
   }
 });
