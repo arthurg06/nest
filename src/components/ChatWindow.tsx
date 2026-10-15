@@ -289,7 +289,12 @@ export default function ChatWindow({
                     {msg.text}
                   </div>
                 )}
-                <span className="text-[9px] text-muted-foreground font-mono mt-1 px-1">
+                <span className="text-[9px] text-muted-foreground font-mono mt-1 px-1 whitespace-nowrap">
+                  {/* Full date · time from the stored timestamp, in the
+                      viewer's own timezone — old messages keep their real
+                      day, month, and year. */}
+                  {new Date(msg.timestamp).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                  {" · "}
                   {new Date(msg.timestamp).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
                 </span>
               </div>

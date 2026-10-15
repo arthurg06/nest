@@ -99,6 +99,9 @@ export default function App() {
   
   // Search matches filter query
   const [searchMatchQuery, setSearchMatchQuery] = useState("");
+  // Chat inbox tab: people she's already talking to vs. matches without a
+  // first message yet. Pure view state — switching never refetches.
+  const [chatTab, setChatTab] = useState<"conversations" | "new">("conversations");
 
   // Quick helper to fetch with Bearer token authentication
   const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
@@ -775,6 +778,33 @@ export default function App() {
                   />
                 </div>
 
+                {/* Inbox tabs — both reachable without any scrolling */}
+                <div className="flex gap-1.5 mt-3 shrink-0 select-none">
+                  {([
+                    { id: "conversations", label: "Current Conversations", count: matches.filter(m => m.messages.length > 0).length, unread: matches.some(m => m.messages.length > 0 && (m.unreadCount || 0) > 0) },
+                    { id: "new", label: "New Matches", count: matches.filter(m => m.messages.length === 0).length, unread: false }
+                  ] as const).map(tab => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setChatTab(tab.id)}
+                      aria-pressed={chatTab === tab.id}
+                      className={`flex-1 px-2 py-2 rounded-xl font-sans text-[11px] font-black transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                        chatTab === tab.id
+                          ? "bg-primary text-primary-foreground shadow-pop"
+                          : "bg-card/60 text-muted-foreground border border-border/50 hover:bg-card"
+                      }`}
+                    >
+                      {tab.unread && chatTab !== tab.id && (
+                        <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" aria-label="Unread messages" />
+                      )}
+                      <span>{tab.label}</span>
+                      {tab.count > 0 && (
+                        <span className={`font-mono text-[9px] ${chatTab === tab.id ? "opacity-80" : ""}`}>({tab.count})</span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+
                 <div className="space-y-2 mt-4 overflow-y-auto flex-1 select-none -mx-2 px-2">
                   {matches.length > 0 ? (
                     (() => {
@@ -853,7 +883,7 @@ export default function App() {
                                 </div>
                               ) : (
                                 <p className="text-[10px] text-primary font-bold mt-1.5 leading-snug font-sans">
-                                  Start the conversation →
+                                  Start the conversation...
                                 </p>
                               )}
                             </div>
@@ -861,28 +891,40 @@ export default function App() {
                         );
                       };
 
-                      return (
-                        <>
-                          {conversations.length > 0 && (
-                            <>
-                              <h4 className="font-mono text-[9px] font-black uppercase tracking-widest text-muted-foreground px-1 pb-1">
-                                Your Conversations
-                              </h4>
-                              {conversations.map(matchRow)}
-                            </>
-                          )}
-                          {newMatches.length > 0 && (
-                            <>
-                              <h4 className={`font-mono text-[9px] font-black uppercase tracking-widest text-muted-foreground px-1 pb-1 ${
-                                conversations.length > 0 ? "pt-3" : ""
-                              }`}>
-                                Start the Conversation With...
-                              </h4>
-                              {newMatches.map(matchRow)}
-                            </>
-                          )}
-                        </>
-                      );
+                      // One tab at a time — never the same person in both.
+                      const shown = chatTab === "conversations" ? conversations : newMatches;
+                      if (shown.length === 0) {
+                        return chatTab === "conversations" ? (
+                          <div className="text-center py-8 px-3 space-y-3">
+                            <p className="text-muted-foreground font-sans text-xs leading-relaxed">
+                              No conversations yet.
+                              {newMatches.length > 0 ? " Your new matches are waiting for a first message ✨" : ""}
+                            </p>
+                            {newMatches.length > 0 && (
+                              <button
+                                onClick={() => setChatTab("new")}
+                                className="bg-primary text-primary-foreground font-sans text-[11px] font-black px-4 py-2.5 rounded-xl hover:bg-primary/90 transition"
+                              >
+                                See New Matches
+                              </button>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="text-center py-8 px-3 space-y-3">
+                            <p className="text-muted-foreground font-sans text-xs leading-relaxed">
+                              No new matches right now — everyone you've matched with is already in
+                              your conversations.
+                            </p>
+                            <button
+                              onClick={() => setActiveTab("swipe")}
+                              className="bg-primary text-primary-foreground font-sans text-[11px] font-black px-4 py-2.5 rounded-xl hover:bg-primary/90 transition"
+                            >
+                              Meet new people
+                            </button>
+                          </div>
+                        );
+                      }
+                      return <>{shown.map(matchRow)}</>;
                     })()
                   ) : (
                     <div className="text-center py-8 px-3 space-y-3">

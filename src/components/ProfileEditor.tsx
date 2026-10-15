@@ -49,6 +49,10 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
   // Collapsed by default so the profile stays compact; purely visual —
   // the spots themselves and how they're managed are untouched.
   const [showMySpots, setShowMySpots] = useState(false);
+  // The read-only Interests block on the profile page — the editor inside
+  // Edit Profile has its own toggle; this is the other rendering of the
+  // same data, previously always expanded.
+  const [showProfileInterests, setShowProfileInterests] = useState(false);
   // Same for the interests picker inside Edit Profile: collapsing never
   // clears a selection, it only hides the controls.
   const [showInterestsEditor, setShowInterestsEditor] = useState(false);
@@ -608,8 +612,19 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
               </div>
 
               <div>
-                <span className="text-[10px] font-sans font-extrabold text-muted-foreground block mb-1.5">Interests</span>
-                {[...currentUser.interests.activities, ...currentUser.interests.social, ...currentUser.interests.music, ...currentUser.interests.lifestyle].length > 0 ? (
+                <div className="flex items-center justify-between gap-2 mb-1.5">
+                  <span className="text-[10px] font-sans font-extrabold text-muted-foreground block">Interests</span>
+                  <button
+                    type="button"
+                    onClick={() => setShowProfileInterests(prev => !prev)}
+                    aria-expanded={showProfileInterests}
+                    className="flex items-center gap-1 text-[10px] font-sans font-black text-primary bg-accent/30 border border-border/50 px-3 py-1.5 rounded-full hover:bg-accent/50 transition cursor-pointer shrink-0"
+                  >
+                    <span>{showProfileInterests ? "Hide" : "Show"}</span>
+                    {showProfileInterests ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                  </button>
+                </div>
+                {!showProfileInterests ? null : [...currentUser.interests.activities, ...currentUser.interests.social, ...currentUser.interests.music, ...currentUser.interests.lifestyle].length > 0 ? (
                   <div className="flex flex-wrap gap-1.5">
                     {[...currentUser.interests.activities, ...currentUser.interests.social, ...currentUser.interests.music, ...currentUser.interests.lifestyle].map(tag => (
                       <span key={tag} className="text-[10px] font-sans font-bold bg-muted/60 text-muted-foreground border border-border/40 px-2.5 py-1 rounded-full">
