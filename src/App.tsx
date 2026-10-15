@@ -316,6 +316,17 @@ export default function App() {
     }
   }, [currentUser]);
 
+  // Opening a chat reads it: persist the marker server-side (so it holds
+  // across devices) and clear the badge locally right away. Re-fires when a
+  // poll brings new messages into the open conversation.
+  useEffect(() => {
+    if (!activeMatchId) return;
+    const open = matches.find(m => m.id === activeMatchId);
+    if (!open || !(open.unreadCount || 0)) return;
+    fetchWithAuth(`/api/chats/${activeMatchId}/read`, { method: "POST" }).catch(() => {});
+    setMatches(prev => prev.map(m => (m.id === activeMatchId ? { ...m, unreadCount: 0 } : m)));
+  }, [activeMatchId, matches]);
+
   // One-step undo: only the profile swiped immediately before, and never one
   // that already became a match (the server refuses that too).
   const [lastSwiped, setLastSwiped] = useState<UserProfile | null>(null);
@@ -478,20 +489,27 @@ export default function App() {
     }
   };
 
-  // Events: toggle RSVP on backend
-  const handleToggleRsvp = async (eventId: string) => {
+  // Events: book or cancel a spot. Returns the server's verdict so the
+  // Experiences tab can drive its popups — success only after the server
+  // confirmed the registration was recorded, `full` for the sold-out case.
+  const handleRsvp = async (
+    eventId: string,
+    whatsapp?: string
+  ): Promise<{ ok: boolean; full?: boolean; error?: string }> => {
     try {
       const res = await fetchWithAuth(`/api/events/${eventId}/rsvp`, {
-        method: "POST"
+        method: "POST",
+        body: JSON.stringify(whatsapp ? { whatsapp } : {})
       });
+      const data = await res.json();
       if (res.ok) {
         loadEvents();
-      } else {
-        const data = await res.json();
-        alert(data.error || "Error updating RSVP.");
+        return { ok: true };
       }
+      return { ok: false, full: data.full === true, error: data.error };
     } catch (err) {
       console.error("Error RSVPing:", err);
+      return { ok: false, error: "Something went wrong. Please try again." };
     }
   };
 
@@ -760,7 +778,7 @@ export default function App() {
                 <div className="space-y-2 mt-4 overflow-y-auto flex-1 select-none -mx-2 px-2">
                   {matches.length > 0 ? (
                     (() => {
-                      const filtered = matches.filter(m => 
+                      const filtered = matches.filter(m =>
                         m.profile.name.toLowerCase().includes(searchMatchQuery.toLowerCase())
                       );
                       if (filtered.length === 0) {
@@ -770,9 +788,23 @@ export default function App() {
                           </div>
                         );
                       }
-                      return filtered.map(m => {
+
+                      // Real message timestamps drive the order: whoever
+                      // wrote (or was written to) most recently sits on top.
+                      const byActivity = [...filtered].sort(
+                        (a, b) =>
+                          new Date(b.lastActivityAt || b.createdAt || 0).getTime() -
+                          new Date(a.lastActivityAt || a.createdAt || 0).getTime()
+                      );
+                      // The split follows actual message history, never the
+                      // mere existence of a match record.
+                      const conversations = byActivity.filter(m => m.messages.length > 0);
+                      const newMatches = byActivity.filter(m => m.messages.length === 0);
+
+                      const matchRow = (m: Match) => {
                         const isSelected = m.id === activeMatchId;
                         const lastMsg = m.messages[m.messages.length - 1];
+                        const unread = (m.unreadCount || 0) > 0;
                         return (
                           <button
                             key={m.id}
@@ -791,8 +823,11 @@ export default function App() {
                             />
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center justify-between mb-0.5">
-                                <h4 className="font-bold text-xs text-foreground leading-none truncate pr-1">
-                                  {m.profile.name}
+                                <h4 className="font-bold text-xs text-foreground leading-none truncate pr-1 flex items-center gap-1.5">
+                                  {unread && (
+                                    <span className="w-2 h-2 rounded-full bg-primary shrink-0" aria-label="Unread messages" />
+                                  )}
+                                  <span className="truncate">{m.profile.name}</span>
                                 </h4>
                                 <span className="text-[9px] bg-accent/30 text-primary font-mono font-black px-1.5 py-0.5 rounded-full shrink-0 border border-border/50">
                                   {m.compatibilityRating}% Match
@@ -804,9 +839,18 @@ export default function App() {
                                 </p>
                               )}
                               {lastMsg ? (
-                                <p className="text-[10px] text-muted-foreground truncate mt-1.5 leading-snug font-sans">
-                                  {lastMsg.senderId === accountUser?.id ? "You: " : ""}{lastMsg.text}
-                                </p>
+                                <div className="flex items-center gap-2 mt-1.5">
+                                  <p className={`text-[10px] truncate leading-snug font-sans flex-1 ${
+                                    unread ? "text-foreground font-bold" : "text-muted-foreground"
+                                  }`}>
+                                    {lastMsg.senderId === accountUser?.id ? "You: " : ""}{lastMsg.text}
+                                  </p>
+                                  {unread && (
+                                    <span className="bg-primary text-primary-foreground text-[9px] font-sans font-black min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center shrink-0">
+                                      {m.unreadCount}
+                                    </span>
+                                  )}
+                                </div>
                               ) : (
                                 <p className="text-[10px] text-primary font-bold mt-1.5 leading-snug font-sans">
                                   Start the conversation →
@@ -815,7 +859,30 @@ export default function App() {
                             </div>
                           </button>
                         );
-                      });
+                      };
+
+                      return (
+                        <>
+                          {conversations.length > 0 && (
+                            <>
+                              <h4 className="font-mono text-[9px] font-black uppercase tracking-widest text-muted-foreground px-1 pb-1">
+                                Your Conversations
+                              </h4>
+                              {conversations.map(matchRow)}
+                            </>
+                          )}
+                          {newMatches.length > 0 && (
+                            <>
+                              <h4 className={`font-mono text-[9px] font-black uppercase tracking-widest text-muted-foreground px-1 pb-1 ${
+                                conversations.length > 0 ? "pt-3" : ""
+                              }`}>
+                                Start the Conversation With...
+                              </h4>
+                              {newMatches.map(matchRow)}
+                            </>
+                          )}
+                        </>
+                      );
                     })()
                   ) : (
                     <div className="text-center py-8 px-3 space-y-3">
@@ -880,7 +947,7 @@ export default function App() {
           {activeTab === "events" && (
             <Events
               events={events}
-              onToggleRsvp={handleToggleRsvp}
+              onRsvp={handleRsvp}
               isAdmin={isAdmin}
               onAddEvent={handleAddEvent}
               onDeleteEvent={handleDeleteEvent}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { ShieldCheck, Trash2, Users, MapPin, Search, ExternalLink, Ban, RotateCcw, BadgeCheck, XCircle, Key, Pencil, Copy, X } from "lucide-react";
+import { ShieldCheck, Trash2, Users, MapPin, Search, ExternalLink, Ban, RotateCcw, BadgeCheck, XCircle, Key, Pencil, Copy, X, Calendar, ChevronDown, ChevronUp } from "lucide-react";
 import { Recommendation, UserProfile } from "../types";
 import { apiUrl } from "../lib/api";
 import MemberProfileModal from "./MemberProfileModal";
@@ -59,6 +59,19 @@ interface RecoveryStatus {
   issuedBy?: "self" | "admin";
 }
 
+/** One experience with everyone who booked a spot — admin eyes only. */
+interface EventGuestsEntry {
+  id: string;
+  title: string;
+  date: string;
+  time: string;
+  location: string;
+  category: string;
+  maxParticipants: number | null;
+  guestCount: number;
+  guests: { userId: string; name: string; photo: string; whatsapp: string | null; rsvpAt: string }[];
+}
+
 interface AdminDashboardProps {
   onDeleteRecommendation?: (id: string) => Promise<boolean>;
 }
@@ -83,7 +96,7 @@ export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboar
   const [recSearch, setRecSearch] = useState("");
   const [verificationFilter, setVerificationFilter] = useState<string>("pending");
   const [userStatusFilter, setUserStatusFilter] = useState<string>("all");
-  const [activeSubTab, setActiveSubTab] = useState<"verifications" | "users" | "spots">("verifications");
+  const [activeSubTab, setActiveSubTab] = useState<"verifications" | "users" | "spots" | "guests">("verifications");
 
   const [busyUserId, setBusyUserId] = useState<string | null>(null);
   const [deletingRecId, setDeletingRecId] = useState<string | null>(null);
@@ -260,6 +273,32 @@ export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboar
   // she already trusts. The admin never sees or sets a password; the server
   // stores only the token's digest, so a lost link cannot be re-displayed —
   // only replaced (which invalidates the previous one).
+  // EVENTS GUESTS — who booked each experience, with the WhatsApp numbers
+  // they left. Fetched only when the tab opens; the endpoint is admin-only
+  // server-side, this tab is merely its window.
+  const [eventGuests, setEventGuests] = useState<EventGuestsEntry[] | null>(null);
+  const [expandedGuestEventId, setExpandedGuestEventId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (activeSubTab !== "guests") return;
+    let alive = true;
+    setEventGuests(null);
+    fetch(apiUrl("/api/admin/event-guests"), { headers: authHeaders() })
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => { if (alive && d) setEventGuests(d.events); })
+      .catch(() => { if (alive) setEventGuests([]); });
+    return () => { alive = false; };
+  }, [activeSubTab]);
+
+  const copyGuestNumber = async (number: string) => {
+    try {
+      await navigator.clipboard.writeText(number);
+      notify("WhatsApp number copied.");
+    } catch {
+      window.prompt("Copy this WhatsApp number:", number);
+    }
+  };
+
   const [recoveryUser, setRecoveryUser] = useState<AdminUser | null>(null);
   const [recoveryStatus, setRecoveryStatus] = useState<RecoveryStatus | null>(null);
   const [recoveryLink, setRecoveryLink] = useState<{ url: string; expiresAt: string } | null>(null);
@@ -500,6 +539,15 @@ export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboar
         >
           <MapPin size={14} />
           <span>Spots ({filteredRecs.length})</span>
+        </button>
+        <button
+          onClick={() => setActiveSubTab("guests")}
+          className={`px-4 py-2 rounded-xl text-xs font-sans font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
+            activeSubTab === "guests" ? "bg-slate-900 text-white shadow-md" : "bg-card/40 text-muted-foreground hover:bg-card/75"
+          }`}
+        >
+          <Calendar size={14} />
+          <span>Events Guests</span>
         </button>
       </div>
 
@@ -898,6 +946,106 @@ export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboar
                 </div>
               ))}
             </div>
+          )}
+        </div>
+      )}
+
+      {/* EVENTS GUESTS — per-experience guest lists with the WhatsApp
+          numbers members left when booking. Server-enforced admin-only. */}
+      {activeSubTab === "guests" && (
+        <div className="bg-card/40 backdrop-blur-xl rounded-[28px] border border-border/60 p-5 shadow-xl space-y-3">
+          {eventGuests === null ? (
+            <div className="text-center py-10 text-muted-foreground font-sans text-xs">Loading guest lists…</div>
+          ) : eventGuests.length === 0 ? (
+            <div className="text-center py-10 space-y-2">
+              <span className="text-3xl block select-none">🪺</span>
+              <p className="font-sans text-xs text-muted-foreground leading-relaxed max-w-xs mx-auto">
+                No experiences published yet. Guest lists appear here as soon as an
+                experience exists — and fill up as members RSVP.
+              </p>
+            </div>
+          ) : (
+            eventGuests.map(evt => {
+              const expanded = expandedGuestEventId === evt.id;
+              return (
+                <div key={evt.id} className="bg-card/60 border border-border/50 rounded-2xl overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => setExpandedGuestEventId(expanded ? null : evt.id)}
+                    aria-expanded={expanded}
+                    className="w-full flex items-center justify-between gap-3 p-4 text-left hover:bg-card/80 transition cursor-pointer"
+                  >
+                    <div className="min-w-0">
+                      <h4 className="font-sans font-black text-sm text-foreground truncate">{evt.title}</h4>
+                      <p className="font-mono text-[10px] text-muted-foreground mt-0.5 truncate">
+                        {[evt.date, evt.time, evt.location].filter(Boolean).join(" · ")}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2.5 shrink-0">
+                      <span className={`text-[10px] font-mono font-black px-2.5 py-1 rounded-full border ${
+                        evt.maxParticipants && evt.guestCount >= evt.maxParticipants
+                          ? "bg-amber-50 text-amber-700 border-amber-200"
+                          : "bg-accent/30 text-primary border-border/50"
+                      }`}>
+                        {evt.guestCount}{evt.maxParticipants ? ` / ${evt.maxParticipants}` : ""} guests
+                      </span>
+                      {expanded ? <ChevronUp size={14} className="text-muted-foreground" /> : <ChevronDown size={14} className="text-muted-foreground" />}
+                    </div>
+                  </button>
+
+                  {expanded && (
+                    <div className="border-t border-border/40 p-4 pt-3">
+                      {evt.guests.length === 0 ? (
+                        <p className="text-[11px] text-muted-foreground font-sans italic py-2">
+                          Nobody has RSVP'd to this experience yet.
+                        </p>
+                      ) : (
+                        <div className="space-y-2">
+                          {evt.guests.map(guest => (
+                            <div key={guest.userId} className="flex items-center gap-3 bg-card/70 border border-border/40 rounded-xl p-2.5">
+                              {guest.photo ? (
+                                <img
+                                  src={guest.photo}
+                                  alt={guest.name}
+                                  referrerPolicy="no-referrer"
+                                  className="w-8 h-8 rounded-lg object-cover shrink-0"
+                                />
+                              ) : (
+                                <div className="w-8 h-8 rounded-lg bg-border text-muted-foreground flex items-center justify-center font-bold text-[10px] shrink-0">
+                                  {guest.name[0]?.toUpperCase() || "?"}
+                                </div>
+                              )}
+                              <div className="flex-1 min-w-0">
+                                <p className="font-sans font-bold text-xs text-foreground truncate">{guest.name}</p>
+                                <p className="font-mono text-[10px] text-muted-foreground truncate">
+                                  RSVP'd {new Date(guest.rsvpAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })} · Registered
+                                </p>
+                              </div>
+                              {guest.whatsapp ? (
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                  <span className="font-mono text-[11px] text-foreground select-text">{guest.whatsapp}</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => copyGuestNumber(guest.whatsapp!)}
+                                    title="Copy WhatsApp number"
+                                    aria-label={`Copy ${guest.name}'s WhatsApp number`}
+                                    className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition cursor-pointer"
+                                  >
+                                    <Copy size={12} />
+                                  </button>
+                                </div>
+                              ) : (
+                                <span className="font-mono text-[10px] text-muted-foreground shrink-0">no number</span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })
           )}
         </div>
       )}

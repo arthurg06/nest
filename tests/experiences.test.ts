@@ -36,7 +36,10 @@ describe("experiences are open to every member", () => {
     const created = await request(app).post("/api/events").set(auth(admin.token)).send(eventBody).expect(200);
 
     const member = await signup();
-    const booked = await request(app).post(`/api/events/${created.body.id}/rsvp`).set(auth(member.token));
+    const booked = await request(app)
+      .post(`/api/events/${created.body.id}/rsvp`)
+      .set(auth(member.token))
+      .send({ whatsapp: "+34 612 345 678" });
     expect(booked.status).toBe(200);
     expect(booked.body.userRsvped).toBe(true);
   });
@@ -61,8 +64,8 @@ describe("NEST memories", () => {
     const before = await request(app).get("/api/memories").set(auth(member.token)).expect(200);
     expect(before.body.memories.filter((m: any) => m.eventId === created.body.id)).toHaveLength(0);
 
-    await request(app).post(`/api/events/${created.body.id}/rsvp`).set(auth(member.token)).expect(200);
-    await request(app).post(`/api/events/${created.body.id}/rsvp`).set(auth(friend.token)).expect(200);
+    await request(app).post(`/api/events/${created.body.id}/rsvp`).set(auth(member.token)).send({ whatsapp: "+34611222333" }).expect(200);
+    await request(app).post(`/api/events/${created.body.id}/rsvp`).set(auth(friend.token)).send({ whatsapp: "+44 7700 900123" }).expect(200);
 
     const after = await request(app).get("/api/memories").set(auth(member.token)).expect(200);
     const memory = after.body.memories.find((m: any) => m.eventId === created.body.id);

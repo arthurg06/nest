@@ -121,6 +121,9 @@ export interface Match {
   user1Id: string;
   user2Id: string;
   createdAt: string;
+  /** Per-member read marker: when she last opened this chat. Messages from
+      the other member newer than her marker count as unread. */
+  readBy?: Record<string, string>;
 }
 
 export interface Message {
@@ -203,6 +206,10 @@ export interface EventRsvp {
   eventId: string;
   userId: string;
   createdAt: string;
+  /** WhatsApp number she gave when booking — the NEST team's confirmation
+      channel. Visible to admins only; absent on registrations made before
+      the field existed. */
+  whatsapp?: string;
 }
 
 export interface Post {
@@ -308,6 +315,18 @@ const initialDb: DbSchema = {
 // older code keep working. Idempotent; returns true when anything changed.
 function migrateDb(db: DbSchema): boolean {
   let changed = false;
+
+  // Read markers arrived after the first conversations existed. Matches
+  // from before start as fully read (markers set at migration time), so
+  // nobody's inbox floods with unread badges for long-finished chats —
+  // only messages sent after this migration count.
+  for (const match of db.matches) {
+    if (!match.readBy) {
+      const now = new Date().toISOString();
+      match.readBy = { [match.user1Id]: now, [match.user2Id]: now };
+      changed = true;
+    }
+  }
 
   if (!Array.isArray(db.adminAudit)) {
     db.adminAudit = [];

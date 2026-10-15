@@ -31,7 +31,9 @@ interface MemoriesData {
 
 interface EventsProps {
   events: Event[];
-  onToggleRsvp: (eventId: string) => void;
+  /** Books (with a WhatsApp number) or cancels (without one) a spot; the
+      server's verdict drives which popup shows. */
+  onRsvp: (eventId: string, whatsapp?: string) => Promise<{ ok: boolean; full?: boolean; error?: string }>;
   isAdmin: boolean;
   onAddEvent: (title: string, description: string, date: string, time: string, location: string, category: string, price: string, maxParticipants?: number) => void;
   onDeleteEvent?: (id: string) => void;
@@ -39,8 +41,57 @@ interface EventsProps {
   onOpenPlanChat?: (matchId: string) => void;
 }
 
-export default function Events({ events, onToggleRsvp, isAdmin, onAddEvent, onDeleteEvent, onOpenPlanChat }: EventsProps) {
+export default function Events({ events, onRsvp, isAdmin, onAddEvent, onDeleteEvent, onOpenPlanChat }: EventsProps) {
   const [activeTab, setActiveTab] = React.useState<string>("all");
+
+  // RSVP flow: "number" collects the WhatsApp number, "success"/"full" show
+  // the outcome, "registered" shows the status of an existing registration.
+  const [rsvpFlow, setRsvpFlow] = useState<{ eventId: string; step: "number" | "success" | "full" | "registered" } | null>(null);
+  const [whatsappInput, setWhatsappInput] = useState("");
+  const [rsvpError, setRsvpError] = useState("");
+  const [rsvpBusy, setRsvpBusy] = useState(false);
+
+  const openRsvp = (event: Event) => {
+    setWhatsappInput("");
+    setRsvpError("");
+    setRsvpFlow({ eventId: event.id, step: event.userRsvped ? "registered" : "number" });
+  };
+
+  const submitRsvp = async () => {
+    if (!rsvpFlow) return;
+    if (!whatsappInput.trim()) {
+      setRsvpError("Please enter your WhatsApp number to complete the RSVP.");
+      return;
+    }
+    setRsvpError("");
+    setRsvpBusy(true);
+    try {
+      const result = await onRsvp(rsvpFlow.eventId, whatsappInput.trim());
+      if (result.ok) {
+        // The server has recorded the registration — only now celebrate.
+        setRsvpFlow({ eventId: rsvpFlow.eventId, step: "success" });
+      } else if (result.full) {
+        // Filled up between opening the popup and submitting.
+        setRsvpFlow({ eventId: rsvpFlow.eventId, step: "full" });
+      } else {
+        setRsvpError(result.error || "Could not save your RSVP. Please try again.");
+      }
+    } finally {
+      setRsvpBusy(false);
+    }
+  };
+
+  const cancelRsvp = async () => {
+    if (!rsvpFlow) return;
+    setRsvpBusy(true);
+    try {
+      const result = await onRsvp(rsvpFlow.eventId);
+      if (result.ok) setRsvpFlow(null);
+      else setRsvpError(result.error || "Could not cancel. Please try again.");
+    } finally {
+      setRsvpBusy(false);
+    }
+  };
 
   // "My Upcoming Events" — the member's own upcoming confirmed plans,
   // scoped to her account by the server; shown in a dedicated modal.
@@ -455,7 +506,7 @@ export default function Events({ events, onToggleRsvp, isAdmin, onAddEvent, onDe
                     return (
                       <button
                         disabled={isFull && !event.userRsvped}
-                        onClick={() => onToggleRsvp(event.id)}
+                        onClick={() => openRsvp(event)}
                         className={`px-4 py-2 rounded-xl font-sans text-xs font-bold shadow-md transition-all flex items-center gap-1 active:scale-95 ${
                           event.userRsvped
                             ? "bg-slate-950 text-rose-400 border border-slate-800 hover:bg-slate-900"
@@ -467,14 +518,14 @@ export default function Events({ events, onToggleRsvp, isAdmin, onAddEvent, onDe
                         {event.userRsvped ? (
                           <>
                             <Check size={12} strokeWidth={3} />
-                            <span>Attending</span>
+                            <span>You're Registered</span>
                           </>
                         ) : isFull ? (
-                          <span>Fully booked</span>
+                          <span>Event Full</span>
                         ) : (
                           <>
                             <Bookmark size={12} />
-                            <span>Book your spot</span>
+                            <span>RSVP</span>
                           </>
                         )}
                       </button>
@@ -622,6 +673,124 @@ export default function Events({ events, onToggleRsvp, isAdmin, onAddEvent, onDe
           </div>
         </div>
       )}
+
+      {/* RSVP flow — number entry, outcome, or current registration status.
+          The success screen appears only after the server confirmed the
+          registration was recorded. */}
+      {rsvpFlow && (() => {
+        const flowEvent = events.find(e => e.id === rsvpFlow.eventId);
+        const close = () => { if (!rsvpBusy) setRsvpFlow(null); };
+        return (
+          <div
+            className="fixed inset-0 bg-slate-950/75 backdrop-blur-md flex items-center justify-center p-4 z-[80] animate-fade-in select-text"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Experience RSVP"
+          >
+            <div className="bg-card rounded-[32px] border border-border max-w-sm w-full shadow-2xl p-6 pt-8 text-center space-y-3 animate-scale-up relative">
+              <button
+                onClick={close}
+                aria-label="Close"
+                className="absolute top-3 right-3 text-muted-foreground hover:text-foreground p-2.5 rounded-full hover:bg-muted transition"
+              >
+                <X size={16} />
+              </button>
+
+              {rsvpFlow.step === "number" && (
+                <>
+                  <span className="text-3xl block select-none">🪺</span>
+                  <h3 className="font-sans font-black text-base text-foreground leading-snug">Confirm Your Spot</h3>
+                  <p className="font-sans text-xs text-muted-foreground leading-relaxed">
+                    Enter your WhatsApp number so our NEST Team can contact you with your event confirmation.
+                  </p>
+                  {rsvpError && (
+                    <p className="bg-destructive/10 border border-destructive/25 text-destructive p-2.5 rounded-xl text-[11px] leading-normal">
+                      {rsvpError}
+                    </p>
+                  )}
+                  <input
+                    type="tel"
+                    inputMode="tel"
+                    autoComplete="tel"
+                    value={whatsappInput}
+                    onChange={e => setWhatsappInput(e.target.value)}
+                    onKeyDown={e => { if (e.key === "Enter") submitRsvp(); }}
+                    placeholder="e.g. +34 612 345 678"
+                    aria-label="WhatsApp number"
+                    className="w-full bg-card/60 border border-border rounded-xl px-3.5 py-3 text-sm text-foreground text-center focus:outline-none focus:ring-1 focus:ring-ring"
+                  />
+                  <button
+                    onClick={submitRsvp}
+                    disabled={rsvpBusy}
+                    className="w-full bg-primary hover:bg-primary/90 disabled:opacity-60 text-primary-foreground font-sans text-xs font-black py-3 rounded-2xl transition shadow-pop"
+                  >
+                    {rsvpBusy ? "Confirming…" : "Confirm RSVP"}
+                  </button>
+                </>
+              )}
+
+              {rsvpFlow.step === "success" && (
+                <>
+                  <span className="text-3xl block select-none">🎉</span>
+                  <h3 className="font-sans font-black text-base text-foreground leading-snug">
+                    You're in! Our NEST Team will contact you with your confirmation VIA Whatsapp. See you soon!
+                  </h3>
+                  <button
+                    onClick={close}
+                    className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-sans text-xs font-black py-3 rounded-2xl transition shadow-pop"
+                  >
+                    Can't wait 🪺
+                  </button>
+                </>
+              )}
+
+              {rsvpFlow.step === "full" && (
+                <>
+                  <span className="text-3xl block select-none">⏳</span>
+                  <h3 className="font-sans font-black text-base text-foreground leading-snug">
+                    Oops, too late! This event is full. Don't worry, NEST will have plenty more events. Keep an eye out for NEST Experiences!
+                  </h3>
+                  <button
+                    onClick={close}
+                    className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-sans text-xs font-black py-3 rounded-2xl transition shadow-pop"
+                  >
+                    Got it
+                  </button>
+                </>
+              )}
+
+              {rsvpFlow.step === "registered" && (
+                <>
+                  <span className="text-3xl block select-none">✅</span>
+                  <h3 className="font-sans font-black text-base text-foreground leading-snug">RSVP Confirmed</h3>
+                  <p className="font-sans text-xs text-muted-foreground leading-relaxed">
+                    You're registered{flowEvent ? ` for ${flowEvent.title}` : ""}. Our NEST Team will
+                    contact you via WhatsApp with your confirmation.
+                  </p>
+                  {rsvpError && (
+                    <p className="bg-destructive/10 border border-destructive/25 text-destructive p-2.5 rounded-xl text-[11px] leading-normal">
+                      {rsvpError}
+                    </p>
+                  )}
+                  <button
+                    onClick={close}
+                    className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-sans text-xs font-black py-3 rounded-2xl transition shadow-pop"
+                  >
+                    See you there
+                  </button>
+                  <button
+                    onClick={cancelRsvp}
+                    disabled={rsvpBusy}
+                    className="w-full text-[11px] text-muted-foreground hover:text-destructive font-bold py-2 transition"
+                  >
+                    {rsvpBusy ? "Cancelling…" : "Cancel my registration"}
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
     </div>
   );

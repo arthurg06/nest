@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { UserProfile, Interests } from "../types";
 import { PREDEFINED_INTEREST_OPTIONS } from "../data";
 import { ANIMAL_EMOJI } from "../../shared/compatibility";
-import { ShieldCheck, User, Sparkles, Check, Mail, Upload, FileText, Globe, Search, Trash2, Edit, MapPin, ExternalLink, ShieldAlert, Eye, X } from "lucide-react";
+import { ShieldCheck, User, Sparkles, Check, Mail, Upload, FileText, Globe, Search, Trash2, Edit, MapPin, ExternalLink, ShieldAlert, Eye, X, ChevronDown, ChevronUp } from "lucide-react";
 import ProfilePreview from "./ProfilePreview";
 import { PhotoGalleryEditor } from "./PhotoGalleryEditor";
 import { ThemeToggle } from "./ThemeToggle";
@@ -46,6 +46,12 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
   // Personal recommendations/spots management state
   const [myRecs, setMyRecs] = useState<any[]>([]);
   const [isLoadingMyRecs, setIsLoadingMyRecs] = useState(false);
+  // Collapsed by default so the profile stays compact; purely visual —
+  // the spots themselves and how they're managed are untouched.
+  const [showMySpots, setShowMySpots] = useState(false);
+  // Same for the interests picker inside Edit Profile: collapsing never
+  // clears a selection, it only hides the controls.
+  const [showInterestsEditor, setShowInterestsEditor] = useState(false);
   const [editingRec, setEditingRec] = useState<any | null>(null);
 
   // Form states for editing a recommendation
@@ -633,16 +639,29 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
                   My Secret Spots ({myRecs.length})
                 </h3>
               </div>
-              <button
-                type="button"
-                onClick={fetchMyRecommendations}
-                className="text-[9px] font-mono text-primary font-extrabold hover:underline"
-              >
-                Refresh ↺
-              </button>
+              <div className="flex items-center gap-3">
+                {showMySpots && (
+                  <button
+                    type="button"
+                    onClick={fetchMyRecommendations}
+                    className="text-[9px] font-mono text-primary font-extrabold hover:underline"
+                  >
+                    Refresh ↺
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setShowMySpots(prev => !prev)}
+                  aria-expanded={showMySpots}
+                  className="flex items-center gap-1 text-[10px] font-sans font-black text-primary bg-accent/30 border border-border/50 px-3 py-1.5 rounded-full hover:bg-accent/50 transition cursor-pointer"
+                >
+                  <span>{showMySpots ? "Hide" : "Show"}</span>
+                  {showMySpots ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                </button>
+              </div>
             </div>
 
-            {isLoadingMyRecs ? (
+            {!showMySpots ? null : isLoadingMyRecs ? (
               <p className="text-[10px] text-muted-foreground font-sans italic py-2">Loading your spots...</p>
             ) : myRecs.length === 0 ? (
               <p className="text-[10px] text-muted-foreground font-sans italic leading-relaxed">
@@ -1331,10 +1350,23 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
           {/* TAXONOMY INTERESTS PICKER SECTIONS */}
           <div className="pt-4 border-t border-border/30 space-y-6">
             
-            <div className="flex items-center gap-1 text-foreground">
-              <Sparkles size={16} className="text-amber-500" />
-              <h3 className="font-sans font-bold text-sm">Predefined Friendship Interests</h3>
+            <div className="flex items-center justify-between gap-2 text-foreground">
+              <div className="flex items-center gap-1">
+                <Sparkles size={16} className="text-amber-500" />
+                <h3 className="font-sans font-bold text-sm">Predefined Friendship Interests</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowInterestsEditor(prev => !prev)}
+                aria-expanded={showInterestsEditor}
+                className="flex items-center gap-1 text-[10px] font-sans font-black text-primary bg-accent/30 border border-border/50 px-3 py-1.5 rounded-full hover:bg-accent/50 transition cursor-pointer shrink-0"
+              >
+                <span>{showInterestsEditor ? "Hide" : "Show"}</span>
+                {showInterestsEditor ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+              </button>
             </div>
+
+            {showInterestsEditor && (<>
 
             {/* Activities checkboxes */}
             <div className="space-y-2">
@@ -1492,6 +1524,8 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
                 })}
               </div>
             </div>
+
+            </>)}
 
           </div>
             </div>

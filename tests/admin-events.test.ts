@@ -67,7 +67,7 @@ describe("experience booking (server-side)", () => {
 
     const user = await signup();
     await approveUser(user.userId);
-    const res = await request(app).post(`/api/events/${event.body.id}/rsvp`).set(auth(user.token)).expect(200);
+    const res = await request(app).post(`/api/events/${event.body.id}/rsvp`).set(auth(user.token)).send({ whatsapp: "+34 612 345 678" }).expect(200);
     expect(res.body.userRsvped).toBe(true);
 
     await request(app).delete(`/api/events/${event.body.id}`).set(auth(admin.token)).expect(200);
@@ -84,11 +84,12 @@ describe("experience booking (server-side)", () => {
     const first = await signup();
     const second = await signup();
 
-    const ok = await request(app).post(`/api/events/${event.body.id}/rsvp`).set(auth(first.token)).expect(200);
+    const ok = await request(app).post(`/api/events/${event.body.id}/rsvp`).set(auth(first.token)).send({ whatsapp: "+34 612 345 678" }).expect(200);
     expect(ok.body.userRsvped).toBe(true);
 
-    const full = await request(app).post(`/api/events/${event.body.id}/rsvp`).set(auth(second.token));
-    expect(full.status).toBe(400);
+    const full = await request(app).post(`/api/events/${event.body.id}/rsvp`).set(auth(second.token)).send({ whatsapp: "+34 698 765 432" });
+    expect(full.status).toBe(409);
+    expect(full.body.full).toBe(true);
 
     await request(app).delete(`/api/events/${event.body.id}`).set(auth(admin.token)).expect(200);
   });

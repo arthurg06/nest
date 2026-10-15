@@ -78,8 +78,8 @@ describe("my events", () => {
 
     const member = await signup();
     await request(app).post(`/api/admin/users/${member.userId}/premium`).set(auth(admin.token)).send({ isPremium: true }).expect(200);
-    await request(app).post(`/api/events/${upcoming.body.id}/rsvp`).set(auth(member.token)).expect(200);
-    await request(app).post(`/api/events/${past.body.id}/rsvp`).set(auth(member.token)).expect(200);
+    await request(app).post(`/api/events/${upcoming.body.id}/rsvp`).set(auth(member.token)).send({ whatsapp: "+34 612 345 678" }).expect(200);
+    await request(app).post(`/api/events/${past.body.id}/rsvp`).set(auth(member.token)).send({ whatsapp: "+34 612 345 678" }).expect(200);
 
     const res = await request(app).get("/api/my-events").set(auth(member.token)).expect(200);
     const titles = res.body.items.map((i: any) => i.title);

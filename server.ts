@@ -1153,7 +1153,12 @@ app.post("/api/swipe", authenticate, async (req, res) => {
           id: matchId,
           user1Id: userId,
           user2Id: toUserId,
-          createdAt: new Date().toISOString()
+          createdAt: new Date().toISOString(),
+          // A fresh match has no messages, so both sides start read.
+          readBy: {
+            [userId]: new Date().toISOString(),
+            [toUserId]: new Date().toISOString()
+          }
         };
         db.matches.push(newMatch);
 
@@ -1261,7 +1266,16 @@ function buildMatchesList(db: DbSchema, userId: string) {
   return myMatches.map(m => {
     const otherUserId = m.user1Id === userId ? m.user2Id : m.user1Id;
     const otherProfile = db.profiles.find(p => p.userId === otherUserId);
-    const messages = db.messages.filter(msg => msg.matchId === m.id);
+    const messages = db.messages
+      .filter(msg => msg.matchId === m.id)
+      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
+    // Unread = messages from the other member newer than my read marker.
+    // The marker is server-side state, so it holds across devices.
+    const lastRead = m.readBy?.[userId] ? new Date(m.readBy[userId]).getTime() : 0;
+    const unreadCount = messages.filter(
+      msg => msg.senderId !== userId && new Date(msg.createdAt).getTime() > lastRead
+    ).length;
 
     // Stable, deterministic score using the same logic as the swipe deck
     const report = myProfile && otherProfile
@@ -1277,8 +1291,13 @@ function buildMatchesList(db: DbSchema, userId: string) {
       id: m.id,
       otherUserId,
       profile: otherProfile ? matchedProfileView(otherProfile) : undefined,
-      messages: messages.sort((a,b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()),
+      messages,
       plans: db.plans.filter(p => p.matchId === m.id),
+      createdAt: m.createdAt,
+      /** Real timestamp of the newest message (or the match itself) — the
+          inbox sort key. */
+      lastActivityAt: messages[messages.length - 1]?.createdAt || m.createdAt,
+      unreadCount,
       compatibilityRating: report.score,
       compatibilityReport: {
         sharedInterests: report.sharedInterests,
@@ -1309,8 +1328,10 @@ app.get("/api/poll", authenticate, async (req, res) => {
     const db = await dbManager.readDb();
     res.json({
       matches: buildMatchesList(db, userId),
+      // Unread only — the banner's contract. Returning read ones here was
+      // what made dismissed match notifications reappear on the next poll.
       notifications: db.notifications
-        .filter(n => n.userId === userId)
+        .filter(n => n.userId === userId && !n.read)
         .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     });
   } catch (error) {
@@ -1352,6 +1373,10 @@ app.post("/api/chats/:matchId/messages", authenticate, async (req, res) => {
 
     db.messages.push(newMessage);
 
+    // Sending means she is in the chat: her read marker advances with her
+    // own message, so her inbox never flags a conversation she just wrote in.
+    match.readBy = { ...match.readBy, [userId]: newMessage.createdAt };
+
     const receiverId = match.user1Id === userId ? match.user2Id : match.user1Id;
     const senderName = db.profiles.find(p => p.userId === userId)?.name || "Someone";
     await sendPushToUser(db, receiverId, "messages", {
@@ -1366,6 +1391,27 @@ app.post("/api/chats/:matchId/messages", authenticate, async (req, res) => {
     res.json(newMessage);
   } catch (error) {
     res.status(500).json({ error: "Error posting message" });
+  }
+});
+
+// Mark a conversation read for the caller. Persisted on the match, so the
+// unread state is consistent across her devices and sessions.
+app.post("/api/chats/:matchId/read", authenticate, async (req, res) => {
+  try {
+    const userId = (req as any).userId;
+    const { matchId } = req.params;
+
+    const db = await dbManager.readDb();
+    const match = db.matches.find(m => m.id === matchId && (m.user1Id === userId || m.user2Id === userId));
+    if (!match) {
+      return res.status(403).json({ error: "Forbidden: You are not part of this match" });
+    }
+
+    match.readBy = { ...match.readBy, [userId]: new Date().toISOString() };
+    await dbManager.writeDb(db);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: "Error marking the chat read" });
   }
 });
 
@@ -2027,6 +2073,15 @@ app.delete("/api/events/:id", authenticateAdmin, async (req, res) => {
   }
 });
 
+// Normalizes a WhatsApp number: keeps a leading +, strips spaces, dots,
+// dashes and parentheses; accepts 7-15 digits (E.164's range) so every
+// international format fits. Returns null when nothing valid remains.
+function normalizeWhatsApp(raw: unknown): string | null {
+  if (typeof raw !== "string") return null;
+  const cleaned = raw.trim().replace(/[\s.\-()]/g, "");
+  return /^\+?\d{7,15}$/.test(cleaned) ? cleaned : null;
+}
+
 // Book a spot at an experience (free for every member; toggles attendance)
 app.post("/api/events/:id/rsvp", authenticate, async (req, res) => {
   try {
@@ -2052,14 +2107,30 @@ app.post("/api/events/:id/rsvp", authenticate, async (req, res) => {
     const existingRsvpIdx = db.rsvps.findIndex(r => r.eventId === id && r.userId === userId);
 
     if (existingRsvpIdx > -1) {
-      // Cancel RSVP
+      // Already registered. A request carrying a number is a (possibly
+      // double-tapped) registration attempt: report the existing status
+      // instead of creating a duplicate — or cancelling by surprise. Only
+      // a bare request, the explicit cancel, removes the registration.
+      if (typeof req.body?.whatsapp === "string" && req.body.whatsapp.trim()) {
+        return res.json({ success: true, userRsvped: true, alreadyRegistered: true, rsvpsCount: rsvps.length });
+      }
       db.rsvps.splice(existingRsvpIdx, 1);
       await dbManager.writeDb(db);
       return res.json({ success: true, userRsvped: false, rsvpsCount: rsvps.length - 1 });
     } else {
-      // Check limits
+      // Capacity is enforced here, server-side; the client's check is only
+      // cosmetic. `full: true` lets the client show the dedicated message.
       if (event.maxParticipants && rsvps.length >= event.maxParticipants) {
-        return res.status(400).json({ error: "This outing is completely full! Look for other curated outings." });
+        return res.status(409).json({ error: "This experience is fully booked", full: true });
+      }
+
+      // Registering requires the WhatsApp number the NEST team will use to
+      // confirm her spot. Stored on the registration, shown to admins only.
+      const whatsapp = normalizeWhatsApp(req.body?.whatsapp);
+      if (!whatsapp) {
+        return res.status(400).json({
+          error: "Please enter a valid WhatsApp number (international format, e.g. +34 612 345 678)."
+        });
       }
 
       // Add RSVP
@@ -2067,7 +2138,8 @@ app.post("/api/events/:id/rsvp", authenticate, async (req, res) => {
         id: generateId(),
         eventId: id,
         userId,
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
+        whatsapp
       };
       db.rsvps.push(newRsvp);
 
@@ -2804,6 +2876,51 @@ app.get("/api/admin/users/:userId/reset-link", authenticateAdmin, async (req, re
   } catch (error) {
     console.error("Admin reset-link status error:", error);
     res.status(500).json({ error: "Could not load recovery status" });
+  }
+});
+
+// Event guest lists for the admin dashboard: who booked each experience,
+// with the WhatsApp number she left for her confirmation. Admin-only and
+// the ONLY place those numbers are ever returned — member-facing event
+// payloads carry counts, never registrations.
+app.get("/api/admin/event-guests", authenticateAdmin, async (req, res) => {
+  try {
+    const db = await dbManager.readDb();
+
+    const events = db.events.map(evt => {
+      const rsvps = db.rsvps
+        .filter(r => r.eventId === evt.id)
+        .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+      return {
+        id: evt.id,
+        title: evt.title,
+        date: evt.date,
+        time: evt.time,
+        location: evt.location,
+        category: evt.category,
+        maxParticipants: evt.maxParticipants ?? null,
+        guestCount: rsvps.length,
+        guests: rsvps.map(r => {
+          const profile = db.profiles.find(p => p.userId === r.userId);
+          return {
+            userId: r.userId,
+            name: profile?.name || "Deleted account",
+            photo: profile?.photo || "",
+            whatsapp: r.whatsapp || null,
+            rsvpAt: r.createdAt
+          };
+        }),
+        // Same tolerant ordering key the My Events list uses: parseable
+        // dates sort chronologically, unparseable ones go last.
+        sortKey: parseDisplayDate(evt.date) ?? Number.MAX_SAFE_INTEGER
+      };
+    });
+
+    events.sort((a, b) => a.sortKey - b.sortKey);
+    res.json({ events: events.map(({ sortKey, ...evt }) => evt) });
+  } catch (error) {
+    console.error("Admin event-guests error:", error);
+    res.status(500).json({ error: "Could not load event guests" });
   }
 });
 

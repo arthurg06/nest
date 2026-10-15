@@ -92,9 +92,13 @@ export default function SwipeCard({ profile, currentUser, onSwipeLeft, onSwipeRi
     };
     window.addEventListener("popstate", onPop);
     window.addEventListener("keydown", onKey);
+    // The page behind the overlay must not scroll along with stray touches.
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     return () => {
       window.removeEventListener("popstate", onPop);
       window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = previousOverflow;
     };
   }, [viewerOpen, gallery.length]);
 
@@ -213,8 +217,14 @@ export default function SwipeCard({ profile, currentUser, onSwipeLeft, onSwipeRi
             )}
           </div>
 
+          {/* ONE scroller for everything between photo and buttons: name,
+              details, bio and interests scroll together, so a swipe anywhere
+              below the photo moves the content — no more hunting for the
+              tiny nested area that used to be the only scrollable strip. */}
+          <div className="overflow-y-auto grow min-h-0 select-text overscroll-contain">
+
           {/* Profile Name & Primary Info Section */}
-          <div className="px-5 pt-4 pb-2.5 md:px-6 md:pt-8 md:pb-3 border-b border-border/20 shrink-0">
+          <div className="px-5 pt-4 pb-2.5 md:px-6 md:pt-8 md:pb-3 border-b border-border/20">
             <div className="flex items-baseline gap-x-2 gap-y-1 flex-wrap mb-1.5">
               <h3 className="font-display text-2xl text-foreground">
                 {profile.name}
@@ -272,8 +282,8 @@ export default function SwipeCard({ profile, currentUser, onSwipeLeft, onSwipeRi
             </div>
           </div>
 
-          {/* Scrollable Interests & Details Area */}
-          <div className="px-5 py-3 md:px-6 md:py-4 overflow-y-auto grow select-text overscroll-contain">
+          {/* Interests & Details */}
+          <div className="px-5 py-3 md:px-6 md:py-4">
             {/* Short Bio */}
             <div className="mb-4">
               <span className="text-[10px] font-mono font-extrabold uppercase text-primary tracking-wider block mb-1">
@@ -469,6 +479,8 @@ export default function SwipeCard({ profile, currentUser, onSwipeLeft, onSwipeRi
             )}
           </div>
 
+          </div>
+
           {/* Swipe/Match Action Buttons Footer. In preview the same two shapes
               are drawn without handlers: removing them would shorten the card
               and she would be judging proportions nobody else will see. */}
@@ -511,7 +523,7 @@ export default function SwipeCard({ profile, currentUser, onSwipeLeft, onSwipeRi
           never reach the like/pass buttons underneath. */}
       {viewerOpen && (
         <div
-          className="fixed inset-0 z-[100] bg-slate-950/95 flex flex-col animate-fade-in"
+          className="fixed inset-0 z-[100] bg-slate-950/95 flex flex-col animate-fade-in overscroll-contain"
           role="dialog"
           aria-modal="true"
           aria-label={`${profile.name}'s photos`}
@@ -537,14 +549,27 @@ export default function SwipeCard({ profile, currentUser, onSwipeLeft, onSwipeRi
                 ))}
               </div>
             )}
+            <button
+              type="button"
+              onClick={() => window.history.back()}
+              aria-label="Close photo viewer"
+              className="ml-auto text-white/90 hover:text-white p-2 -mr-2 cursor-pointer"
+            >
+              <X size={20} />
+            </button>
           </div>
 
-          <div className="relative flex-1 min-h-0 flex items-center justify-center px-2 pb-2">
+          <div className="relative flex-1 min-h-0">
+            {/* Absolutely filling the frame sidesteps Safari's percentage
+                max-height bug in nested flex, which let tall photos render
+                at natural size and overflow the screen. object-contain
+                keeps the full photo visible at its true aspect ratio. */}
             <img
               src={gallery[photoIndex]}
               alt={gallery.length > 1 ? `${profile.name}, photo ${photoIndex + 1} of ${gallery.length}` : profile.name}
               referrerPolicy="no-referrer"
-              className="max-w-full max-h-full object-contain select-none"
+              onClick={gallery.length === 1 ? () => window.history.back() : undefined}
+              className="absolute inset-0 w-full h-full object-contain select-none p-2"
             />
             {gallery.length > 1 && (
               <>

@@ -58,6 +58,12 @@ export interface Match {
   messages: Message[];
   /** Outing proposals exchanged in this chat (server-provided). */
   plans?: Plan[];
+  /** When the match was made (server-provided). */
+  createdAt?: string;
+  /** Newest message's timestamp (or the match's) — the inbox sort key. */
+  lastActivityAt?: string;
+  /** Messages from her that I haven't read yet (server-tracked). */
+  unreadCount?: number;
   compatibilityRating: number; // 0 to 100
   compatibilityReport: {
     sharedInterests: string[];
