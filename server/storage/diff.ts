@@ -20,6 +20,7 @@ export const COLLECTION_KEYS: Record<keyof DbSchema, string> = {
   adminAudit: "id",
   processedStripeEvents: "",
   pushSubscriptions: "id",
+  notificationJobs: "id",
 };
 
 export const COLLECTIONS = Object.keys(COLLECTION_KEYS) as (keyof DbSchema)[];

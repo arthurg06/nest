@@ -21,6 +21,7 @@ function emptyDb(): DbSchema {
     adminAudit: [],
     processedStripeEvents: [],
     pushSubscriptions: [],
+    notificationJobs: [],
   };
 }
 

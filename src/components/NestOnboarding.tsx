@@ -207,9 +207,9 @@ export default function NestOnboarding({ startAt, onFinished }: NestOnboardingPr
             <>
               <span className="text-4xl block select-none">💌</span>
               <div className="space-y-1">
-                <h3 className="font-sans font-black text-lg text-foreground leading-tight">Stay in the loop 💌</h3>
+                <h3 className="font-sans font-black text-lg text-foreground leading-tight">Don't miss a thing 💌</h3>
                 <p className="font-sans text-xs text-muted-foreground leading-relaxed">
-                  Get notified when you get a new message, match, like, or when your next NEST outing is coming up.
+                  Get notified when you match with someone new, receive a message, or a new NEST Experience is announced.
                 </p>
               </div>
 

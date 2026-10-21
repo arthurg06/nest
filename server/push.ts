@@ -10,7 +10,7 @@
 // so, keeping local sandboxes fully functional.
 
 import webpush from "web-push";
-import type { DbSchema, NotificationPrefs, User } from "./db.js";
+import type { DbSchema, NotificationPrefs, PushSubscriptionRecord, User } from "./db.js";
 
 export const DEFAULT_NOTIFICATION_PREFS: NotificationPrefs = {
   enabled: true,
@@ -20,6 +20,8 @@ export const DEFAULT_NOTIFICATION_PREFS: NotificationPrefs = {
   outings: true,
   outingReminders: true,
   eventUpdates: true,
+  experiences: true,
+  announcements: true,
 };
 
 export type PushCategory = keyof Omit<NotificationPrefs, "enabled"> | "system";
@@ -36,6 +38,28 @@ export interface PushNote {
 
 let configured = false;
 
+/** The one function that talks to the push services — swappable in tests so
+    delivery logic is verifiable without network access. */
+type DeliverFn = (
+  sub: { endpoint: string; keys: { p256dh: string; auth: string } },
+  payload: string
+) => Promise<unknown>;
+
+const realDeliver: DeliverFn = (sub, payload) =>
+  webpush.sendNotification({ endpoint: sub.endpoint, keys: sub.keys }, payload);
+
+let deliver: DeliverFn = realDeliver;
+
+/** Test seam (vitest only): fake the transport and/or the configured flag.
+    Refuses to do anything outside the test environment. */
+export function __setPushForTests(opts: { deliver?: DeliverFn | null; configured?: boolean }): void {
+  if (process.env.NODE_ENV !== "test") {
+    throw new Error("__setPushForTests is only available in the test environment");
+  }
+  if ("deliver" in opts) deliver = opts.deliver ?? realDeliver;
+  if (typeof opts.configured === "boolean") configured = opts.configured;
+}
+
 export function isPushConfigured(): boolean {
   return configured;
 }
@@ -44,9 +68,16 @@ export function initPush(): void {
   const publicKey = process.env.VAPID_PUBLIC_KEY;
   const privateKey = process.env.VAPID_PRIVATE_KEY;
   if (!publicKey || !privateKey) return;
-  const subject = process.env.VAPID_SUBJECT || "https://nest-indol.vercel.app";
-  webpush.setVapidDetails(subject, publicKey, privateKey);
-  configured = true;
+  const subject = process.env.VAPID_SUBJECT || "https://nestclub.es";
+  try {
+    webpush.setVapidDetails(subject, publicKey, privateKey);
+    configured = true;
+  } catch (err) {
+    // A malformed key must degrade to "push unconfigured", never take the
+    // whole API down — this runs at module load on every serverless start.
+    configured = false;
+    console.error("Push disabled: invalid VAPID configuration:", (err as Error).message);
+  }
 }
 
 export function vapidPublicKey(): string | null {
@@ -65,6 +96,62 @@ function wantsCategory(user: User, category: PushCategory): boolean {
   // master switch only.
   if (category === "system") return true;
   return prefs[category] !== false;
+}
+
+/** Honest per-attempt accounting for one batch of delivery attempts.
+    "accepted" means the push service took the message — never proof that the
+    member actually saw the notification. */
+export interface DeliveryTally {
+  accepted: number;
+  failed: number;
+  expired: number;
+  /** Endpoints the push service reported gone (404/410) — prune these. */
+  deadEndpoints: string[];
+}
+
+/**
+ * Attempt delivery of one note to a set of subscriptions and report exactly
+ * what happened. Never throws: a push failure must never fail the request or
+ * job that caused it.
+ */
+export async function pushToSubscriptions(
+  subs: PushSubscriptionRecord[],
+  note: PushNote
+): Promise<DeliveryTally> {
+  const tally: DeliveryTally = { accepted: 0, failed: 0, expired: 0, deadEndpoints: [] };
+  if (!configured || subs.length === 0) return tally;
+
+  const payload = JSON.stringify({
+    title: note.title,
+    body: note.body,
+    url: note.url,
+    tag: note.tag || "nest",
+  });
+
+  await Promise.all(
+    subs.map(sub =>
+      deliver({ endpoint: sub.endpoint, keys: sub.keys }, payload)
+        .then(() => {
+          tally.accepted++;
+        })
+        .catch((err: any) => {
+          const code = err?.statusCode;
+          if (code === 404 || code === 410) {
+            tally.expired++;
+            tally.deadEndpoints.push(sub.endpoint);
+          } else {
+            tally.failed++;
+          }
+        })
+    )
+  );
+  return tally;
+}
+
+/** Remove subscriptions whose endpoints a push service reported dead. */
+export function pruneDeadSubscriptions(db: DbSchema, deadEndpoints: string[]): void {
+  if (deadEndpoints.length === 0) return;
+  db.pushSubscriptions = db.pushSubscriptions.filter(s => !deadEndpoints.includes(s.endpoint));
 }
 
 /**
@@ -86,27 +173,12 @@ export async function sendPushToUser(
   const subs = db.pushSubscriptions.filter(s => s.userId === userId);
   if (subs.length === 0) return;
 
-  const payload = JSON.stringify({
-    title: note.title,
-    body: note.body,
-    url: note.url,
-    tag: note.tag || category,
-  });
+  const tally = await pushToSubscriptions(subs, { ...note, tag: note.tag || category });
+  pruneDeadSubscriptions(db, tally.deadEndpoints);
+}
 
-  const dead: string[] = [];
-  await Promise.all(
-    subs.map(sub =>
-      webpush
-        .sendNotification({ endpoint: sub.endpoint, keys: sub.keys }, payload)
-        .catch((err: any) => {
-          const code = err?.statusCode;
-          if (code === 404 || code === 410) dead.push(sub.endpoint);
-          // Other failures (network, throttling) are dropped silently — a
-          // missed notification must never fail the request that caused it.
-        })
-    )
-  );
-  if (dead.length > 0) {
-    db.pushSubscriptions = db.pushSubscriptions.filter(s => !dead.includes(s.endpoint));
-  }
+/** Does this member currently want pushes of this category? (Exported for the
+    broadcast recipient selection in server.ts.) */
+export function userWantsCategory(user: User, category: PushCategory): boolean {
+  return wantsCategory(user, category);
 }

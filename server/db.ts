@@ -41,6 +41,10 @@ export interface NotificationPrefs {
   outings: boolean;
   outingReminders: boolean;
   eventUpdates: boolean;
+  /** New NEST Experience announcements. */
+  experiences: boolean;
+  /** Announcements the NEST team sends from the admin dashboard. */
+  announcements: boolean;
 }
 
 export interface Interests {
@@ -257,6 +261,50 @@ export interface PushSubscriptionRecord {
   createdAt: string;
 }
 
+/**
+ * One queued broadcast push (a published Experience announcement or an admin
+ * announcement) with honest delivery accounting. Broadcasts go through these
+ * records so a crashed or timed-out serverless invocation can resume exactly
+ * where it stopped instead of re-sending from the top. Per-member pushes
+ * (matches, messages, outings) stay inline — single-recipient sends triggered
+ * by unique state transitions need no queue.
+ */
+export interface NotificationJob {
+  id: string;
+  /** What created it: a freshly published experience or an admin announcement. */
+  type: "experience" | "announcement";
+  /** Unique key so the same trigger can never queue the same broadcast twice. */
+  dedupeKey: string;
+  /** Preference category the recipients' settings are checked against. */
+  category: "experiences" | "announcements";
+  title: string;
+  body: string;
+  /** In-app destination ("/..."), never an external URL. */
+  url: string;
+  tag: string;
+  /** Admin user id, or "system" for automatic experience announcements. */
+  createdBy: string;
+  createdAt: string;
+  /** The related event for experience jobs (lets deletion cancel delivery). */
+  eventId?: string;
+  status: "processing" | "done" | "cancelled";
+  /** Subscription ids still to attempt — the resumable cursor. */
+  remaining: string[];
+  /** Members whose preferences allowed this category at send time… */
+  eligibleMembers: number;
+  /** …and how many of them had at least one registered device. */
+  subscribedMembers: number;
+  /** Accepted by the push service — NOT proof the member saw it. */
+  accepted: number;
+  /** Attempts the push service rejected for transient reasons. */
+  failed: number;
+  /** Subscriptions the push service reported gone (pruned from the table). */
+  expired: number;
+  /** Last moment a worker made progress — guards concurrent resumes. */
+  touchedAt: string;
+  completedAt?: string;
+}
+
 export interface Session {
   token: string;
   userId: string;
@@ -297,6 +345,7 @@ export interface DbSchema {
   /** Processed Stripe webhook event IDs (idempotency guard, capped). */
   processedStripeEvents: string[];
   pushSubscriptions: PushSubscriptionRecord[];
+  notificationJobs: NotificationJob[];
 }
 
 const initialDb: DbSchema = {
@@ -316,6 +365,7 @@ const initialDb: DbSchema = {
   adminAudit: [],
   processedStripeEvents: [],
   pushSubscriptions: [],
+  notificationJobs: [],
 };
 
 // Fills in fields introduced after the prototype era so records written by
@@ -357,6 +407,11 @@ function migrateDb(db: DbSchema): boolean {
 
   if (!Array.isArray(db.pushSubscriptions)) {
     db.pushSubscriptions = [];
+    changed = true;
+  }
+
+  if (!Array.isArray(db.notificationJobs)) {
+    db.notificationJobs = [];
     changed = true;
   }
 

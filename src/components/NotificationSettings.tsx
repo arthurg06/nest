@@ -11,6 +11,8 @@ interface Prefs {
   outings: boolean;
   outingReminders: boolean;
   eventUpdates: boolean;
+  experiences: boolean;
+  announcements: boolean;
 }
 
 const CATEGORY_LABELS: { key: keyof Prefs; label: string }[] = [
@@ -20,6 +22,8 @@ const CATEGORY_LABELS: { key: keyof Prefs; label: string }[] = [
   { key: "outings", label: "Outings" },
   { key: "outingReminders", label: "Outing reminders" },
   { key: "eventUpdates", label: "Event updates" },
+  { key: "experiences", label: "New NEST Experiences" },
+  { key: "announcements", label: "NEST announcements" },
 ];
 
 const authHeaders = () => ({

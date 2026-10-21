@@ -2,7 +2,7 @@ import express from "express";
 import path from "path";
 import fs from "fs";
 import dotenv from "dotenv";
-import { User, UserProfile, Swipe, Match, Message, Recommendation, Event, EventRsvp, Post, Notification, Session, DbSchema } from "./server/db.js";
+import { User, UserProfile, Swipe, Match, Message, Recommendation, Event, EventRsvp, Post, Notification, NotificationJob, Session, DbSchema } from "./server/db.js";
 
 // Note: we can import from "./server/db.ts" but since esbuild bundles it, we can write import with relative path
 // and typescript handles resolution. In Node, with esbuild bundle, we should import './server/db' without extension or let esbuild resolve it.
@@ -17,7 +17,7 @@ import { PREMIUM_PLAN, PREMIUM_PRICE_LABEL } from "./shared/subscription.js";
 import { profileFor } from "./shared/visibility.js";
 import { canonicalUniversity, universityKey } from "./shared/universities.js";
 import { TERMS_VERSION } from "./shared/terms.js";
-import { initPush, isPushConfigured, vapidPublicKey, sendPushToUser, prefsFor, DEFAULT_NOTIFICATION_PREFS } from "./server/push.js";
+import { initPush, isPushConfigured, vapidPublicKey, sendPushToUser, pushToSubscriptions, pruneDeadSubscriptions, userWantsCategory, prefsFor, DEFAULT_NOTIFICATION_PREFS } from "./server/push.js";
 import { avatarGradient } from "./shared/avatar.js";
 
 dotenv.config({ quiet: true });
@@ -1951,9 +1951,228 @@ app.post("/api/push/run-reminders", async (req, res) => {
     }
 
     await dbManager.writeDb(db);
+
+    // The daily cron is also the safety net for broadcast jobs a serverless
+    // timeout stranded mid-delivery: resume anything stale.
+    await processBroadcastJobs({ onlyStale: true });
+
     res.json({ success: true, remindersSent: sent, pushConfigured: isPushConfigured() });
   } catch (error) {
     res.status(500).json({ error: "Error running reminders" });
+  }
+});
+
+// ----------------------------------------------------
+// BROADCAST NOTIFICATIONS (new Experiences + admin announcements)
+// ----------------------------------------------------
+// Broadcasts fan out to many devices, so they run through durable
+// NotificationJob records: the job is created (deduplicated by key) in the
+// same write as its trigger, then delivered in chunks with progress persisted
+// after every chunk. A crashed or timed-out invocation therefore never
+// re-sends from the top — the next admin request or the daily cron resumes
+// exactly where it stopped.
+
+const BROADCAST_CHUNK = 25;
+let broadcastBudgetMs = 8000;       // soft per-invocation sending budget
+let broadcastStaleMs = 30 * 1000;   // a "processing" job untouched this long is considered stranded
+
+/** Test seam (vitest only) for the time knobs above. */
+export function __setBroadcastKnobsForTests(knobs: { budgetMs?: number; staleMs?: number }): void {
+  if (!isTestEnv) throw new Error("__setBroadcastKnobsForTests is only available in tests");
+  if (typeof knobs.budgetMs === "number") broadcastBudgetMs = knobs.budgetMs;
+  if (typeof knobs.staleMs === "number") broadcastStaleMs = knobs.staleMs;
+}
+
+/** Only in-app destinations may ride in a push payload. */
+const isSafeInAppUrl = (value: unknown): value is string =>
+  typeof value === "string" && value.length <= 200 && /^\/[A-Za-z0-9/?&=._%-]*$/.test(value);
+
+function eligibleBroadcastRecipients(db: DbSchema, category: "experiences" | "announcements") {
+  const eligible = db.users.filter(u => u.status === "active" && userWantsCategory(u, category));
+  const eligibleIds = new Set(eligible.map(u => u.id));
+  const subs = db.pushSubscriptions.filter(s => eligibleIds.has(s.userId));
+  return {
+    eligibleMembers: eligible.length,
+    subscribedMembers: new Set(subs.map(s => s.userId)).size,
+    subs,
+  };
+}
+
+/**
+ * Queue one broadcast. Returns the existing job when the dedupe key was seen
+ * before (the same trigger can never announce twice), the new job otherwise.
+ * The caller persists with its own writeDb and then runs processBroadcastJobs.
+ */
+function createBroadcastJob(
+  db: DbSchema,
+  params: {
+    type: NotificationJob["type"];
+    category: NotificationJob["category"];
+    dedupeKey: string;
+    title: string;
+    body: string;
+    url: string;
+    createdBy: string;
+    eventId?: string;
+  }
+): { job: NotificationJob; duplicate: boolean } {
+  const existing = db.notificationJobs.find(j => j.dedupeKey === params.dedupeKey);
+  if (existing) return { job: existing, duplicate: true };
+
+  const { eligibleMembers, subscribedMembers, subs } = eligibleBroadcastRecipients(db, params.category);
+  const now = new Date().toISOString();
+  const job: NotificationJob = {
+    id: generateId(),
+    type: params.type,
+    dedupeKey: params.dedupeKey,
+    category: params.category,
+    title: params.title,
+    body: params.body,
+    url: params.url,
+    tag: "",
+    createdBy: params.createdBy,
+    createdAt: now,
+    eventId: params.eventId,
+    status: subs.length === 0 ? "done" : "processing",
+    remaining: subs.map(s => s.id),
+    eligibleMembers,
+    subscribedMembers,
+    accepted: 0,
+    failed: 0,
+    expired: 0,
+    touchedAt: now,
+    completedAt: subs.length === 0 ? now : undefined,
+  };
+  job.tag = `${job.type}-${job.id}`;
+  db.notificationJobs.push(job);
+  return { job, duplicate: false };
+}
+
+/**
+ * Deliver pending broadcast jobs in chunks, persisting progress after every
+ * chunk so an interruption loses at most one chunk of accounting — and dedup
+ * tags mean a re-attempted chunk replaces rather than stacks on the device.
+ * With onlyStale, touches only jobs no other invocation moved recently
+ * (the resume path), so concurrent requests don't double-send.
+ */
+async function processBroadcastJobs(opts: { onlyStale?: boolean } = {}): Promise<void> {
+  if (!isPushConfigured()) return;
+  const started = Date.now();
+  const db = await dbManager.readDb();
+  const jobs = db.notificationJobs.filter(j => j.status === "processing");
+  for (const job of jobs) {
+    if (opts.onlyStale && Date.now() - new Date(job.touchedAt).getTime() < broadcastStaleMs) continue;
+    while (job.remaining.length > 0) {
+      if (Date.now() - started >= broadcastBudgetMs) return; // resumed by a later request or the cron
+      const chunkIds = new Set(job.remaining.slice(0, BROADCAST_CHUNK));
+      const subs = db.pushSubscriptions.filter(s => chunkIds.has(s.id));
+      const tally = await pushToSubscriptions(subs, {
+        title: job.title,
+        body: job.body,
+        url: job.url,
+        tag: job.tag,
+      });
+      job.accepted += tally.accepted;
+      job.failed += tally.failed;
+      job.expired += tally.expired;
+      pruneDeadSubscriptions(db, tally.deadEndpoints);
+      job.remaining = job.remaining.filter(id => !chunkIds.has(id));
+      job.touchedAt = new Date().toISOString();
+      if (job.remaining.length === 0) {
+        job.status = "done";
+        job.completedAt = job.touchedAt;
+      }
+      await dbManager.writeDb(db);
+    }
+  }
+}
+
+/** What admins may see about a job — accounting, never endpoints or keys. */
+function broadcastJobSummary(job: NotificationJob) {
+  return {
+    id: job.id,
+    type: job.type,
+    title: job.title,
+    body: job.body,
+    url: job.url,
+    createdAt: job.createdAt,
+    status: job.status,
+    eligibleMembers: job.eligibleMembers,
+    subscribedMembers: job.subscribedMembers,
+    accepted: job.accepted,
+    failed: job.failed,
+    expired: job.expired,
+    pending: job.remaining.length,
+    completedAt: job.completedAt,
+  };
+}
+
+const announcementLimiter = new RateLimiter(30, 60 * 60 * 1000); // 30 sends / hour / IP
+
+// Send an announcement to every subscribed member (admins only). The response
+// is a truthful delivery summary — "accepted" counts what the push services
+// took, never what members actually saw.
+app.post("/api/admin/announcements", authenticateAdmin, async (req, res) => {
+  try {
+    const adminId = (req as any).userId;
+    if (!isTestEnv && !announcementLimiter.check(clientIp(req))) {
+      return res.status(429).json({ error: "Too many announcements. Please slow down." });
+    }
+    if (!isPushConfigured()) {
+      return res.status(503).json({ error: "Push notifications are not configured on this server yet" });
+    }
+
+    const title = boundedText(req.body?.title, 60);
+    const message = boundedText(req.body?.message, 200);
+    if (!title) return res.status(400).json({ error: "A title is required (max 60 characters)" });
+    if (!message) return res.status(400).json({ error: "A message is required (max 200 characters)" });
+
+    const url = req.body?.url === undefined || req.body?.url === null || req.body?.url === "" ? "/" : req.body.url;
+    if (!isSafeInAppUrl(url)) {
+      return res.status(400).json({ error: "The destination must be a NEST page (a path starting with /)" });
+    }
+
+    // The client mints one key per form submission, so a double-tap or a
+    // retried request can never send the same announcement twice.
+    const idempotencyKey = req.body?.idempotencyKey;
+    if (typeof idempotencyKey !== "string" || !/^[A-Za-z0-9_-]{8,64}$/.test(idempotencyKey)) {
+      return res.status(400).json({ error: "idempotencyKey is required" });
+    }
+
+    const db = await dbManager.readDb();
+    const { job, duplicate } = createBroadcastJob(db, {
+      type: "announcement",
+      category: "announcements",
+      dedupeKey: `announcement-${idempotencyKey}`,
+      title,
+      body: message,
+      url,
+      createdBy: adminId,
+    });
+    if (!duplicate) {
+      recordAudit(db, adminId, "announcement.send", undefined, job.id);
+      await dbManager.writeDb(db);
+      await processBroadcastJobs();
+    }
+    res.json({ duplicate, job: broadcastJobSummary(job) });
+  } catch (error) {
+    res.status(500).json({ error: "Error sending announcement" });
+  }
+});
+
+// Broadcast history + live status (admins only). Loading it also resumes any
+// job a timed-out invocation left behind, so the panel doubles as recovery.
+app.get("/api/admin/announcements", authenticateAdmin, async (req, res) => {
+  try {
+    await processBroadcastJobs({ onlyStale: true });
+    const db = await dbManager.readDb();
+    const jobs = [...db.notificationJobs]
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+      .slice(0, 20)
+      .map(broadcastJobSummary);
+    res.json({ pushConfigured: isPushConfigured(), jobs });
+  } catch (error) {
+    res.status(500).json({ error: "Error loading announcements" });
   }
 });
 
@@ -2035,7 +2254,27 @@ app.post("/api/events", authenticateAdmin, async (req, res) => {
     };
 
     db.events.push(newEvent);
+
+    // Publishing an Experience announces it to members who opted in. The job
+    // is deduplicated by event id (an event announces at most once, ever) and
+    // persists in the same write as the event itself — so a push outage can
+    // delay the announcement but never duplicate it or corrupt the event.
+    // NEST has no draft state: an event exists the moment an admin publishes
+    // it here, and the only "edit" is deletion, which cancels the job below.
+    if (isPushConfigured()) {
+      createBroadcastJob(db, {
+        type: "experience",
+        category: "experiences",
+        dedupeKey: `event-${newEvent.id}`,
+        title: "New on NEST ✨",
+        body: `${String(newEvent.title).slice(0, 80)} — a new NEST Experience is here. Check it out!`,
+        url: `/?open=events&event=${newEvent.id}`,
+        createdBy: "system",
+        eventId: newEvent.id,
+      });
+    }
     await dbManager.writeDb(db);
+    await processBroadcastJobs();
 
     res.json(newEvent);
   } catch (error) {
@@ -2054,6 +2293,17 @@ app.delete("/api/events/:id", authenticateAdmin, async (req, res) => {
 
     db.events = db.events.filter(e => e.id !== id);
     db.rsvps = db.rsvps.filter(r => r.eventId !== id);
+
+    // A deleted event must not keep announcing itself: cancel any of its
+    // broadcast deliveries still in flight.
+    for (const job of db.notificationJobs) {
+      if (job.eventId === id && job.status === "processing") {
+        job.status = "cancelled";
+        job.remaining = [];
+        job.touchedAt = new Date().toISOString();
+        job.completedAt = job.touchedAt;
+      }
+    }
 
     if (removed) {
       for (const attendeeId of attendees) {
@@ -2517,8 +2767,10 @@ function deleteUserData(userId: string, db: any) {
   // 2. Delete profile
   db.profiles = db.profiles.filter((p: any) => p.userId !== userId);
 
-  // 3. Delete active sessions
+  // 3. Delete active sessions and push subscriptions (her devices must stop
+  //    receiving account notifications the moment the account is gone)
   db.sessions = db.sessions.filter((s: any) => s.userId !== userId);
+  db.pushSubscriptions = db.pushSubscriptions.filter((s: any) => s.userId !== userId);
 
   // 4. Delete recommendations created by user
   db.recommendations = db.recommendations.filter((rec: any) => rec.authorId !== userId);

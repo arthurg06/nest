@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { ShieldCheck, Trash2, Users, MapPin, Search, ExternalLink, Ban, RotateCcw, BadgeCheck, XCircle, Key, Pencil, Copy, X, Calendar, ChevronDown, ChevronUp } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
+import { ShieldCheck, Trash2, Users, MapPin, Search, ExternalLink, Ban, RotateCcw, BadgeCheck, XCircle, Key, Pencil, Copy, X, Calendar, ChevronDown, ChevronUp, Megaphone } from "lucide-react";
 import { Recommendation, UserProfile } from "../types";
 import { apiUrl } from "../lib/api";
 import MemberProfileModal from "./MemberProfileModal";
@@ -59,6 +59,25 @@ interface RecoveryStatus {
   issuedBy?: "self" | "admin";
 }
 
+/** One push broadcast with its honest delivery accounting — never endpoints.
+    "accepted" is what the push services took, not what members saw. */
+interface AnnouncementJob {
+  id: string;
+  type: "experience" | "announcement";
+  title: string;
+  body: string;
+  url: string;
+  createdAt: string;
+  status: "processing" | "done" | "cancelled";
+  eligibleMembers: number;
+  subscribedMembers: number;
+  accepted: number;
+  failed: number;
+  expired: number;
+  pending: number;
+  completedAt?: string;
+}
+
 /** One experience with everyone who booked a spot — admin eyes only. */
 interface EventGuestsEntry {
   id: string;
@@ -96,7 +115,7 @@ export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboar
   const [recSearch, setRecSearch] = useState("");
   const [verificationFilter, setVerificationFilter] = useState<string>("pending");
   const [userStatusFilter, setUserStatusFilter] = useState<string>("all");
-  const [activeSubTab, setActiveSubTab] = useState<"verifications" | "users" | "spots" | "guests">("verifications");
+  const [activeSubTab, setActiveSubTab] = useState<"verifications" | "users" | "spots" | "guests" | "announce">("verifications");
 
   const [busyUserId, setBusyUserId] = useState<string | null>(null);
   const [deletingRecId, setDeletingRecId] = useState<string | null>(null);
@@ -289,6 +308,83 @@ export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboar
       .catch(() => { if (alive) setEventGuests([]); });
     return () => { alive = false; };
   }, [activeSubTab]);
+
+  // ANNOUNCEMENTS — push broadcasts to every subscribed member. The panel
+  // shows truthful delivery accounting straight from the job records (how
+  // many members were eligible, how many had devices, what the push services
+  // accepted or rejected) and polls while a broadcast is still delivering —
+  // loading the list also resumes any delivery a timeout stranded.
+  const [announceTitle, setAnnounceTitle] = useState("");
+  const [announceMessage, setAnnounceMessage] = useState("");
+  const [announceUrl, setAnnounceUrl] = useState("/");
+  const [announceJobs, setAnnounceJobs] = useState<AnnouncementJob[] | null>(null);
+  const [announcePushConfigured, setAnnouncePushConfigured] = useState(true);
+  const [announceConfirming, setAnnounceConfirming] = useState(false);
+  const [announceSending, setAnnounceSending] = useState(false);
+  const [announceResult, setAnnounceResult] = useState<AnnouncementJob | null>(null);
+  // One key per drafted announcement: a double-tap or retried request can
+  // never send the same announcement twice.
+  const announceKeyRef = useRef<string>(crypto.randomUUID());
+
+  const loadAnnouncements = async () => {
+    try {
+      const res = await fetch(apiUrl("/api/admin/announcements"), { headers: authHeaders() });
+      const d = await res.json();
+      if (res.ok) {
+        setAnnounceJobs(d.jobs);
+        setAnnouncePushConfigured(d.pushConfigured);
+        // Keep the fresh-send summary live while it finishes delivering.
+        setAnnounceResult(prev => (prev ? d.jobs.find((j: AnnouncementJob) => j.id === prev.id) || prev : prev));
+      }
+    } catch {
+      setAnnounceJobs(prev => prev ?? []);
+    }
+  };
+
+  useEffect(() => {
+    if (activeSubTab !== "announce") return;
+    setAnnounceJobs(null);
+    loadAnnouncements();
+  }, [activeSubTab]);
+
+  const broadcastInFlight = (announceJobs || []).some(j => j.status === "processing");
+  useEffect(() => {
+    if (activeSubTab !== "announce" || !broadcastInFlight) return;
+    const t = window.setInterval(loadAnnouncements, 5000);
+    return () => window.clearInterval(t);
+  }, [activeSubTab, broadcastInFlight]);
+
+  const handleSendAnnouncement = async () => {
+    setAnnounceSending(true);
+    try {
+      const res = await fetch(apiUrl("/api/admin/announcements"), {
+        method: "POST",
+        headers: { ...authHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: announceTitle.trim(),
+          message: announceMessage.trim(),
+          url: announceUrl,
+          idempotencyKey: announceKeyRef.current
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        notify(data.error || "Could not send the announcement.");
+        return;
+      }
+      setAnnounceResult(data.job);
+      setAnnounceTitle("");
+      setAnnounceMessage("");
+      setAnnounceUrl("/");
+      announceKeyRef.current = crypto.randomUUID();
+      loadAnnouncements();
+    } catch {
+      notify("Could not send the announcement — network error.");
+    } finally {
+      setAnnounceSending(false);
+      setAnnounceConfirming(false);
+    }
+  };
 
   // Manual removal: inline confirm (the desktop webview suppresses native
   // confirm dialogs), then the server deletes exactly that registration.
@@ -583,6 +679,15 @@ export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboar
         >
           <Calendar size={14} />
           <span>Events Guests</span>
+        </button>
+        <button
+          onClick={() => setActiveSubTab("announce")}
+          className={`px-4 py-2 rounded-xl text-xs font-sans font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
+            activeSubTab === "announce" ? "bg-slate-900 text-white shadow-md" : "bg-card/40 text-muted-foreground hover:bg-card/75"
+          }`}
+        >
+          <Megaphone size={14} />
+          <span>Announcements</span>
         </button>
       </div>
 
@@ -1120,6 +1225,179 @@ export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboar
               );
             })
           )}
+        </div>
+      )}
+
+      {/* ANNOUNCEMENTS — compose and send a push broadcast, with truthful
+          delivery accounting. New-Experience auto-announcements appear in the
+          same history, since they ride the same job records. */}
+      {activeSubTab === "announce" && (
+        <div className="bg-card/40 backdrop-blur-xl rounded-[28px] border border-border/60 p-5 shadow-xl space-y-5">
+          {!announcePushConfigured && (
+            <div className="bg-amber-50 border border-amber-200/70 text-amber-800 text-[11px] font-sans font-bold rounded-xl p-3.5 leading-relaxed">
+              Push delivery isn't configured on this server (VAPID keys missing), so announcements can't be
+              sent from here yet. Everything below becomes available the moment the keys are set.
+            </div>
+          )}
+
+          {/* Compose */}
+          <div className="space-y-3">
+            <p className="font-mono text-[9px] font-black uppercase tracking-widest text-muted-foreground">
+              Send an announcement
+            </p>
+            <div className="space-y-1">
+              <input
+                type="text"
+                value={announceTitle}
+                maxLength={60}
+                onChange={e => { setAnnounceTitle(e.target.value); setAnnounceConfirming(false); }}
+                placeholder="Title — e.g. Something exciting is coming ✨"
+                className="w-full bg-card border border-border rounded-xl px-3.5 py-2.5 text-xs font-sans text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/30"
+              />
+              <p className="text-[10px] font-mono text-muted-foreground text-right">{announceTitle.length}/60</p>
+            </div>
+            <div className="space-y-1">
+              <textarea
+                value={announceMessage}
+                maxLength={200}
+                rows={3}
+                onChange={e => { setAnnounceMessage(e.target.value); setAnnounceConfirming(false); }}
+                placeholder="Message — short enough to read on a lock screen."
+                className="w-full bg-card border border-border rounded-xl px-3.5 py-2.5 text-xs font-sans text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+              />
+              <p className="text-[10px] font-mono text-muted-foreground text-right">{announceMessage.length}/200</p>
+            </div>
+            <label className="flex items-center gap-2 text-[11px] font-sans text-muted-foreground">
+              <span className="font-bold shrink-0">Opens:</span>
+              <select
+                value={announceUrl}
+                onChange={e => setAnnounceUrl(e.target.value)}
+                className="bg-card border border-border rounded-lg px-2 py-1.5 text-[11px] font-sans text-foreground cursor-pointer focus:outline-none"
+              >
+                <option value="/">Just open NEST</option>
+                <option value="/?open=events">Experiences</option>
+                <option value="/?open=chat">Chat</option>
+                <option value="/?open=swipe">Swipe deck</option>
+              </select>
+            </label>
+
+            {/* Preview — how the notification will roughly look on a device */}
+            {(announceTitle.trim() || announceMessage.trim()) && (
+              <div className="bg-slate-900 rounded-2xl p-3.5 flex items-start gap-3 max-w-sm">
+                <img src="/icons/nest-192.png?v=3" alt="" className="w-8 h-8 rounded-lg shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-xs font-bold text-white truncate">{announceTitle.trim() || "Title"}</p>
+                  <p className="text-[11px] text-slate-300 leading-snug break-words">{announceMessage.trim() || "Message"}</p>
+                  <p className="text-[9px] text-slate-500 mt-1 font-mono">nestclub.es · now</p>
+                </div>
+              </div>
+            )}
+
+            {announceConfirming ? (
+              <div className="flex items-center gap-2 bg-muted/40 border border-border/50 rounded-xl p-3">
+                <span className="text-[11px] font-sans font-bold text-foreground flex-1">
+                  Send this to every subscribed member?
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setAnnounceConfirming(false)}
+                  className="text-[11px] font-bold bg-card border border-border rounded-lg px-3 py-1.5 hover:bg-muted cursor-pointer"
+                >
+                  No
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSendAnnouncement}
+                  disabled={announceSending}
+                  className="text-[11px] font-black bg-slate-900 text-white rounded-lg px-3 py-1.5 hover:opacity-90 disabled:opacity-60 cursor-pointer"
+                >
+                  {announceSending ? "Sending…" : "Yes, send"}
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setAnnounceConfirming(true)}
+                disabled={!announcePushConfigured || !announceTitle.trim() || !announceMessage.trim()}
+                className="w-full sm:w-auto bg-slate-900 hover:bg-slate-800 disabled:opacity-40 text-white font-sans text-xs font-black px-6 py-2.5 rounded-xl transition cursor-pointer inline-flex items-center justify-center gap-1.5"
+              >
+                <Megaphone size={13} />
+                <span>Send announcement</span>
+              </button>
+            )}
+
+            {announceResult && (
+              <div className="bg-success-muted border border-success-border rounded-xl p-3.5 text-[11px] font-sans leading-relaxed text-foreground animate-fade-in">
+                {announceResult.subscribedMembers === 0 ? (
+                  <>
+                    <span className="font-black">Nothing to deliver:</span> no members have push-enabled devices yet.
+                    ({announceResult.eligibleMembers} member{announceResult.eligibleMembers === 1 ? "" : "s"} would be
+                    eligible once they enable notifications.)
+                  </>
+                ) : (
+                  <>
+                    <span className="font-black">
+                      {announceResult.status === "processing" ? "Delivering…" : "Delivery finished."}
+                    </span>{" "}
+                    Push services accepted {announceResult.accepted}
+                    {announceResult.failed > 0 && <>, rejected {announceResult.failed}</>}
+                    {announceResult.expired > 0 && <>, reported {announceResult.expired} expired device{announceResult.expired === 1 ? "" : "s"} (removed)</>}
+                    {announceResult.pending > 0 && <> — {announceResult.pending} still to attempt (this panel updates automatically)</>}
+                    . Reached devices of up to {announceResult.subscribedMembers} of {announceResult.eligibleMembers} eligible
+                    members — acceptance by a push service doesn't guarantee the member saw it.
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* History */}
+          <div className="space-y-2 border-t border-border/40 pt-4">
+            <p className="font-mono text-[9px] font-black uppercase tracking-widest text-muted-foreground">
+              Recent broadcasts
+            </p>
+            {announceJobs === null ? (
+              <p className="text-[11px] text-muted-foreground font-sans italic">Loading…</p>
+            ) : announceJobs.length === 0 ? (
+              <p className="text-[11px] text-muted-foreground font-sans italic">
+                Nothing sent yet. New Experiences announce themselves here automatically when they're published.
+              </p>
+            ) : (
+              announceJobs.map(job => (
+                <div key={job.id} className="bg-card/60 border border-border/50 rounded-xl p-3 space-y-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span
+                      className={`text-[9px] font-mono font-black uppercase tracking-wider px-1.5 py-0.5 rounded border ${
+                        job.type === "experience"
+                          ? "bg-accent/40 text-primary border-border/50"
+                          : "bg-sky-50 text-sky-700 border-sky-200/60"
+                      }`}
+                    >
+                      {job.type === "experience" ? "Experience" : "Announcement"}
+                    </span>
+                    <span className="text-xs font-bold text-foreground font-sans flex-1 min-w-0 truncate">{job.title}</span>
+                    <span className="text-[10px] font-mono text-muted-foreground shrink-0">
+                      {new Date(job.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}{" "}
+                      {new Date(job.createdAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground font-sans leading-snug">{job.body}</p>
+                  <p className="text-[10px] font-mono text-muted-foreground">
+                    {job.status === "cancelled" ? (
+                      "Cancelled before delivery finished (event deleted)."
+                    ) : job.status === "processing" ? (
+                      <>Sending… {job.accepted} accepted · {job.pending} to go</>
+                    ) : (
+                      <>
+                        {job.accepted} accepted · {job.failed} failed · {job.expired} expired ·{" "}
+                        {job.subscribedMembers}/{job.eligibleMembers} eligible members had devices
+                      </>
+                    )}
+                  </p>
+                </div>
+              ))
+            )}
+          </div>
         </div>
       )}
 

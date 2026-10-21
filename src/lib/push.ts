@@ -128,6 +128,28 @@ export async function resyncSubscriptionIfGranted(): Promise<void> {
   }
 }
 
+/**
+ * Shared-device safety on sign-out: detach this browser's subscription from
+ * the account server-side so the device stops receiving her notifications,
+ * but keep the browser-level subscription alive — whoever signs in next (her
+ * included) re-attaches it silently via resyncSubscriptionIfGranted. Must run
+ * BEFORE the session token is invalidated.
+ */
+export async function detachPushOnSignOut(token: string): Promise<void> {
+  try {
+    const registration = await navigator.serviceWorker?.getRegistration();
+    const subscription = registration && (await registration.pushManager.getSubscription());
+    if (!subscription) return;
+    await fetch(apiUrl("/api/push/unsubscribe"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+      body: JSON.stringify({ endpoint: subscription.endpoint })
+    });
+  } catch {
+    /* best effort */
+  }
+}
+
 export async function disablePushOnThisDevice(): Promise<void> {
   try {
     const registration = await navigator.serviceWorker?.getRegistration();

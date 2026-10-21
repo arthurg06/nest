@@ -18,7 +18,7 @@ import { avatarGradient } from "../shared/avatar";
 import { displayUniversity } from "../shared/universities";
 import NestOnboarding, { ONBOARD_INSTALL_KEY, ONBOARD_NOTIFY_KEY } from "./components/NestOnboarding";
 import GuestExperience from "./components/GuestExperience";
-import { resyncSubscriptionIfGranted, isStandalone } from "./lib/push";
+import { resyncSubscriptionIfGranted, detachPushOnSignOut, isStandalone } from "./lib/push";
 
 export default function App() {
   // Navigation State: "swipe" | "chat" | "city" | "events" | "profile" | "admin"
@@ -140,12 +140,18 @@ export default function App() {
   const handleSignOut = () => {
     const currentToken = token || localStorage.getItem("nest_token");
     if (currentToken) {
+      // Detach this device's push subscription from the account FIRST (the
+      // call needs the still-valid token), then invalidate the session.
       // Plain fetch (not fetchWithAuth) to avoid sign-out recursion on 401,
       // and fire-and-forget so a network failure never blocks local sign-out.
-      fetch(apiUrl("/api/auth/logout"), {
-        method: "POST",
-        headers: { "Authorization": `Bearer ${currentToken}` }
-      }).catch(() => {});
+      detachPushOnSignOut(currentToken)
+        .then(() =>
+          fetch(apiUrl("/api/auth/logout"), {
+            method: "POST",
+            headers: { "Authorization": `Bearer ${currentToken}` }
+          })
+        )
+        .catch(() => {});
     }
     localStorage.removeItem("nest_token");
     localStorage.removeItem("nest_user");
