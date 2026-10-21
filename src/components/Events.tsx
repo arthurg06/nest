@@ -29,6 +29,21 @@ interface MemoriesData {
   totals: { photos: number; attendees: number; connections: number };
 }
 
+// Half-hour time slots for the admin's time dropdown — 24h, matching how
+// NEST displays times everywhere.
+const TIME_OPTIONS = Array.from({ length: 32 }, (_, i) => {
+  const minutes = 8 * 60 + i * 30; // 08:00 → 23:30
+  return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
+});
+
+// A calendar-picked YYYY-MM-DD becomes the display format every existing
+// event already uses ("Saturday, Nov 14"), built from local date parts so
+// the day can never shift across timezones.
+const displayDateFromPicker = (iso: string): string => {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" });
+};
+
 interface EventsProps {
   events: Event[];
   /** Books a spot (details present) or cancels one (details absent); the
@@ -99,6 +114,32 @@ export default function Events({ events, onRsvp, isAdmin, guest = false, onAddEv
     }
   };
 
+  // Cancelling from My Upcoming Events: an explicit confirmation first, and
+  // the "revoked" notice only after the server actually removed the
+  // registration. The server only ever cancels the caller's own RSVP.
+  const [cancelTarget, setCancelTarget] = useState<MyEventItem | null>(null);
+  const [cancelRevoked, setCancelRevoked] = useState(false);
+  const [cancelError, setCancelError] = useState("");
+  const [cancelBusy, setCancelBusy] = useState(false);
+
+  const confirmCancelRsvp = async () => {
+    if (!cancelTarget || cancelBusy) return;
+    setCancelBusy(true);
+    setCancelError("");
+    try {
+      const result = await onRsvp(cancelTarget.id); // bare request = explicit cancel
+      if (result.ok) {
+        setMyEvents(prev => (prev ? prev.filter(i => !(i.kind === "outing" && i.id === cancelTarget.id)) : prev));
+        setCancelTarget(null);
+        setCancelRevoked(true);
+      } else {
+        setCancelError(result.error || "Could not cancel. Please try again.");
+      }
+    } finally {
+      setCancelBusy(false);
+    }
+  };
+
   const cancelRsvp = async () => {
     if (!rsvpFlow) return;
     setRsvpBusy(true);
@@ -147,7 +188,7 @@ export default function Events({ events, onRsvp, isAdmin, guest = false, onAddEv
   const [newTitle, setNewTitle] = useState("");
   const [newDesc, setNewDesc] = useState("");
   const [newDate, setNewDate] = useState("");
-  const [newTime, setNewTime] = useState("");
+  const [newTime, setNewTime] = useState("18:00");
   const [newLoc, setNewLoc] = useState("");
   const [newCategory, setNewCategory] = useState("social");
   const [newPrice, setNewPrice] = useState("Free");
@@ -182,7 +223,7 @@ export default function Events({ events, onRsvp, isAdmin, guest = false, onAddEv
     onAddEvent(
       newTitle.trim(),
       newDesc.trim(),
-      newDate.trim(),
+      displayDateFromPicker(newDate.trim()),
       newTime.trim(),
       newLoc.trim(),
       newCategory,
@@ -192,7 +233,7 @@ export default function Events({ events, onRsvp, isAdmin, guest = false, onAddEv
     setNewTitle("");
     setNewDesc("");
     setNewDate("");
-    setNewTime("");
+    setNewTime("18:00");
     setNewLoc("");
     setNewCategory("social");
     setNewPrice("Free");
@@ -205,18 +246,11 @@ export default function Events({ events, onRsvp, isAdmin, guest = false, onAddEv
       
       {/* NEST EXPERIENCES — free app, individually priced real-life events.
           No membership, no subscription: you only pay when you book. */}
-      <div className="bg-card/50 backdrop-blur-md p-6 rounded-[28px] border border-border/60 shadow-sm space-y-2 animate-fade-in">
+      <div className="bg-card/50 backdrop-blur-md p-5 rounded-[28px] border border-border/60 shadow-sm space-y-1 animate-fade-in">
         <span className="font-mono text-[10px] font-black tracking-widest text-primary uppercase">NEST Experiences</span>
         <h2 className="font-display text-3xl text-foreground leading-tight">
           Meet your people IRL.
         </h2>
-        <p className="font-sans text-xs text-muted-foreground leading-relaxed max-w-md">
-          From dinners and nights out to wellness, creative experiences and spontaneous
-          plans — NEST Experiences are designed to take your friendships offline.
-        </p>
-        <p className="font-sans text-[11px] font-bold text-foreground">
-          NEST is free. You only pay for the experiences you choose to book.
-        </p>
       </div>
 
       {/* Section header + admin publishing */}
@@ -294,26 +328,29 @@ export default function Events({ events, onRsvp, isAdmin, guest = false, onAddEv
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="space-y-1">
-              <label className="text-[10px] font-mono font-bold text-muted-foreground uppercase block">Date</label>
+              <label htmlFor="new-event-date" className="text-[10px] font-mono font-bold text-muted-foreground uppercase block">Date</label>
               <input
-                type="text"
+                id="new-event-date"
+                type="date"
                 required
                 value={newDate}
                 onChange={(e) => setNewDate(e.target.value)}
-                placeholder="e.g. Tuesday, Oct 15"
-                className="w-full bg-card border border-border rounded-xl px-3 py-2 text-xs text-foreground focus:outline-none"
+                className="w-full bg-card border border-border rounded-xl px-3 py-2 text-xs text-foreground focus:outline-none cursor-pointer"
               />
             </div>
             <div className="space-y-1">
-              <label className="text-[10px] font-mono font-bold text-muted-foreground uppercase block">Time</label>
-              <input
-                type="text"
+              <label htmlFor="new-event-time" className="text-[10px] font-mono font-bold text-muted-foreground uppercase block">Time</label>
+              <select
+                id="new-event-time"
                 required
                 value={newTime}
                 onChange={(e) => setNewTime(e.target.value)}
-                placeholder="e.g. 18:00 - 20:00"
-                className="w-full bg-card border border-border rounded-xl px-3 py-2 text-xs text-foreground focus:outline-none"
-              />
+                className="w-full bg-card border border-border rounded-xl px-3 py-2 text-xs text-foreground focus:outline-none cursor-pointer"
+              >
+                {TIME_OPTIONS.map(t => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </select>
             </div>
             <div className="space-y-1">
               <label className="text-[10px] font-mono font-bold text-muted-foreground uppercase block">Location / Venue Address</label>
@@ -657,40 +694,128 @@ export default function Events({ events, onRsvp, isAdmin, guest = false, onAddEv
                 </div>
               ) : (
                 myEvents.map(item => (
-                  <button
+                  <div
                     key={item.kind + item.id}
-                    type="button"
-                    onClick={() => {
-                      setShowMyEvents(false);
-                      if (item.kind === "plan" && item.matchId) {
-                        onOpenPlanChat?.(item.matchId);
-                      } else {
-                        setActiveTab("all");
-                        window.setTimeout(() => {
-                          document.getElementById(`event-card-${item.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
-                        }, 200);
-                      }
-                    }}
-                    className="w-full text-left bg-card/60 rounded-2xl border border-border/60 p-4 flex items-center gap-3.5 shadow-sm hover:bg-muted/40 hover:shadow-md transition animate-fade-in cursor-pointer"
+                    className="w-full bg-card/60 rounded-2xl border border-border/60 p-4 flex items-center gap-3.5 shadow-sm hover:bg-muted/40 hover:shadow-md transition animate-fade-in"
                   >
-                    <span className="text-2xl select-none shrink-0">
-                      {item.kind === "plan" ? "💌" : getCategoryImageEmoji(item.category || "")}
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <h4 className="font-sans font-bold text-sm text-foreground leading-snug truncate">{item.title}</h4>
-                      <p className="font-sans text-[11px] text-muted-foreground mt-0.5 truncate">
-                        {item.kind === "plan"
-                          ? `${new Date(`${item.date}T12:00:00`).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })} at ${item.time} · ${item.placeName} · with ${item.withName}`
-                          : [item.date, item.time, item.location].filter(Boolean).join(" · ")}
-                      </p>
-                    </div>
-                    <span className="text-[9px] font-mono font-black uppercase tracking-widest text-primary shrink-0">
-                      {item.kind === "plan" ? "Outing" : "NEST event"}
-                    </span>
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowMyEvents(false);
+                        if (item.kind === "plan" && item.matchId) {
+                          onOpenPlanChat?.(item.matchId);
+                        } else {
+                          setActiveTab("all");
+                          window.setTimeout(() => {
+                            document.getElementById(`event-card-${item.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+                          }, 200);
+                        }
+                      }}
+                      className="flex-1 min-w-0 text-left flex items-center gap-3.5 cursor-pointer"
+                    >
+                      <span className="text-2xl select-none shrink-0">
+                        {item.kind === "plan" ? "💌" : getCategoryImageEmoji(item.category || "")}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-sans font-bold text-sm text-foreground leading-snug truncate">{item.title}</h4>
+                        <p className="font-sans text-[11px] text-muted-foreground mt-0.5 truncate">
+                          {item.kind === "plan"
+                            ? `${new Date(`${item.date}T12:00:00`).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })} at ${item.time} · ${item.placeName} · with ${item.withName}`
+                            : [item.date, item.time, item.location].filter(Boolean).join(" · ")}
+                        </p>
+                      </div>
+                      <span className="text-[9px] font-mono font-black uppercase tracking-widest text-primary shrink-0">
+                        {item.kind === "plan" ? "Outing" : "NEST event"}
+                      </span>
+                    </button>
+                    {item.kind === "outing" && (
+                      <button
+                        type="button"
+                        onClick={() => { setCancelError(""); setCancelTarget(item); }}
+                        title="Cancel RSVP"
+                        aria-label={`Cancel RSVP for ${item.title}`}
+                        className="p-2 -m-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition shrink-0 cursor-pointer"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    )}
+                  </div>
                 ))
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cancel-RSVP confirmation — "Cancel" confirms, "No" keeps everything */}
+      {cancelTarget && (
+        <div
+          className="fixed inset-0 bg-slate-950/75 backdrop-blur-md flex items-center justify-center p-4 z-[85] animate-fade-in"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Cancel RSVP"
+        >
+          <div className="bg-card rounded-[32px] border border-border max-w-sm w-full shadow-2xl p-6 pt-8 text-center space-y-3 animate-scale-up relative">
+            <button
+              onClick={() => { if (!cancelBusy) setCancelTarget(null); }}
+              aria-label="Close"
+              className="absolute top-3 right-3 text-muted-foreground hover:text-foreground p-2.5 rounded-full hover:bg-muted transition"
+            >
+              <X size={16} />
+            </button>
+            <span className="text-3xl block select-none">🥺</span>
+            <h3 className="font-sans font-black text-base text-foreground leading-snug">
+              Are you sure you want to cancel? This action cannot be undone for this event.
+            </h3>
+            {cancelError && (
+              <p className="bg-destructive/10 border border-destructive/25 text-destructive p-2.5 rounded-xl text-[11px] leading-normal">
+                {cancelError}
+              </p>
+            )}
+            <button
+              onClick={confirmCancelRsvp}
+              disabled={cancelBusy}
+              className="w-full bg-destructive hover:opacity-90 disabled:opacity-60 text-white font-sans text-xs font-black py-3 rounded-2xl transition shadow-md"
+            >
+              {cancelBusy ? "Cancelling…" : "Cancel"}
+            </button>
+            <button
+              onClick={() => { if (!cancelBusy) setCancelTarget(null); }}
+              className="w-full bg-card/60 border border-border hover:bg-card text-foreground font-sans text-xs font-bold py-3 rounded-2xl transition"
+            >
+              No
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Shown only once the server confirmed the cancellation */}
+      {cancelRevoked && (
+        <div
+          className="fixed inset-0 bg-slate-950/75 backdrop-blur-md flex items-center justify-center p-4 z-[85] animate-fade-in"
+          role="dialog"
+          aria-modal="true"
+          aria-label="RSVP revoked"
+        >
+          <div className="bg-card rounded-[32px] border border-border max-w-sm w-full shadow-2xl p-6 pt-8 text-center space-y-3 animate-scale-up relative">
+            <button
+              onClick={() => setCancelRevoked(false)}
+              aria-label="Close"
+              className="absolute top-3 right-3 text-muted-foreground hover:text-foreground p-2.5 rounded-full hover:bg-muted transition"
+            >
+              <X size={16} />
+            </button>
+            <span className="text-3xl block select-none">🪺</span>
+            <h3 className="font-sans font-black text-base text-foreground leading-snug">RSVP revoked.</h3>
+            <p className="font-sans text-xs text-muted-foreground leading-relaxed">
+              We're sad to see you go! Join us next time...
+            </p>
+            <button
+              onClick={() => setCancelRevoked(false)}
+              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-sans text-xs font-black py-3 rounded-2xl transition shadow-pop"
+            >
+              Until next time
+            </button>
           </div>
         </div>
       )}
@@ -776,8 +901,14 @@ export default function Events({ events, onRsvp, isAdmin, guest = false, onAddEv
                 <>
                   <span className="text-3xl block select-none">🎉</span>
                   <h3 className="font-sans font-black text-base text-foreground leading-snug">
-                    You're in! Our NEST Team will contact you with your confirmation VIA Whatsapp. See you soon!
+                    You're in! Our NEST Team will contact you with your confirmation and addtional information of the event VIA Whatsapp. See you soon!
                   </h3>
+                  {guest && (
+                    <p className="font-sans text-[10px] text-muted-foreground leading-relaxed bg-muted/40 border border-border/40 rounded-xl p-2.5">
+                      guest users: please note you can cancel your attendance through Whatsapp upon
+                      our team's message confirmation or contacing us on IG: nest.madrid for further help.
+                    </p>
+                  )}
                   <button
                     onClick={close}
                     className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-sans text-xs font-black py-3 rounded-2xl transition shadow-pop"

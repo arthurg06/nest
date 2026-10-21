@@ -146,3 +146,47 @@ describe("admin event guests", () => {
     expect(after.body.events.find((e: any) => e.id === event.id).guestCount).toBe(1);
   });
 });
+
+describe("admin manual RSVP removal", () => {
+  it("is admin-only and scoped to the exact registration", async () => {
+    const event = await createEvent({ title: "Removal Check" });
+    const other = await createEvent({ title: "Untouched Event" });
+    const member = await signup();
+    await request(app).post(`/api/events/${event.id}/rsvp`).set(auth(member.token)).send({ whatsapp: "+34611999888" }).expect(200);
+    await request(app).post(`/api/events/${other.id}/rsvp`).set(auth(member.token)).send({ whatsapp: "+34611999888" }).expect(200);
+    await request(app)
+      .post(`/api/guest/events/${event.id}/rsvp`)
+      .send({ guestId: "removalguest1234", firstName: "Gone", lastName: "Soon", whatsapp: "+34622888777" })
+      .expect(200);
+
+    const admin = await getAdmin();
+    const before = await request(app).get("/api/admin/event-guests").set(auth(admin.token)).expect(200);
+    const entry = before.body.events.find((e: any) => e.id === event.id);
+    expect(entry.guestCount).toBe(2);
+    const guestRow = entry.guests.find((g: any) => g.isGuest);
+    const memberRow = entry.guests.find((g: any) => !g.isGuest);
+
+    // Not an admin → forbidden; anonymous → unauthenticated.
+    await request(app).delete(`/api/admin/events/${event.id}/rsvps/${guestRow.id}`).set(auth(member.token)).expect(403);
+    await request(app).delete(`/api/admin/events/${event.id}/rsvps/${guestRow.id}`).expect(401);
+
+    // Wrong event + rsvp pairing is refused.
+    await request(app).delete(`/api/admin/events/${other.id}/rsvps/${guestRow.id}`).set(auth(admin.token)).expect(404);
+
+    // Remove the guest registration.
+    const removed = await request(app).delete(`/api/admin/events/${event.id}/rsvps/${guestRow.id}`).set(auth(admin.token)).expect(200);
+    expect(removed.body.rsvpsCount).toBe(1);
+
+    // Remove the member registration too.
+    await request(app).delete(`/api/admin/events/${event.id}/rsvps/${memberRow.id}`).set(auth(admin.token)).expect(200);
+
+    const after = await request(app).get("/api/admin/event-guests").set(auth(admin.token)).expect(200);
+    expect(after.body.events.find((e: any) => e.id === event.id).guestCount).toBe(0);
+    // The member's registration on the OTHER event is untouched, and her
+    // upcoming list no longer shows the removed one.
+    expect(after.body.events.find((e: any) => e.id === other.id).guestCount).toBe(1);
+    const mine = await request(app).get("/api/my-events").set(auth(member.token)).expect(200);
+    const titles = mine.body.items.map((i: any) => i.title);
+    expect(titles).not.toContain("Removal Check");
+  });
+});

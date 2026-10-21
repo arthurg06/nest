@@ -3043,6 +3043,32 @@ app.get("/api/admin/event-guests", authenticateAdmin, async (req, res) => {
   }
 });
 
+// Manual RSVP removal: the admin takes one attendee (guest or member) off
+// one event's list. Removes exactly that registration — never the account,
+// the profile, the event, or the attendee's other registrations — and is
+// recorded in the audit trail.
+app.delete("/api/admin/events/:eventId/rsvps/:rsvpId", authenticateAdmin, async (req, res) => {
+  try {
+    const adminId = (req as any).userId;
+    const { eventId, rsvpId } = req.params;
+
+    const db = await dbManager.readDb();
+    const idx = db.rsvps.findIndex(r => r.id === rsvpId && r.eventId === eventId);
+    if (idx === -1) {
+      return res.status(404).json({ error: "Registration not found for this event" });
+    }
+
+    db.rsvps.splice(idx, 1);
+    recordAudit(db, adminId, "rsvp.remove", rsvpId);
+    await dbManager.writeDb(db);
+
+    res.json({ success: true, rsvpsCount: db.rsvps.filter(r => r.eventId === eventId).length });
+  } catch (error) {
+    console.error("Admin RSVP removal error:", error);
+    res.status(500).json({ error: "Could not remove the registration" });
+  }
+});
+
 // ----------------------------------------------------
 // ADMIN VERIFICATION REVIEW ENDPOINTS
 // ----------------------------------------------------

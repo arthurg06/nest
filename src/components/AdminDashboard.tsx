@@ -290,6 +290,41 @@ export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboar
     return () => { alive = false; };
   }, [activeSubTab]);
 
+  // Manual removal: inline confirm (the desktop webview suppresses native
+  // confirm dialogs), then the server deletes exactly that registration.
+  const [removingRsvpId, setRemovingRsvpId] = useState<string | null>(null);
+  const [rsvpRemovalBusy, setRsvpRemovalBusy] = useState(false);
+
+  const handleRemoveRsvp = async (eventId: string, rsvpId: string, guestName: string) => {
+    setRsvpRemovalBusy(true);
+    try {
+      const res = await fetch(apiUrl(`/api/admin/events/${eventId}/rsvps/${rsvpId}`), {
+        method: "DELETE",
+        headers: authHeaders()
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        notify(data.error || "Could not remove the registration.");
+        return;
+      }
+      setEventGuests(prev =>
+        prev
+          ? prev.map(evt =>
+              evt.id === eventId
+                ? { ...evt, guests: evt.guests.filter(g => g.id !== rsvpId), guestCount: evt.guestCount - 1 }
+                : evt
+            )
+          : prev
+      );
+      notify(`RSVP removed for ${guestName}.`);
+    } catch {
+      notify("Could not remove the registration — network error.");
+    } finally {
+      setRsvpRemovalBusy(false);
+      setRemovingRsvpId(null);
+    }
+  };
+
   const copyGuestNumber = async (number: string) => {
     try {
       await navigator.clipboard.writeText(number);
@@ -1002,7 +1037,7 @@ export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboar
                       ) : (
                         <div className="space-y-2">
                           {evt.guests.map(guest => (
-                            <div key={guest.id} className="flex items-center gap-3 bg-card/70 border border-border/40 rounded-xl p-2.5">
+                            <div key={guest.id} className="flex items-center flex-wrap gap-3 gap-y-2 bg-card/70 border border-border/40 rounded-xl p-2.5">
                               {guest.photo ? (
                                 <img
                                   src={guest.photo}
@@ -1043,6 +1078,37 @@ export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboar
                                 </div>
                               ) : (
                                 <span className="font-mono text-[10px] text-muted-foreground shrink-0">no number</span>
+                              )}
+                              {removingRsvpId === guest.id ? (
+                                <span className="inline-flex items-center gap-1.5 bg-card border border-border rounded-lg px-2 py-1 shrink-0 animate-fade-in">
+                                  <span className="text-[10px] font-bold text-foreground whitespace-nowrap">Remove this RSVP?</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => setRemovingRsvpId(null)}
+                                    disabled={rsvpRemovalBusy}
+                                    className="text-[10px] font-bold text-muted-foreground hover:text-foreground px-1.5 py-1 cursor-pointer"
+                                  >
+                                    No
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveRsvp(evt.id, guest.id, guest.name)}
+                                    disabled={rsvpRemovalBusy}
+                                    className="text-[10px] font-black bg-destructive text-white rounded px-2 py-1 hover:opacity-90 disabled:opacity-60 cursor-pointer"
+                                  >
+                                    {rsvpRemovalBusy ? "…" : "Remove RSVP"}
+                                  </button>
+                                </span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => setRemovingRsvpId(guest.id)}
+                                  title="Remove RSVP"
+                                  aria-label={`Remove ${guest.name}'s RSVP`}
+                                  className="p-1.5 text-muted-foreground hover:text-red-600 hover:bg-red-50 rounded-lg transition shrink-0 cursor-pointer"
+                                >
+                                  <Trash2 size={12} />
+                                </button>
                               )}
                             </div>
                           ))}
