@@ -1975,7 +1975,7 @@ app.get("/api/memories", authenticate, async (req, res) => {
     // matched with — the "new connections" around her outings.
     const otherAttendees = new Set<string>();
     for (const r of db.rsvps) {
-      if (myEventIds.has(r.eventId) && r.userId !== userId) otherAttendees.add(r.userId);
+      if (myEventIds.has(r.eventId) && r.userId && r.userId !== userId) otherAttendees.add(r.userId);
     }
     const myMatchPartners = new Set(
       db.matches
@@ -2081,6 +2081,110 @@ function normalizeWhatsApp(raw: unknown): string | null {
   const cleaned = raw.trim().replace(/[\s.\-()]/g, "");
   return /^\+?\d{7,15}$/.test(cleaned) ? cleaned : null;
 }
+
+// ----------------------------------------------------
+// GUEST (EVENTS ONLY) ACCESS
+// ----------------------------------------------------
+// Unauthenticated visitors may browse experiences and book a spot — nothing
+// else. A guest carries an opaque browser-generated id used purely to
+// recognise her own registrations (dedup + "You're Registered"); it is never
+// a session, never grants reads of member data, and can never be attached to
+// a member account from here.
+
+const guestBrowseLimiter = new RateLimiter(120, 60 * 60 * 1000); // 120 loads / hour / IP
+const guestRsvpLimiter = new RateLimiter(10, 60 * 60 * 1000);    // 10 bookings / hour / IP
+
+const isValidGuestId = (value: unknown): value is string =>
+  typeof value === "string" && /^[A-Za-z0-9_-]{8,64}$/.test(value);
+
+// Public experience list: the same event fields members see, with
+// userRsvped resolved against the caller's guest id. No member data is in
+// scope — events contain only what admins published.
+app.get("/api/guest/events", async (req, res) => {
+  try {
+    if (!isTestEnv && !guestBrowseLimiter.check(clientIp(req))) {
+      return res.status(429).json({ error: "Too many requests. Please try again later." });
+    }
+    const guestId = isValidGuestId(req.query.guestId) ? req.query.guestId : null;
+
+    const db = await dbManager.readDb();
+    const list = db.events.map(evt => {
+      const rsvps = db.rsvps.filter(r => r.eventId === evt.id);
+      return {
+        ...evt,
+        rsvpsCount: rsvps.length,
+        userRsvped: guestId ? rsvps.some(r => r.guestId === guestId) : false
+      };
+    });
+    res.json(list);
+  } catch (error) {
+    if (respondDbUnavailable(res, error)) return;
+    res.status(500).json({ error: "Error loading events" });
+  }
+});
+
+// Guest booking: first name, last name, and WhatsApp number — all required,
+// all validated here regardless of what the client sent. Same capacity rule
+// and the same registration store as members, so guests appear in the admin
+// guest lists and count toward event capacity.
+app.post("/api/guest/events/:id/rsvp", async (req, res) => {
+  try {
+    if (!isTestEnv && !guestRsvpLimiter.check(clientIp(req))) {
+      return res.status(429).json({ error: "Too many attempts. Please try again later." });
+    }
+    const { id } = req.params;
+    const guestId = req.body?.guestId;
+    if (!isValidGuestId(guestId)) {
+      return res.status(400).json({ error: "This browser session could not be identified. Please reload and try again." });
+    }
+
+    const firstName = boundedText(req.body?.firstName, LIMITS.name);
+    const lastName = boundedText(req.body?.lastName, LIMITS.name);
+    if (!firstName || !lastName) {
+      return res.status(400).json({ error: "Please enter your first and last name." });
+    }
+    const whatsapp = normalizeWhatsApp(req.body?.whatsapp);
+    if (!whatsapp) {
+      return res.status(400).json({
+        error: "Please enter a valid WhatsApp number (international format, e.g. +34 612 345 678)."
+      });
+    }
+
+    const db = await dbManager.readDb();
+    const event = db.events.find(e => e.id === id);
+    if (!event) {
+      return res.status(404).json({ error: "Event not found" });
+    }
+
+    const rsvps = db.rsvps.filter(r => r.eventId === id);
+
+    // One spot per guest: the same browser, or the same number already
+    // registered as a guest on this event, reports its existing status.
+    if (rsvps.some(r => r.guestId === guestId || (r.guestId && r.whatsapp === whatsapp))) {
+      return res.json({ success: true, userRsvped: true, alreadyRegistered: true, rsvpsCount: rsvps.length });
+    }
+
+    if (event.maxParticipants && rsvps.length >= event.maxParticipants) {
+      return res.status(409).json({ error: "This experience is fully booked", full: true });
+    }
+
+    db.rsvps.push({
+      id: generateId(),
+      eventId: id,
+      createdAt: new Date().toISOString(),
+      whatsapp,
+      guestId,
+      guestFirstName: firstName,
+      guestLastName: lastName
+    });
+
+    await dbManager.writeDb(db);
+    return res.json({ success: true, userRsvped: true, rsvpsCount: rsvps.length + 1 });
+  } catch (error) {
+    if (respondDbUnavailable(res, error)) return;
+    res.status(500).json({ error: "Error processing event RSVP" });
+  }
+});
 
 // Book a spot at an experience (free for every member; toggles attendance)
 app.post("/api/events/:id/rsvp", authenticate, async (req, res) => {
@@ -2901,13 +3005,28 @@ app.get("/api/admin/event-guests", authenticateAdmin, async (req, res) => {
         maxParticipants: evt.maxParticipants ?? null,
         guestCount: rsvps.length,
         guests: rsvps.map(r => {
+          // Guest registrations carry their own typed name; members keep
+          // their profile relationship — the name is never re-collected.
+          if (r.guestId) {
+            return {
+              id: r.id,
+              userId: null,
+              name: [r.guestFirstName, r.guestLastName].filter(Boolean).join(" ") || "Guest",
+              photo: "",
+              whatsapp: r.whatsapp || null,
+              rsvpAt: r.createdAt,
+              isGuest: true
+            };
+          }
           const profile = db.profiles.find(p => p.userId === r.userId);
           return {
+            id: r.id,
             userId: r.userId,
             name: profile?.name || "Deleted account",
             photo: profile?.photo || "",
             whatsapp: r.whatsapp || null,
-            rsvpAt: r.createdAt
+            rsvpAt: r.createdAt,
+            isGuest: false
           };
         }),
         // Same tolerant ordering key the My Events list uses: parseable

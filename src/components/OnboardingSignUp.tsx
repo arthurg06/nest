@@ -12,6 +12,9 @@ import { ForgotPassword, ResetPassword } from "./PasswordRecovery";
 
 interface OnboardingSignUpProps {
   onAuthSuccess: (token: string, user: any, profile: UserProfile) => void;
+  /** Enter Guest (Events Only) mode — browse and RSVP to experiences
+      without an account. */
+  onGuestAccess: () => void;
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -21,7 +24,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // profile setup). The last page collects what a complete NEST profile
 // requires — photo, bio, nationalities — so nobody enters the deck empty.
 // All steps live in one component so entered data survives Back/Continue.
-export default function OnboardingSignUp({ onAuthSuccess }: OnboardingSignUpProps) {
+export default function OnboardingSignUp({ onAuthSuccess, onGuestAccess }: OnboardingSignUpProps) {
   const [view, setView] = useState<"welcome" | "login" | "signup">("welcome");
 
   // A reset link lands on "/?reset=<token>", so recovery is reachable without
@@ -284,6 +287,13 @@ export default function OnboardingSignUp({ onAuthSuccess }: OnboardingSignUpProp
               className="w-full bg-card/60 border border-border hover:bg-card text-foreground font-sans text-sm font-bold py-3.5 rounded-2xl transition cursor-pointer"
             >
               Log In
+            </button>
+            <button
+              type="button"
+              onClick={onGuestAccess}
+              className="w-full text-muted-foreground hover:text-primary font-sans text-xs font-bold py-2.5 transition cursor-pointer"
+            >
+              Guest (Events Only) →
             </button>
           </div>
         </div>

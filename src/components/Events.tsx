@@ -31,34 +31,49 @@ interface MemoriesData {
 
 interface EventsProps {
   events: Event[];
-  /** Books (with a WhatsApp number) or cancels (without one) a spot; the
-      server's verdict drives which popup shows. */
-  onRsvp: (eventId: string, whatsapp?: string) => Promise<{ ok: boolean; full?: boolean; error?: string }>;
+  /** Books a spot (details present) or cancels one (details absent); the
+      server's verdict drives which popup shows. Guests also supply their
+      first and last name. */
+  onRsvp: (
+    eventId: string,
+    details?: { whatsapp: string; firstName?: string; lastName?: string }
+  ) => Promise<{ ok: boolean; full?: boolean; error?: string }>;
   isAdmin: boolean;
+  /** Guest (Events Only) mode: members-only extras hide, and the RSVP
+      popup collects the guest's name alongside her number. */
+  guest?: boolean;
   onAddEvent: (title: string, description: string, date: string, time: string, location: string, category: string, price: string, maxParticipants?: number) => void;
   onDeleteEvent?: (id: string) => void;
   /** Opens the chat that owns a confirmed private outing (My Events). */
   onOpenPlanChat?: (matchId: string) => void;
 }
 
-export default function Events({ events, onRsvp, isAdmin, onAddEvent, onDeleteEvent, onOpenPlanChat }: EventsProps) {
+export default function Events({ events, onRsvp, isAdmin, guest = false, onAddEvent, onDeleteEvent, onOpenPlanChat }: EventsProps) {
   const [activeTab, setActiveTab] = React.useState<string>("all");
 
   // RSVP flow: "number" collects the WhatsApp number, "success"/"full" show
   // the outcome, "registered" shows the status of an existing registration.
   const [rsvpFlow, setRsvpFlow] = useState<{ eventId: string; step: "number" | "success" | "full" | "registered" } | null>(null);
   const [whatsappInput, setWhatsappInput] = useState("");
+  const [firstNameInput, setFirstNameInput] = useState("");
+  const [lastNameInput, setLastNameInput] = useState("");
   const [rsvpError, setRsvpError] = useState("");
   const [rsvpBusy, setRsvpBusy] = useState(false);
 
   const openRsvp = (event: Event) => {
     setWhatsappInput("");
+    setFirstNameInput("");
+    setLastNameInput("");
     setRsvpError("");
     setRsvpFlow({ eventId: event.id, step: event.userRsvped ? "registered" : "number" });
   };
 
   const submitRsvp = async () => {
     if (!rsvpFlow) return;
+    if (guest && (!firstNameInput.trim() || !lastNameInput.trim())) {
+      setRsvpError("Please enter your first and last name.");
+      return;
+    }
     if (!whatsappInput.trim()) {
       setRsvpError("Please enter your WhatsApp number to complete the RSVP.");
       return;
@@ -66,7 +81,10 @@ export default function Events({ events, onRsvp, isAdmin, onAddEvent, onDeleteEv
     setRsvpError("");
     setRsvpBusy(true);
     try {
-      const result = await onRsvp(rsvpFlow.eventId, whatsappInput.trim());
+      const result = await onRsvp(rsvpFlow.eventId, {
+        whatsapp: whatsappInput.trim(),
+        ...(guest ? { firstName: firstNameInput.trim(), lastName: lastNameInput.trim() } : {})
+      });
       if (result.ok) {
         // The server has recorded the registration — only now celebrate.
         setRsvpFlow({ eventId: rsvpFlow.eventId, step: "success" });
@@ -113,6 +131,7 @@ export default function Events({ events, onRsvp, isAdmin, onAddEvent, onDeleteEv
   // server-side from real attendance data.
   const [memoriesData, setMemoriesData] = useState<MemoriesData | null>(null);
   React.useEffect(() => {
+    if (guest) return; // members-only archive; guests have no token to send
     let alive = true;
     fetch(apiUrl("/api/memories"), {
       headers: { "Authorization": `Bearer ${localStorage.getItem("nest_token")}` }
@@ -352,6 +371,7 @@ export default function Events({ events, onRsvp, isAdmin, onAddEvent, onDeleteEv
 
       {/* MY UPCOMING EVENTS — a personal shortcut, deliberately styled
           apart from the category tabs below it. */}
+      {!guest && (
       <button
         type="button"
         onClick={() => setShowMyEvents(true)}
@@ -360,6 +380,7 @@ export default function Events({ events, onRsvp, isAdmin, onAddEvent, onDeleteEv
         <span className="text-sm select-none">🪺</span>
         <span>My Upcoming Events</span>
       </button>
+      )}
 
       {/* Filter tabs */}
       <div className="flex gap-1 overflow-x-auto pb-1 select-none border-b border-border/30">
@@ -708,6 +729,28 @@ export default function Events({ events, onRsvp, isAdmin, onAddEvent, onDeleteEv
                       {rsvpError}
                     </p>
                   )}
+                  {guest && (
+                    <div className="grid grid-cols-2 gap-2">
+                      <input
+                        type="text"
+                        autoComplete="given-name"
+                        value={firstNameInput}
+                        onChange={e => setFirstNameInput(e.target.value)}
+                        placeholder="First name"
+                        aria-label="First name"
+                        className="w-full bg-card/60 border border-border rounded-xl px-3.5 py-3 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                      />
+                      <input
+                        type="text"
+                        autoComplete="family-name"
+                        value={lastNameInput}
+                        onChange={e => setLastNameInput(e.target.value)}
+                        placeholder="Last name"
+                        aria-label="Last name"
+                        className="w-full bg-card/60 border border-border rounded-xl px-3.5 py-3 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                      />
+                    </div>
+                  )}
                   <input
                     type="tel"
                     inputMode="tel"
@@ -778,13 +821,15 @@ export default function Events({ events, onRsvp, isAdmin, onAddEvent, onDeleteEv
                   >
                     See you there
                   </button>
-                  <button
-                    onClick={cancelRsvp}
-                    disabled={rsvpBusy}
-                    className="w-full text-[11px] text-muted-foreground hover:text-destructive font-bold py-2 transition"
-                  >
-                    {rsvpBusy ? "Cancelling…" : "Cancel my registration"}
-                  </button>
+                  {!guest && (
+                    <button
+                      onClick={cancelRsvp}
+                      disabled={rsvpBusy}
+                      className="w-full text-[11px] text-muted-foreground hover:text-destructive font-bold py-2 transition"
+                    >
+                      {rsvpBusy ? "Cancelling…" : "Cancel my registration"}
+                    </button>
+                  )}
                 </>
               )}
             </div>

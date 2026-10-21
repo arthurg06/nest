@@ -204,12 +204,19 @@ export interface Event {
 export interface EventRsvp {
   id: string;
   eventId: string;
-  userId: string;
+  /** The registered member who booked. Absent on guest registrations. */
+  userId?: string;
   createdAt: string;
   /** WhatsApp number she gave when booking — the NEST team's confirmation
       channel. Visible to admins only; absent on registrations made before
       the field existed. */
   whatsapp?: string;
+  /** Guest (Events Only) registrations: an opaque per-browser dedup token
+      plus the name the guest typed. Never an authenticated identity — it
+      grants no access to anything. */
+  guestId?: string;
+  guestFirstName?: string;
+  guestLastName?: string;
 }
 
 export interface Post {

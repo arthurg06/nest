@@ -17,6 +17,7 @@ import { apiUrl } from "./lib/api";
 import { avatarGradient } from "../shared/avatar";
 import { displayUniversity } from "../shared/universities";
 import NestOnboarding, { ONBOARD_INSTALL_KEY, ONBOARD_NOTIFY_KEY } from "./components/NestOnboarding";
+import GuestExperience from "./components/GuestExperience";
 import { resyncSubscriptionIfGranted, isStandalone } from "./lib/push";
 
 export default function App() {
@@ -25,6 +26,19 @@ export default function App() {
 
   // Auth & Profile state
   const [token, setToken] = useState<string | null>(() => localStorage.getItem("nest_token"));
+  // Guest (Events Only): a browsing mode, never a session. It exists only
+  // while there is no token — signing in or signing up always wins.
+  const [guestMode, setGuestMode] = useState<boolean>(() => {
+    try { return localStorage.getItem("nest_guest") === "1"; } catch { return false; }
+  });
+  const enterGuestMode = () => {
+    try { localStorage.setItem("nest_guest", "1"); } catch { /* per-tab only */ }
+    setGuestMode(true);
+  };
+  const exitGuestMode = () => {
+    try { localStorage.removeItem("nest_guest"); } catch { /* per-tab only */ }
+    setGuestMode(false);
+  };
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [accountUser, setAccountUser] = useState<any | null>(null);
 
@@ -147,6 +161,7 @@ export default function App() {
 
   // Auth success handler from Onboarding component
   const handleAuthSuccess = (newToken: string, user: any, profile: UserProfile) => {
+    exitGuestMode(); // a real account always replaces guest browsing
     localStorage.setItem("nest_token", newToken);
     setToken(newToken);
     setAccountUser(user);
@@ -497,12 +512,12 @@ export default function App() {
   // confirmed the registration was recorded, `full` for the sold-out case.
   const handleRsvp = async (
     eventId: string,
-    whatsapp?: string
+    details?: { whatsapp: string; firstName?: string; lastName?: string }
   ): Promise<{ ok: boolean; full?: boolean; error?: string }> => {
     try {
       const res = await fetchWithAuth(`/api/events/${eventId}/rsvp`, {
         method: "POST",
-        body: JSON.stringify(whatsapp ? { whatsapp } : {})
+        body: JSON.stringify(details?.whatsapp ? { whatsapp: details.whatsapp } : {})
       });
       const data = await res.json();
       if (res.ok) {
@@ -582,9 +597,15 @@ export default function App() {
     );
   }
 
+  // Guest (Events Only): experiences browsing without an account. Never
+  // rendered while a token exists, so it cannot shadow a signed-in member.
+  if (!token && guestMode) {
+    return <GuestExperience onExitToAuth={exitGuestMode} />;
+  }
+
   // Render auth screen if not logged in
   if (!token || !currentUser) {
-    return <OnboardingSignUp onAuthSuccess={handleAuthSuccess} />;
+    return <OnboardingSignUp onAuthSuccess={handleAuthSuccess} onGuestAccess={enterGuestMode} />;
   }
 
   const activeMatch = matches.find(m => m.id === activeMatchId);

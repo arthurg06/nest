@@ -69,7 +69,7 @@ interface EventGuestsEntry {
   category: string;
   maxParticipants: number | null;
   guestCount: number;
-  guests: { userId: string; name: string; photo: string; whatsapp: string | null; rsvpAt: string }[];
+  guests: { id: string; userId: string | null; name: string; photo: string; whatsapp: string | null; rsvpAt: string; isGuest?: boolean }[];
 }
 
 interface AdminDashboardProps {
@@ -1002,7 +1002,7 @@ export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboar
                       ) : (
                         <div className="space-y-2">
                           {evt.guests.map(guest => (
-                            <div key={guest.userId} className="flex items-center gap-3 bg-card/70 border border-border/40 rounded-xl p-2.5">
+                            <div key={guest.id} className="flex items-center gap-3 bg-card/70 border border-border/40 rounded-xl p-2.5">
                               {guest.photo ? (
                                 <img
                                   src={guest.photo}
@@ -1016,7 +1016,14 @@ export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboar
                                 </div>
                               )}
                               <div className="flex-1 min-w-0">
-                                <p className="font-sans font-bold text-xs text-foreground truncate">{guest.name}</p>
+                                <p className="font-sans font-bold text-xs text-foreground truncate flex items-center gap-1.5">
+                                  <span className="truncate">{guest.name}</span>
+                                  {guest.isGuest && (
+                                    <span className="text-[8px] font-mono font-black uppercase tracking-widest bg-amber-50 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded-full shrink-0">
+                                      Guest
+                                    </span>
+                                  )}
+                                </p>
                                 <p className="font-mono text-[10px] text-muted-foreground truncate">
                                   RSVP'd {new Date(guest.rsvpAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })} · Registered
                                 </p>
