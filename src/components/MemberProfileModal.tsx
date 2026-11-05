@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useEffect } from "react";
+import { createPortal } from "react-dom";
 import { UserProfile } from "../types";
 import SwipeCard from "./SwipeCard";
 import { ArrowLeft } from "lucide-react";
@@ -14,8 +15,24 @@ interface MemberProfileModalProps {
 // admin member list. The card is rendered by SwipeCard, the exact component
 // the deck uses, in preview mode (inert like/pass), so there is no second
 // profile design to drift out of sync.
+//
+// Rendered through a portal to <body>: a transformed or filtered ancestor
+// (animation fill states, motion wrappers, backdrop-blur panels) would
+// otherwise become the containing block for this fixed overlay and pin it to
+// that container instead of the viewport.
 export default function MemberProfileModal({ profile, currentUser, onClose }: MemberProfileModalProps) {
-  return (
+  // The page behind keeps its exact scroll position: background scrolling is
+  // frozen while the profile is open, so closing returns the caller (e.g. the
+  // admin member list) to precisely where she was.
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, []);
+
+  return createPortal(
     <div
       className="fixed inset-0 z-[80] bg-background flex flex-col animate-fade-in"
       role="dialog"
@@ -34,10 +51,11 @@ export default function MemberProfileModal({ profile, currentUser, onClose }: Me
           </button>
         </div>
 
-        <div className="flex-1 min-h-0 overflow-y-auto pb-6">
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain pb-6">
           <SwipeCard profile={profile} currentUser={currentUser} preview expanded />
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

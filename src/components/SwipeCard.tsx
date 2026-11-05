@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { UserProfile } from "../types";
 import { calculateCompatibility } from "../data";
 import { displayUniversity } from "../../shared/universities";
@@ -520,8 +521,11 @@ export default function SwipeCard({ profile, currentUser, onSwipeLeft, onSwipeRi
       {/* Focused photo viewer — the photograph is the whole screen; the only
           chrome is Back, the position indicators, and (for galleries) two
           invisible tap zones. It sits above everything, so a tap here can
-          never reach the like/pass buttons underneath. */}
-      {viewerOpen && (
+          never reach the like/pass buttons underneath. Portaled to <body>:
+          inside the deck's motion wrappers or the admin profile viewer, a
+          transformed ancestor would otherwise capture this fixed overlay and
+          anchor it to the card instead of the screen. */}
+      {viewerOpen && createPortal(
         <div
           className="fixed inset-0 z-[100] bg-slate-950/95 flex flex-col animate-fade-in overscroll-contain"
           role="dialog"
@@ -594,7 +598,8 @@ export default function SwipeCard({ profile, currentUser, onSwipeLeft, onSwipeRi
               {photoIndex + 1} / {gallery.length}
             </div>
           )}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

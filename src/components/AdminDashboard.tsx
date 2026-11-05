@@ -112,6 +112,9 @@ export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboar
   const [isLoadingRecs, setIsLoadingRecs] = useState(true);
   const [isLoadingVerifications, setIsLoadingVerifications] = useState(true);
   const [userSearch, setUserSearch] = useState("");
+  // Newest sign-ups first by default — the admin's usual question is "who
+  // just joined?", so she should never have to scroll for it.
+  const [userSort, setUserSort] = useState<"newest" | "oldest" | "name" | "active">("newest");
   const [recSearch, setRecSearch] = useState("");
   const [verificationFilter, setVerificationFilter] = useState<string>("pending");
   const [userStatusFilter, setUserStatusFilter] = useState<string>("all");
@@ -586,6 +589,22 @@ export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboar
     return matchesTerm && matchesStatus;
   });
 
+  // Sorting applies after search/status filtering, so the two always work
+  // together. ISO timestamps compare correctly as strings; missing values
+  // sort last rather than crashing on legacy records.
+  const sortedUsers = [...filteredUsers].sort((a, b) => {
+    switch (userSort) {
+      case "newest":
+        return (b.createdAt || "").localeCompare(a.createdAt || "");
+      case "oldest":
+        return (a.createdAt || "").localeCompare(b.createdAt || "");
+      case "active":
+        return (b.lastActiveAt || "").localeCompare(a.lastActiveAt || "");
+      default:
+        return (a.profile?.name || a.email).localeCompare(b.profile?.name || b.email, undefined, { sensitivity: "base" });
+    }
+  });
+
   const filteredRecs = recs.filter(r => {
     const term = recSearch.toLowerCase();
     return (
@@ -842,19 +861,32 @@ export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboar
                 </button>
               )}
             </div>
-            <select
-              value={userStatusFilter}
-              onChange={(e) => setUserStatusFilter(e.target.value)}
-              className="bg-card/60 border border-border/80 rounded-xl px-3 py-2 text-xs text-foreground font-bold focus:outline-none"
-            >
-              <option value="all">All members</option>
-              <option value="pending">Verification pending</option>
-              <option value="approved">Verified</option>
-              <option value="rejected">Verification rejected</option>
-              <option value="unsubmitted">Not submitted</option>
-              <option value="suspended">Suspended</option>
-              <option value="admins">Admins</option>
-            </select>
+            <div className="flex items-center gap-2">
+              <select
+                value={userStatusFilter}
+                onChange={(e) => setUserStatusFilter(e.target.value)}
+                className="bg-card/60 border border-border/80 rounded-xl px-3 py-2 text-xs text-foreground font-bold focus:outline-none"
+              >
+                <option value="all">All members</option>
+                <option value="pending">Verification pending</option>
+                <option value="approved">Verified</option>
+                <option value="rejected">Verification rejected</option>
+                <option value="unsubmitted">Not submitted</option>
+                <option value="suspended">Suspended</option>
+                <option value="admins">Admins</option>
+              </select>
+              <select
+                value={userSort}
+                onChange={(e) => setUserSort(e.target.value as typeof userSort)}
+                aria-label="Sort members"
+                className="bg-card/60 border border-border/80 rounded-xl px-3 py-2 text-xs text-foreground font-bold focus:outline-none"
+              >
+                <option value="newest">Newest first</option>
+                <option value="oldest">Oldest first</option>
+                <option value="name">Name A–Z</option>
+                <option value="active">Recently active</option>
+              </select>
+            </div>
           </div>
 
           {isLoadingUsers ? (
@@ -879,7 +911,7 @@ export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboar
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/60">
-                  {filteredUsers.map((u) => (
+                  {sortedUsers.map((u) => (
                     <tr key={u.id} className={`hover:bg-card/40 transition ${u.status === "suspended" ? "opacity-60" : ""}`}>
                       <td className="p-3.5">
                         {/* The name opens her full profile in the same card

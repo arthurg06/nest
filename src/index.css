@@ -233,6 +233,12 @@
 }
 
 /* Custom CSS Animation Keyframes for High Fidelity UX */
+/* The "to" frames must end on transform:none, not an identity transform:
+   these run with fill-mode forwards, and a retained transform — even
+   translateY(0) — turns the element into the containing block for every
+   position:fixed descendant. That bug anchored full-screen overlays (member
+   profile, photo viewer) to tall in-flow containers instead of the
+   viewport, so they opened far down the page. */
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -240,7 +246,7 @@
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: none;
   }
 }
 
@@ -251,7 +257,7 @@
   }
   to {
     opacity: 1;
-    transform: scale(1);
+    transform: none;
   }
 }
 
