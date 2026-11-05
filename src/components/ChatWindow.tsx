@@ -188,7 +188,7 @@ export default function ChatWindow({
   };
 
   return (
-    <div className="flex flex-col h-full min-h-0 bg-card/40 backdrop-blur-xl rounded-[28px] border border-border/60 shadow-2xl overflow-hidden relative">
+    <div className="flex flex-col h-full min-h-0 bg-card rounded-3xl border border-border/60 shadow-pop overflow-hidden relative">
       {/* Header */}
       <div className="px-4 md:px-5 py-3 border-b border-border/30 flex items-center justify-between gap-3 bg-card/30 shrink-0">
         {/* Her name opens her full profile — the same card the deck shows. */}
@@ -202,7 +202,7 @@ export default function ChatWindow({
             src={activeMatch.profile.photo}
             alt={activeMatch.profile.name}
             referrerPolicy="no-referrer"
-            className="w-10 h-10 rounded-xl object-cover shadow-sm shrink-0"
+            className="w-10 h-10 rounded-full object-cover border border-border/60 shrink-0"
           />
           <div className="min-w-0">
             <div className="flex items-center gap-1.5 flex-wrap">
@@ -220,7 +220,7 @@ export default function ChatWindow({
 
         <button
           onClick={() => setShowPlanner(true)}
-          className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl font-sans text-xs font-bold transition bg-primary text-primary-foreground shrink-0 hover:bg-primary/90"
+          className="btn btn-primary btn-sm shrink-0"
         >
           <Calendar size={13} />
           <span className="hidden sm:inline">Plan an outing</span>
@@ -280,16 +280,16 @@ export default function ChatWindow({
                   renderPlanCard(linkedPlan)
                 ) : (
                   <div
-                    className={`px-4 py-2.5 rounded-2xl text-xs font-sans shadow-sm leading-relaxed ${
+                    className={`px-4 py-2.5 rounded-2xl text-[13px] font-sans leading-relaxed ${
                       isMe
-                        ? "bg-primary text-primary-foreground rounded-tr-sm"
-                        : "bg-card/80 backdrop-blur-sm text-foreground rounded-tl-sm border border-border/60"
+                        ? "bg-primary text-primary-foreground rounded-br-md shadow-pop"
+                        : "bg-muted/70 text-foreground rounded-bl-md"
                     }`}
                   >
                     {msg.text}
                   </div>
                 )}
-                <span className="text-[9px] text-muted-foreground font-mono mt-1 px-1 whitespace-nowrap">
+                <span className="text-[9px] text-muted-foreground/80 font-sans mt-1 px-1 whitespace-nowrap">
                   {/* Full date · time from the stored timestamp, in the
                       viewer's own timezone — old messages keep their real
                       day, month, and year. */}
@@ -330,12 +330,12 @@ export default function ChatWindow({
           value={inputText}
           onChange={e => setInputText(e.target.value)}
           placeholder={`Text ${activeMatch.profile.name.split(" ")[0]}…`}
-          className="flex-1 min-w-0 bg-card/40 border border-border/50 rounded-xl px-4 py-2.5 text-xs font-sans text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+          className="field flex-1 min-w-0 rounded-full px-4 py-2.5 text-[13px]"
         />
         <button
           type="submit"
           aria-label="Send message"
-          className="p-2.5 bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 transition active:scale-95 shrink-0"
+          className="p-3 bg-primary text-primary-foreground rounded-full hover:bg-primary/90 shadow-pop transition active:scale-95 shrink-0"
         >
           <Send size={15} />
         </button>

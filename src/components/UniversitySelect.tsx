@@ -104,7 +104,7 @@ export default function UniversitySelect({
       {open && (
         <div className="absolute z-50 left-0 right-0 mt-1 bg-card border border-border/60 rounded-2xl shadow-xl p-3.5 space-y-2 animate-fade-in">
           <div className="flex items-center justify-between pb-1.5 border-b border-border/60">
-            <span className="text-[10px] font-mono font-bold text-muted-foreground uppercase">Madrid Universities</span>
+            <span className="eyebrow text-muted-foreground">Madrid Universities</span>
             <button
               type="button"
               onClick={close}

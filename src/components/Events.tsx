@@ -246,8 +246,8 @@ export default function Events({ events, onRsvp, isAdmin, guest = false, onAddEv
       
       {/* NEST EXPERIENCES — free app, individually priced real-life events.
           No membership, no subscription: you only pay when you book. */}
-      <div className="bg-card/50 backdrop-blur-md p-5 rounded-[28px] border border-border/60 shadow-sm space-y-1 animate-fade-in">
-        <span className="font-mono text-[10px] font-black tracking-widest text-primary uppercase">NEST Experiences</span>
+      <div className="bg-card p-6 rounded-3xl border border-border/60 shadow-sm space-y-1.5 animate-fade-in">
+        <span className="eyebrow">NEST Experiences</span>
         <h2 className="font-display text-3xl text-foreground leading-tight">
           Meet your people IRL.
         </h2>
@@ -266,7 +266,7 @@ export default function Events({ events, onRsvp, isAdmin, guest = false, onAddEv
         {isAdmin && (
           <button
             onClick={() => setShowCreateForm(prev => !prev)}
-            className="bg-primary hover:bg-primary/90 text-primary-foreground font-sans text-xs font-black px-4 py-2 rounded-xl transition flex items-center gap-1 cursor-pointer shrink-0"
+            className="btn btn-primary btn-sm shrink-0"
           >
             <Plus size={14} />
             <span>Publish experience</span>
@@ -276,7 +276,7 @@ export default function Events({ events, onRsvp, isAdmin, guest = false, onAddEv
 
       {/* Admin Event Creation Panel Form */}
       {isAdmin && showCreateForm && (
-        <form onSubmit={handleCreateEventSubmit} className="bg-card/50 backdrop-blur-md p-6 rounded-[28px] border border-border/70 shadow-xl space-y-4 animate-fade-in">
+        <form onSubmit={handleCreateEventSubmit} className="bg-card p-6 rounded-3xl border border-border/70 shadow-pop space-y-4 animate-fade-in">
           <div className="flex items-center justify-between border-b border-border/70 pb-2.5">
             <h3 className="font-sans font-black text-foreground text-xs uppercase tracking-wider flex items-center gap-1.5">
               <Sparkles size={16} className="text-primary" />
@@ -392,13 +392,13 @@ export default function Events({ events, onRsvp, isAdmin, guest = false, onAddEv
             <button
               type="button"
               onClick={() => setShowCreateForm(false)}
-              className="px-4 py-2 border border-border text-muted-foreground rounded-xl text-xs font-bold hover:bg-muted/60"
+              className="btn btn-quiet btn-sm text-muted-foreground"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-5 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl text-xs font-bold shadow-md shadow-rose-200/50"
+              className="btn btn-primary btn-sm"
             >
               Publish Experience
             </button>
@@ -412,7 +412,7 @@ export default function Events({ events, onRsvp, isAdmin, guest = false, onAddEv
       <button
         type="button"
         onClick={() => setShowMyEvents(true)}
-        className="w-full sm:w-auto bg-slate-900 hover:bg-slate-800 text-rose-300 font-sans text-xs font-black px-5 py-3 rounded-2xl transition shadow-pop flex items-center justify-center gap-2 cursor-pointer"
+        className="btn btn-dark w-full sm:w-auto shadow-pop"
       >
         <span className="text-sm select-none">🪺</span>
         <span>My Upcoming Events</span>
@@ -446,42 +446,32 @@ export default function Events({ events, onRsvp, isAdmin, guest = false, onAddEv
             <div
               key={event.id}
               id={`event-card-${event.id}`}
-              className="bg-card/40 backdrop-blur-md rounded-[28px] border border-border/60 overflow-hidden shadow-sm flex flex-col justify-between hover:shadow-xl hover:bg-card/50 transition-all duration-300 animate-fade-in"
+              className="bg-card rounded-3xl border border-border/60 overflow-hidden shadow-sm flex flex-col justify-between hover:shadow-pop-lg hover:-translate-y-0.5 transition-all duration-300 animate-fade-in"
             >
               <div>
-                {/* Event Cover Image Simulation */}
-                <div className="h-32 bg-card/20 flex items-center justify-center relative p-4 text-center overflow-hidden">
-                  <div className={`absolute inset-0 bg-gradient-to-tr ${
-                    event.category === "social" 
-                      ? "from-rose-200 to-amber-100" 
-                      : event.category === "study" 
-                      ? "from-indigo-100 to-sky-100" 
-                      : "from-emerald-100 to-teal-50"
-                  } opacity-50`} />
-
-                  <div className="z-10 text-center">
-                    <span className="text-3xl block mb-1.5 select-none">{getCategoryImageEmoji(event.category)}</span>
-                    <span className="bg-card/50 backdrop-blur-md border border-border/40 text-foreground text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full font-mono tracking-widest">
-                      {event.category}
-                    </span>
+                {/* Cover band — one quiet blush wash for every category, with
+                    the emoji sitting in NEST's arch niche like a window. */}
+                <div className="h-28 relative overflow-hidden bg-gradient-to-b from-accent/55 via-secondary/35 to-transparent flex items-end justify-center">
+                  <div className="arch w-16 h-[4.5rem] bg-card/90 border border-border/50 shadow-sm flex items-end justify-center pb-2 translate-y-2.5">
+                    <span className="text-2xl select-none">{getCategoryImageEmoji(event.category)}</span>
                   </div>
-
-                  <span className="absolute top-3 right-3 bg-card/80 backdrop-blur-md border border-border/50 text-primary text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">
+                  <span className="eyebrow absolute top-3.5 left-5">{event.category}</span>
+                  <span className="absolute top-3 right-4 bg-card/90 border border-border/50 text-primary text-[10px] font-bold px-2.5 py-1 rounded-full shadow-sm">
                     {event.price}
                   </span>
                 </div>
 
-                <div className="p-5 space-y-3">
-                  <div className="space-y-1">
-                    <h3 className="font-sans font-black text-foreground text-base leading-snug">
+                <div className="p-5 pt-4 space-y-3">
+                  <div className="space-y-1 text-center">
+                    <h3 className="font-display text-xl text-foreground leading-snug">
                       {event.title}
                     </h3>
                     <p className="font-sans text-[10px] text-muted-foreground">
-                      Organized by: <span className="font-semibold text-muted-foreground">{event.organizer}</span>
+                      Organized by <span className="font-semibold">{event.organizer}</span>
                     </p>
                   </div>
 
-                  <p className="font-sans text-xs text-muted-foreground leading-relaxed select-text">
+                  <p className="font-sans text-[13px] text-muted-foreground leading-relaxed select-text">
                     {event.description}
                   </p>
 
@@ -538,7 +528,7 @@ export default function Events({ events, onRsvp, isAdmin, guest = false, onAddEv
               {/* Footer RSVP Action Row */}
               <div className="px-5 py-3.5 bg-card/30 border-t border-border/20 flex items-center justify-between select-none">
                 <div className="flex flex-col">
-                  <span className="text-[10px] font-mono text-muted-foreground font-bold">
+                  <span className="text-[10px] font-sans text-muted-foreground font-bold">
                     {event.rsvpsCount}{event.maxParticipants ? ` / ${event.maxParticipants}` : ""} attending
                   </span>
                   {event.maxParticipants && (
@@ -552,7 +542,7 @@ export default function Events({ events, onRsvp, isAdmin, guest = false, onAddEv
                   {isAdmin && onDeleteEvent && (
                     <button
                       onClick={() => onDeleteEvent(event.id)}
-                      className="p-2.5 bg-accent/30 hover:bg-accent/60 text-primary rounded-xl transition"
+                      className="p-2.5 bg-accent/30 hover:bg-accent/60 text-primary rounded-full transition"
                       title="Delete Outing (Admin only)"
                     >
                       <Trash2 size={13} />
@@ -565,12 +555,12 @@ export default function Events({ events, onRsvp, isAdmin, guest = false, onAddEv
                       <button
                         disabled={isFull && !event.userRsvped}
                         onClick={() => openRsvp(event)}
-                        className={`px-4 py-2 rounded-xl font-sans text-xs font-bold shadow-md transition-all flex items-center gap-1 active:scale-95 ${
+                        className={`btn btn-sm ${
                           event.userRsvped
-                            ? "bg-slate-950 text-rose-400 border border-slate-800 hover:bg-slate-900"
+                            ? "btn-dark"
                             : isFull
-                            ? "bg-muted text-muted-foreground border border-border cursor-not-allowed shadow-none"
-                            : "bg-primary text-primary-foreground shadow-rose-200/50 hover:bg-primary/90"
+                            ? "bg-muted text-muted-foreground cursor-not-allowed"
+                            : "btn-primary"
                         }`}
                       >
                         {event.userRsvped ? (
@@ -597,7 +587,7 @@ export default function Events({ events, onRsvp, isAdmin, guest = false, onAddEv
       ) : (
         /* Coming soon — the honest state while no experience is scheduled.
            No fake cards, dates, prices, or availability. */
-        <div className="bg-card/40 backdrop-blur-xl rounded-[28px] border border-border p-8 text-center max-w-md mx-auto space-y-4 py-12 animate-fade-in">
+        <div className="bg-card rounded-3xl border border-border p-8 text-center max-w-md mx-auto space-y-4 py-12 animate-fade-in">
           <span className="text-4xl select-none block">🪺✨</span>
           <h3 className="font-display text-xl text-foreground">Coming soon.</h3>
           <p className="font-sans text-xs text-muted-foreground leading-relaxed max-w-xs mx-auto">
@@ -610,7 +600,7 @@ export default function Events({ events, onRsvp, isAdmin, guest = false, onAddEv
       {/* NEST MEMORIES — the member's personal archive of attended
           experiences. Every number comes from the server's real records. */}
       {memoriesData && (
-        <div className="bg-card/40 backdrop-blur-md rounded-[28px] border border-border/60 p-6 shadow-sm space-y-4 animate-fade-in">
+        <div className="bg-card rounded-3xl border border-border/60 p-6 shadow-sm space-y-4 animate-fade-in">
           <div className="flex items-center gap-2 border-b border-border/30 pb-3">
             <span className="text-lg select-none">🪺</span>
             <div>

@@ -16,7 +16,7 @@ export default function TermsModal({ onClose }: TermsModalProps) {
       aria-modal="true"
       aria-label="NEST Terms & Conditions"
     >
-      <div className="bg-card w-full max-w-lg max-h-[85vh] rounded-[28px] border border-border/70 shadow-2xl flex flex-col overflow-hidden">
+      <div className="bg-card w-full max-w-lg max-h-[85vh] rounded-3xl border border-border/70 shadow-2xl flex flex-col overflow-hidden">
         <div className="px-6 py-4 border-b border-border/40 flex items-start justify-between gap-3 shrink-0">
           <div>
             <h3 className="font-sans font-black text-foreground text-base tracking-tight">NEST Terms &amp; Conditions</h3>

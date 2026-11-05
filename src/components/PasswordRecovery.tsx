@@ -48,14 +48,14 @@ export function ForgotPassword({ onBack }: ForgotPasswordProps) {
       <div className="space-y-4">
         {emailConfigured ? (
           <>
-            <h3 className="font-sans font-black text-foreground text-lg tracking-tight">Check your inbox</h3>
+            <h3 className="font-display text-2xl text-foreground">Check your inbox</h3>
             <p className="text-xs text-muted-foreground leading-relaxed">
               If that address belongs to a NEST account, a reset link is on its way. It works once and expires in an hour.
             </p>
           </>
         ) : (
           <>
-            <h3 className="font-sans font-black text-foreground text-lg tracking-tight">Contact the NEST team</h3>
+            <h3 className="font-display text-2xl text-foreground">Contact the NEST team</h3>
             <p className="text-xs text-muted-foreground leading-relaxed">
               Email password recovery isn't available yet. If you need to regain access to your
               account, contact the NEST team and we'll provide a secure reset link — it works
@@ -77,7 +77,7 @@ export function ForgotPassword({ onBack }: ForgotPasswordProps) {
   return (
     <form onSubmit={submit} className="space-y-4">
       <div>
-        <h3 className="font-sans font-black text-foreground text-lg tracking-tight">Forgot your password?</h3>
+        <h3 className="font-display text-2xl text-foreground">Forgot your password?</h3>
         <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
           Enter the email associated with your NEST account.
         </p>
@@ -88,7 +88,7 @@ export function ForgotPassword({ onBack }: ForgotPasswordProps) {
       )}
 
       <div className="space-y-1">
-        <label className="text-[10px] font-mono font-bold text-muted-foreground uppercase block" htmlFor="recovery-email">
+        <label className="eyebrow text-muted-foreground block" htmlFor="recovery-email">
           Personal Email
         </label>
         <div className="relative">
@@ -108,7 +108,7 @@ export function ForgotPassword({ onBack }: ForgotPasswordProps) {
       <button
         type="submit"
         disabled={sending}
-        className="w-full bg-primary hover:bg-primary/90 disabled:opacity-50 text-primary-foreground font-sans text-xs font-black py-3 rounded-xl transition shadow-pop"
+        className="btn btn-primary w-full"
       >
         {sending ? "Sending…" : "Send me a link"}
       </button>
@@ -201,7 +201,7 @@ export function ResetPassword({ token, onDone }: ResetPasswordProps) {
         <button
           type="button"
           onClick={onDone}
-          className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-sans text-xs font-black py-3 rounded-xl transition shadow-pop"
+          className="btn btn-primary w-full"
         >
           Go to log in
         </button>
@@ -221,7 +221,7 @@ export function ResetPassword({ token, onDone }: ResetPasswordProps) {
         <button
           type="button"
           onClick={onDone}
-          className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-sans text-xs font-black py-3 rounded-xl transition shadow-pop"
+          className="btn btn-primary w-full"
         >
           Back to log in
         </button>
@@ -232,7 +232,7 @@ export function ResetPassword({ token, onDone }: ResetPasswordProps) {
   return (
     <form onSubmit={submit} className="space-y-4">
       <div>
-        <h3 className="font-sans font-black text-foreground text-lg tracking-tight">Choose a new password</h3>
+        <h3 className="font-display text-2xl text-foreground">Choose a new password</h3>
         <p className="text-xs text-muted-foreground mt-1 leading-relaxed">At least 6 characters.</p>
       </div>
 
@@ -245,7 +245,7 @@ export function ResetPassword({ token, onDone }: ResetPasswordProps) {
         { id: "confirm-password", label: "Repeat it", value: confirm, set: setConfirm }
       ].map(field => (
         <div key={field.id} className="space-y-1">
-          <label className="text-[10px] font-mono font-bold text-muted-foreground uppercase block" htmlFor={field.id}>
+          <label className="eyebrow text-muted-foreground block" htmlFor={field.id}>
             {field.label}
           </label>
           <div className="relative">
@@ -266,7 +266,7 @@ export function ResetPassword({ token, onDone }: ResetPasswordProps) {
       <button
         type="submit"
         disabled={saving}
-        className="w-full bg-primary hover:bg-primary/90 disabled:opacity-50 text-primary-foreground font-sans text-xs font-black py-3 rounded-xl transition shadow-pop"
+        className="btn btn-primary w-full"
       >
         {saving ? "Saving…" : "Set my new password"}
       </button>

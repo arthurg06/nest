@@ -134,7 +134,7 @@ export default function NestOnboarding({ startAt, onFinished }: NestOnboardingPr
             <>
               <img src="/icons/nest-logo.png" alt="NEST" className="w-16 h-16 rounded-2xl mx-auto shadow-lg" />
               <div className="space-y-1">
-                <h3 className="font-sans font-black text-lg text-foreground leading-tight">
+                <h3 className="font-display text-2xl text-foreground leading-tight">
                   Add NEST to your Home Screen 🪺
                 </h3>
                 <p className="font-sans text-xs text-muted-foreground leading-relaxed">
@@ -149,7 +149,7 @@ export default function NestOnboarding({ startAt, onFinished }: NestOnboardingPr
                   <button
                     type="button"
                     onClick={handleNativeInstall}
-                    className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-sans text-sm font-black py-3.5 rounded-2xl transition shadow-pop cursor-pointer"
+                    className="btn btn-primary w-full"
                   >
                     Add NEST
                   </button>
@@ -189,7 +189,7 @@ export default function NestOnboarding({ startAt, onFinished }: NestOnboardingPr
                   <button
                     type="button"
                     onClick={finishInstall}
-                    className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-sans text-sm font-black py-3.5 rounded-2xl transition shadow-pop cursor-pointer"
+                    className="btn btn-primary w-full"
                   >
                     Done — NEST is on my Home Screen
                   </button>
@@ -207,7 +207,7 @@ export default function NestOnboarding({ startAt, onFinished }: NestOnboardingPr
             <>
               <span className="text-4xl block select-none">💌</span>
               <div className="space-y-1">
-                <h3 className="font-sans font-black text-lg text-foreground leading-tight">Don't miss a thing 💌</h3>
+                <h3 className="font-display text-2xl text-foreground leading-tight">Don't miss a thing 💌</h3>
                 <p className="font-sans text-xs text-muted-foreground leading-relaxed">
                   Get notified when you match with someone new, receive a message, or a new NEST Experience is announced.
                 </p>
@@ -221,7 +221,7 @@ export default function NestOnboarding({ startAt, onFinished }: NestOnboardingPr
                   <button
                     type="button"
                     onClick={finishAll}
-                    className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-sans text-sm font-black py-3.5 rounded-2xl transition shadow-pop cursor-pointer"
+                    className="btn btn-primary w-full"
                   >
                     Enter NEST
                   </button>
@@ -235,7 +235,7 @@ export default function NestOnboarding({ startAt, onFinished }: NestOnboardingPr
                   <button
                     type="button"
                     onClick={finishAll}
-                    className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-sans text-sm font-black py-3.5 rounded-2xl transition shadow-pop cursor-pointer"
+                    className="btn btn-primary w-full"
                   >
                     Got it
                   </button>
@@ -246,7 +246,7 @@ export default function NestOnboarding({ startAt, onFinished }: NestOnboardingPr
                     type="button"
                     onClick={handleEnableNotifications}
                     disabled={busy}
-                    className="w-full bg-primary hover:bg-primary/90 disabled:opacity-60 text-primary-foreground font-sans text-sm font-black py-3.5 rounded-2xl transition shadow-pop cursor-pointer"
+                    className="btn btn-primary w-full"
                   >
                     {busy ? "One moment…" : "Enable Notifications"}
                   </button>

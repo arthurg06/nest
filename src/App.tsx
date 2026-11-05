@@ -688,14 +688,13 @@ export default function App() {
         <div className={`flex-1 min-h-0 ${activeTab === "chat" ? "overflow-hidden" : "overflow-y-auto -mx-1 px-1"}`}>
           {activeTab === "swipe" && (
             <div className="space-y-6">
-              {/* Swipe Deck Header and Intro */}
-              <div className="text-center max-w-sm mx-auto space-y-1">
-                <h2 className="font-display text-3xl text-foreground">
-                  Find your people
+              {/* Swipe Deck Header and Intro — one brand sentence carried
+                  across the hierarchy, not repeated by it. */}
+              <div className="text-center max-w-sm mx-auto space-y-1 pt-1">
+                <h2 className="font-display text-[2rem] md:text-4xl text-foreground leading-tight">
+                  Find your <em className="italic text-primary">people</em>,
                 </h2>
-                <p className="font-sans text-xs text-muted-foreground leading-normal">
-                  Find your people, find your nest.
-                </p>
+                <p className="font-display text-base text-muted-foreground italic">find your nest.</p>
               </div>
 
               {/* Verification nudge — informative, never a wall: members can
@@ -724,7 +723,7 @@ export default function App() {
                         setProfileFocus("verification");
                         setActiveTab("profile");
                       }}
-                      className="shrink-0 bg-primary hover:bg-primary/90 text-primary-foreground font-sans text-[11px] font-black px-4 py-2.5 rounded-xl shadow-pop transition"
+                      className="btn btn-primary btn-sm shrink-0"
                     >
                       {currentUser.verificationStatus === "rejected" ? "Update & resubmit" : "Verify my status"}
                     </button>
@@ -739,7 +738,7 @@ export default function App() {
                   <button
                     type="button"
                     onClick={handleUndoSwipe}
-                    className="flex items-center gap-1.5 text-[11px] font-sans font-bold text-muted-foreground hover:text-foreground bg-card/60 border border-border/60 px-3 py-2 rounded-xl transition shadow-sm"
+                    className="btn btn-quiet btn-sm text-muted-foreground"
                   >
                     <Undo2 size={13} />
                     <span>Undo last swipe</span>
@@ -755,21 +754,20 @@ export default function App() {
                   onSwipeRight={handleSwipeRight}
                 />
               ) : (
-                <div className="bg-card/40 backdrop-blur-xl rounded-[32px] border border-border/60 p-6 md:p-8 shadow-xl text-center max-w-md mx-auto space-y-5 py-10 animate-fade-in select-text">
-                  <span className="text-5xl select-none block">✨🌸</span>
-                  <div className="space-y-1">
-                    <h3 className="font-sans font-black text-foreground text-base leading-snug">
+                <div className="bg-card rounded-[2rem] border border-border/60 p-6 md:p-8 shadow-pop text-center max-w-md mx-auto space-y-5 py-12 animate-fade-in select-text">
+                  <div className="arch w-20 h-24 mx-auto bg-accent/50 border border-border/50 flex items-end justify-center pb-3">
+                    <span className="text-3xl select-none">🌸</span>
+                  </div>
+                  <div className="space-y-1.5">
+                    <h3 className="font-display text-2xl text-foreground leading-snug">
                       You're all caught up
                     </h3>
-                    <p className="font-sans text-xs text-muted-foreground leading-relaxed max-w-xs mx-auto">
+                    <p className="font-sans text-[13px] text-muted-foreground leading-relaxed max-w-xs mx-auto">
                       You've seen everyone for now. New members show up here as they join.
                     </p>
                   </div>
                   {matches.length > 0 && (
-                    <button
-                      onClick={() => setActiveTab("chat")}
-                      className="bg-card border border-border text-foreground font-sans text-[11px] font-bold px-4 py-2.5 rounded-xl hover:bg-muted transition"
-                    >
+                    <button onClick={() => setActiveTab("chat")} className="btn btn-quiet">
                       Go to your chats
                     </button>
                   )}
@@ -783,14 +781,13 @@ export default function App() {
 
               {/* LEFT COLUMN: Matches inbox. On phones it gives way to the
                   open conversation instead of splitting the small screen. */}
-              <div className={`md:col-span-4 bg-card/40 backdrop-blur-xl rounded-2xl border border-border/60 p-4 flex-col overflow-hidden shadow-xl min-h-0 ${
+              <div className={`md:col-span-4 bg-card rounded-3xl border border-border/60 p-4 flex-col overflow-hidden shadow-pop min-h-0 ${
                 activeMatch ? "hidden md:flex" : "flex"
               }`}>
-                <h3 className="font-sans font-black text-foreground text-base border-b border-border/70 pb-2.5 flex items-center gap-2 shrink-0">
-                  <MessageSquare size={18} className="text-primary" />
+                <h3 className="font-display text-xl text-foreground border-b border-border/70 pb-3 flex items-baseline gap-2 shrink-0">
                   <span>Your matches</span>
                   {matches.length > 0 && (
-                    <span className="text-[11px] font-mono text-muted-foreground">({matches.length})</span>
+                    <span className="text-xs font-sans font-semibold text-muted-foreground">{matches.length}</span>
                   )}
                 </h3>
 
@@ -801,24 +798,24 @@ export default function App() {
                     placeholder="Search matches by name..."
                     value={searchMatchQuery}
                     onChange={(e) => setSearchMatchQuery(e.target.value)}
-                    className="w-full bg-card/50 border border-border/60 rounded-xl px-3 py-2 text-xs text-foreground placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                    className="field py-2.5 text-xs"
                   />
                 </div>
 
                 {/* Inbox tabs — both reachable without any scrolling */}
                 <div className="flex gap-1.5 mt-3 shrink-0 select-none">
                   {([
-                    { id: "conversations", label: "Current Conversations", count: matches.filter(m => m.messages.length > 0).length, unread: matches.some(m => m.messages.length > 0 && (m.unreadCount || 0) > 0) },
-                    { id: "new", label: "New Matches", count: matches.filter(m => m.messages.length === 0).length, unread: false }
+                    { id: "conversations", label: "Conversations", count: matches.filter(m => m.messages.length > 0).length, unread: matches.some(m => m.messages.length > 0 && (m.unreadCount || 0) > 0) },
+                    { id: "new", label: "New matches", count: matches.filter(m => m.messages.length === 0).length, unread: false }
                   ] as const).map(tab => (
                     <button
                       key={tab.id}
                       onClick={() => setChatTab(tab.id)}
                       aria-pressed={chatTab === tab.id}
-                      className={`flex-1 px-2 py-2 rounded-xl font-sans text-[11px] font-black transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                      className={`flex-1 px-2 py-2 rounded-full font-sans text-[11px] font-bold transition flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap ${
                         chatTab === tab.id
                           ? "bg-primary text-primary-foreground shadow-pop"
-                          : "bg-card/60 text-muted-foreground border border-border/50 hover:bg-card"
+                          : "bg-muted/60 text-muted-foreground hover:bg-muted"
                       }`}
                     >
                       {tab.unread && chatTab !== tab.id && (
@@ -826,7 +823,7 @@ export default function App() {
                       )}
                       <span>{tab.label}</span>
                       {tab.count > 0 && (
-                        <span className={`font-mono text-[9px] ${chatTab === tab.id ? "opacity-80" : ""}`}>({tab.count})</span>
+                        <span className={`text-[10px] font-semibold ${chatTab === tab.id ? "opacity-80" : ""}`}>{tab.count}</span>
                       )}
                     </button>
                   ))}
@@ -866,50 +863,50 @@ export default function App() {
                           <button
                             key={m.id}
                             onClick={() => setActiveMatchId(m.id)}
-                            className={`w-full p-3 rounded-xl border text-left transition-all flex items-start gap-3 ${
+                            className={`w-full p-3 rounded-2xl border text-left transition-all flex items-start gap-3 ${
                               isSelected
-                                ? "bg-card border-rose-400 shadow-md ring-1 ring-ring scale-[1.02]"
-                                : "bg-card/60 hover:bg-card/90 border-border/40"
+                                ? "bg-accent/35 border-primary/30"
+                                : "bg-transparent hover:bg-muted/50 border-transparent"
                             }`}
                           >
                             <img
                               src={m.profile.photo}
                               alt={m.profile.name}
                               referrerPolicy="no-referrer"
-                              className="w-9 h-9 rounded-lg object-cover shrink-0 shadow-sm"
+                              className="w-10 h-10 rounded-full object-cover shrink-0 border border-border/60"
                             />
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center justify-between mb-0.5">
-                                <h4 className="font-bold text-xs text-foreground leading-none truncate pr-1 flex items-center gap-1.5">
+                                <h4 className="font-bold text-[13px] text-foreground leading-none truncate pr-1 flex items-center gap-1.5">
                                   {unread && (
                                     <span className="w-2 h-2 rounded-full bg-primary shrink-0" aria-label="Unread messages" />
                                   )}
                                   <span className="truncate">{m.profile.name}</span>
                                 </h4>
-                                <span className="text-[9px] bg-accent/30 text-primary font-mono font-black px-1.5 py-0.5 rounded-full shrink-0 border border-border/50">
-                                  {m.compatibilityRating}% Match
+                                <span className="text-[9px] bg-accent/40 text-primary font-sans font-bold px-1.5 py-0.5 rounded-full shrink-0">
+                                  {m.compatibilityRating}%
                                 </span>
                               </div>
                               {m.profile.university && (
-                                <p className="text-[10px] text-muted-foreground truncate leading-tight font-mono">
+                                <p className="text-[10px] text-muted-foreground truncate leading-tight font-sans">
                                   {displayUniversity(m.profile.university)}
                                 </p>
                               )}
                               {lastMsg ? (
-                                <div className="flex items-center gap-2 mt-1.5">
-                                  <p className={`text-[10px] truncate leading-snug font-sans flex-1 ${
+                                <div className="flex items-center gap-2 mt-1">
+                                  <p className={`text-[11px] truncate leading-snug font-sans flex-1 ${
                                     unread ? "text-foreground font-bold" : "text-muted-foreground"
                                   }`}>
                                     {lastMsg.senderId === accountUser?.id ? "You: " : ""}{lastMsg.text}
                                   </p>
                                   {unread && (
-                                    <span className="bg-primary text-primary-foreground text-[9px] font-sans font-black min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center shrink-0">
+                                    <span className="bg-primary text-primary-foreground text-[9px] font-sans font-bold min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center shrink-0">
                                       {m.unreadCount}
                                     </span>
                                   )}
                                 </div>
                               ) : (
-                                <p className="text-[10px] text-primary font-bold mt-1.5 leading-snug font-sans">
+                                <p className="text-[11px] text-primary font-semibold mt-1 leading-snug font-sans">
                                   Start the conversation...
                                 </p>
                               )}
@@ -930,7 +927,7 @@ export default function App() {
                             {newMatches.length > 0 && (
                               <button
                                 onClick={() => setChatTab("new")}
-                                className="bg-primary text-primary-foreground font-sans text-[11px] font-black px-4 py-2.5 rounded-xl hover:bg-primary/90 transition"
+                                className="btn btn-primary btn-sm"
                               >
                                 See New Matches
                               </button>
@@ -944,7 +941,7 @@ export default function App() {
                             </p>
                             <button
                               onClick={() => setActiveTab("swipe")}
-                              className="bg-primary text-primary-foreground font-sans text-[11px] font-black px-4 py-2.5 rounded-xl hover:bg-primary/90 transition"
+                              className="btn btn-primary btn-sm"
                             >
                               Meet new people
                             </button>
@@ -960,7 +957,7 @@ export default function App() {
                       </p>
                       <button
                         onClick={() => setActiveTab("swipe")}
-                        className="bg-primary text-primary-foreground font-sans text-[11px] font-black px-4 py-2.5 rounded-xl hover:bg-primary/90 transition"
+                        className="btn btn-primary btn-sm"
                       >
                         Meet new people
                       </button>
@@ -993,7 +990,7 @@ export default function App() {
                     </div>
                   </>
                 ) : (
-                  <div className="bg-card/40 rounded-2xl border border-border/60 p-8 shadow-sm flex flex-col items-center justify-center text-center h-full text-muted-foreground">
+                  <div className="bg-card rounded-3xl border border-border/60 p-8 shadow-pop flex flex-col items-center justify-center text-center h-full text-muted-foreground">
                     <MessageSquare size={32} className="text-muted-foreground/60 mb-2" />
                     <p className="text-xs font-sans">Pick a conversation to start planning something.</p>
                   </div>
@@ -1080,13 +1077,13 @@ export default function App() {
                   setNewMatchAlert(null);
                   setActiveTab("chat");
                 }}
-                className="w-full py-2.5 bg-stone-900 hover:bg-stone-800 text-white font-sans text-xs font-black rounded-xl shadow-md transition"
+                className="btn btn-primary w-full"
               >
                 Send a message
               </button>
               <button
                 onClick={() => setNewMatchAlert(null)}
-                className="w-full py-2.5 border border-border hover:bg-card text-muted-foreground font-sans text-xs font-black rounded-xl transition"
+                className="btn btn-ghost w-full"
               >
                 Keep browsing
               </button>
@@ -1096,82 +1093,42 @@ export default function App() {
       )}
 
       {/* 4. BOTTOM NAVIGATION BAR (safe-area aware for mobile devices) */}
-      <nav className="bg-sidebar/85 backdrop-blur-xl border-t border-sidebar-border pt-2.5 px-4 pb-[max(0.625rem,env(safe-area-inset-bottom))] z-30 select-none shrink-0">
+      {/* One tab voice for the whole app: the active icon rests in a soft
+          accent pill, the label gains weight — nothing pulses or shouts. */}
+      <nav className="bg-sidebar/85 backdrop-blur-xl border-t border-sidebar-border pt-2 px-4 pb-[max(0.5rem,env(safe-area-inset-bottom))] z-30 select-none shrink-0">
         <div className="max-w-md mx-auto flex items-center justify-between gap-1 text-center">
-          
-          {/* Swipe */}
-          <button
-            onClick={() => setActiveTab("swipe")}
-            className={`flex flex-col items-center gap-1 flex-1 py-1 px-1 rounded-xl transition-all ${
-              activeTab === "swipe" ? "text-primary font-bold" : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <Sparkles size={18} className={activeTab === "swipe" ? "scale-110" : ""} />
-            <span className="text-[10px] font-sans">Swipes</span>
-          </button>
-
-          {/* Chat */}
-          <button
-            onClick={() => setActiveTab("chat")}
-            className={`flex flex-col items-center gap-1 flex-1 py-1 px-1 rounded-xl transition-all relative ${
-              activeTab === "chat" ? "text-primary font-bold" : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <MessageSquare size={18} className={activeTab === "chat" ? "scale-110" : ""} />
-            <span className="text-[10px] font-sans">Chat</span>
-            
-            {/* Active notifications indicator badge */}
-            {matches.length > 0 && (
-              <span className="absolute top-1 right-5 w-2 h-2 rounded-full bg-primary border border-white" />
-            )}
-          </button>
-
-          {/* City Discovery */}
-          <button
-            onClick={() => setActiveTab("city")}
-            className={`flex flex-col items-center gap-1 flex-1 py-1 px-1 rounded-xl transition-all ${
-              activeTab === "city" ? "text-primary font-bold" : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <MapPin size={18} className={activeTab === "city" ? "scale-110" : ""} />
-            <span className="text-[10px] font-sans">City</span>
-          </button>
-
-          {/* Events */}
-          <button
-            onClick={() => setActiveTab("events")}
-            className={`flex flex-col items-center gap-1 flex-1 py-1 px-1 rounded-xl transition-all ${
-              activeTab === "events" ? "text-primary font-bold" : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <Calendar size={18} className={activeTab === "events" ? "scale-110" : ""} />
-            <span className="text-[10px] font-sans">Experiences</span>
-          </button>
-
-          {/* Profile Settings */}
-          <button
-            onClick={() => setActiveTab("profile")}
-            className={`flex flex-col items-center gap-1 flex-1 py-1 px-1 rounded-xl transition-all ${
-              activeTab === "profile" ? "text-primary font-bold" : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <User size={18} className={activeTab === "profile" ? "scale-110" : ""} />
-            <span className="text-[10px] font-sans">Profile</span>
-          </button>
-
-          {/* Admin Settings */}
-          {isAdmin && (
-            <button
-              onClick={() => setActiveTab("admin")}
-              className={`flex flex-col items-center gap-1 flex-1 py-1 px-1 rounded-xl transition-all ${
-                activeTab === "admin" ? "text-primary font-bold" : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <ShieldCheck size={18} className={activeTab === "admin" ? "scale-110 text-primary animate-pulse" : "text-muted-foreground"} />
-              <span className="text-[10px] font-sans font-extrabold text-primary">Admin</span>
-            </button>
-          )}
-
+          {[
+            { tab: "swipe", label: "Swipes", Icon: Sparkles },
+            { tab: "chat", label: "Chat", Icon: MessageSquare, dot: matches.length > 0 },
+            { tab: "city", label: "City", Icon: MapPin },
+            { tab: "events", label: "Experiences", Icon: Calendar },
+            { tab: "profile", label: "Profile", Icon: User },
+            ...(isAdmin ? [{ tab: "admin", label: "Admin", Icon: ShieldCheck }] : [])
+          ].map(({ tab, label, Icon, dot }) => {
+            const active = activeTab === tab;
+            return (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                aria-current={active ? "page" : undefined}
+                className={`flex flex-col items-center gap-0.5 flex-1 py-0.5 transition-all ${
+                  active ? "text-primary" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <span
+                  className={`relative inline-flex items-center justify-center w-11 h-7 rounded-full transition-colors ${
+                    active ? "bg-accent/70" : "bg-transparent"
+                  }`}
+                >
+                  <Icon size={18} />
+                  {dot && (
+                    <span className="absolute top-0.5 right-1.5 w-2 h-2 rounded-full bg-primary border border-card" />
+                  )}
+                </span>
+                <span className={`text-[10px] font-sans ${active ? "font-bold" : "font-medium"}`}>{label}</span>
+              </button>
+            );
+          })}
         </div>
       </nav>
 

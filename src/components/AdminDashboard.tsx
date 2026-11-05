@@ -621,7 +621,7 @@ export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboar
     <div className="max-w-6xl mx-auto space-y-6 select-text animate-fade-in">
 
       {/* Header */}
-      <div className="bg-slate-900 text-white rounded-[28px] p-6 shadow-xl border border-slate-800 relative overflow-hidden">
+      <div className="bg-slate-900 text-white rounded-3xl p-6 shadow-xl border border-slate-800 relative overflow-hidden">
         <div className="absolute right-0 top-0 translate-x-12 -translate-y-12 w-64 h-64 bg-primary/10 rounded-full blur-2xl" />
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 relative z-10">
           <div>
@@ -712,7 +712,7 @@ export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboar
 
       {/* VERIFICATION REVIEW */}
       {activeSubTab === "verifications" && (
-        <div className="bg-card/40 backdrop-blur-xl rounded-[28px] border border-border/60 p-5 shadow-xl space-y-4">
+        <div className="bg-card rounded-3xl border border-border/60 p-5 shadow-xl space-y-4">
           <div className="flex items-center gap-1.5 flex-wrap">
             {["pending", "rejected", "approved", "all"].map(f => (
               <button
@@ -838,7 +838,7 @@ export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboar
 
       {/* MEMBERS */}
       {activeSubTab === "users" && (
-        <div className="bg-card/40 backdrop-blur-xl rounded-[28px] border border-border/60 p-5 shadow-xl space-y-4">
+        <div className="bg-card rounded-3xl border border-border/60 p-5 shadow-xl space-y-4">
           <div className="flex flex-col md:flex-row md:items-center gap-3">
             <div className="flex items-center gap-2 bg-card/60 border border-border/80 rounded-xl px-3 py-1.5 max-w-sm w-full">
               <Search size={14} className="text-muted-foreground shrink-0" />
@@ -928,7 +928,7 @@ export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboar
                               src={u.profile.photo}
                               alt={u.profile.name}
                               referrerPolicy="no-referrer"
-                              className="w-8 h-8 rounded-lg object-cover border border-border/80 shadow-sm shrink-0"
+                              className="w-8 h-8 rounded-full object-cover border border-border/80 shadow-sm shrink-0"
                             />
                           ) : (
                             <div className="w-8 h-8 rounded-lg bg-border text-muted-foreground flex items-center justify-center font-bold text-[10px] shrink-0">
@@ -1053,7 +1053,7 @@ export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboar
 
       {/* SPOTS */}
       {activeSubTab === "spots" && (
-        <div className="bg-card/40 backdrop-blur-xl rounded-[28px] border border-border/60 p-5 shadow-xl space-y-4">
+        <div className="bg-card rounded-3xl border border-border/60 p-5 shadow-xl space-y-4">
           <div className="flex items-center gap-2 bg-card/60 border border-border/80 rounded-xl px-3 py-1.5 max-w-sm">
             <Search size={14} className="text-muted-foreground" />
             <input
@@ -1125,7 +1125,7 @@ export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboar
       {/* EVENTS GUESTS — per-experience guest lists with the WhatsApp
           numbers members left when booking. Server-enforced admin-only. */}
       {activeSubTab === "guests" && (
-        <div className="bg-card/40 backdrop-blur-xl rounded-[28px] border border-border/60 p-5 shadow-xl space-y-3">
+        <div className="bg-card rounded-3xl border border-border/60 p-5 shadow-xl space-y-3">
           {eventGuests === null ? (
             <div className="text-center py-10 text-muted-foreground font-sans text-xs">Loading guest lists…</div>
           ) : eventGuests.length === 0 ? (
@@ -1264,7 +1264,7 @@ export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboar
           delivery accounting. New-Experience auto-announcements appear in the
           same history, since they ride the same job records. */}
       {activeSubTab === "announce" && (
-        <div className="bg-card/40 backdrop-blur-xl rounded-[28px] border border-border/60 p-5 shadow-xl space-y-5">
+        <div className="bg-card rounded-3xl border border-border/60 p-5 shadow-xl space-y-5">
           {!announcePushConfigured && (
             <div className="bg-amber-50 border border-amber-200/70 text-amber-800 text-[11px] font-sans font-bold rounded-xl p-3.5 leading-relaxed">
               Push delivery isn't configured on this server (VAPID keys missing), so announcements can't be
@@ -1443,7 +1443,7 @@ export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboar
           aria-modal="true"
           aria-label="Account Recovery"
         >
-          <div className="bg-card w-full max-w-md rounded-[28px] border border-border/70 shadow-2xl p-6 space-y-4">
+          <div className="bg-card w-full max-w-md rounded-3xl border border-border/70 shadow-2xl p-6 space-y-4">
             <div className="flex items-start justify-between gap-3 border-b border-border/40 pb-3">
               <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 rounded-xl bg-accent/40 border border-border/50 text-primary flex items-center justify-center shrink-0">

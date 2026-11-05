@@ -119,7 +119,7 @@ export default function GuestExperience({ onExitToAuth }: GuestExperienceProps) 
         <button
           type="button"
           onClick={onExitToAuth}
-          className="bg-primary hover:bg-primary/90 text-primary-foreground font-sans text-xs font-black px-4 py-2 rounded-xl transition shadow-pop cursor-pointer"
+          className="btn btn-primary"
         >
           Sign Up / Log In
         </button>
@@ -179,7 +179,7 @@ export default function GuestExperience({ onExitToAuth }: GuestExperienceProps) 
             </p>
             <button
               onClick={onExitToAuth}
-              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-sans text-xs font-black py-3 rounded-2xl transition shadow-pop cursor-pointer"
+              className="btn btn-primary w-full"
             >
               Sign Up / Log In
             </button>

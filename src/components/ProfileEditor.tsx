@@ -541,7 +541,7 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
       <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-start">
         
         {/* LEFT COLUMN: Main Form details */}
-        <div className="md:col-span-8 space-y-6 bg-card/40 backdrop-blur-xl p-5 md:p-6 rounded-[28px] border border-border/60 shadow-xl animate-fade-in">
+        <div className="md:col-span-8 space-y-6 bg-card p-5 md:p-6 rounded-3xl border border-border/60 shadow-xl animate-fade-in">
           
               {/* READ-ONLY VIEW — nothing on this card can change until she
                   presses Edit Profile. */}
@@ -576,44 +576,44 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <span className="text-[10px] font-sans font-extrabold text-muted-foreground block">Your Name</span>
+                  <span className="text-[10px] font-sans font-bold uppercase tracking-wider text-muted-foreground/90 block">Your Name</span>
                   <p className="text-sm font-sans font-semibold text-foreground mt-0.5">{currentUser.name}</p>
                 </div>
                 <div>
-                  <span className="text-[10px] font-sans font-extrabold text-muted-foreground block">Your Age</span>
+                  <span className="text-[10px] font-sans font-bold uppercase tracking-wider text-muted-foreground/90 block">Your Age</span>
                   <p className="text-sm font-sans font-semibold text-foreground mt-0.5">{currentUser.age}</p>
                 </div>
                 <div>
-                  <span className="text-[10px] font-sans font-extrabold text-muted-foreground block">Nationalities</span>
+                  <span className="text-[10px] font-sans font-bold uppercase tracking-wider text-muted-foreground/90 block">Nationalities</span>
                   <p className="text-sm font-sans font-semibold text-foreground mt-0.5">{currentUser.nationality || "—"}</p>
                 </div>
                 <div>
-                  <span className="text-[10px] font-sans font-extrabold text-muted-foreground block">University in Madrid</span>
+                  <span className="text-[10px] font-sans font-bold uppercase tracking-wider text-muted-foreground/90 block">University in Madrid</span>
                   <p className="text-sm font-sans font-semibold text-foreground mt-0.5">{displayUniversity(currentUser.university) || "—"}</p>
                 </div>
                 <div>
-                  <span className="text-[10px] font-sans font-extrabold text-muted-foreground block">TikTok</span>
+                  <span className="text-[10px] font-sans font-bold uppercase tracking-wider text-muted-foreground/90 block">TikTok</span>
                   <p className="text-sm font-sans font-semibold text-foreground mt-0.5">{currentUser.tiktok ? `@${currentUser.tiktok}` : "—"}</p>
                 </div>
                 <div>
-                  <span className="text-[10px] font-sans font-extrabold text-muted-foreground block">Instagram</span>
+                  <span className="text-[10px] font-sans font-bold uppercase tracking-wider text-muted-foreground/90 block">Instagram</span>
                   <p className="text-sm font-sans font-semibold text-foreground mt-0.5">{currentUser.instagram ? `@${currentUser.instagram}` : "—"}</p>
                 </div>
               </div>
 
               <div>
-                <span className="text-[10px] font-sans font-extrabold text-muted-foreground block">Friendship style you're looking for</span>
+                <span className="text-[10px] font-sans font-bold uppercase tracking-wider text-muted-foreground/90 block">Friendship style you're looking for</span>
                 <p className="text-sm font-sans font-semibold text-foreground mt-0.5">{currentUser.friendshipType || "—"}</p>
               </div>
 
               <div>
-                <span className="text-[10px] font-sans font-extrabold text-muted-foreground block">Bio</span>
-                <p className="text-xs font-sans text-foreground leading-relaxed mt-0.5 italic">{currentUser.bio ? `"${currentUser.bio}"` : "—"}</p>
+                <span className="text-[10px] font-sans font-bold uppercase tracking-wider text-muted-foreground/90 block">Bio</span>
+                <p className="text-[13px] font-display italic text-foreground leading-relaxed mt-1">{currentUser.bio ? `"${currentUser.bio}"` : "—"}</p>
               </div>
 
               <div>
                 <div className="flex items-center justify-between gap-2 mb-1.5">
-                  <span className="text-[10px] font-sans font-extrabold text-muted-foreground block">Interests</span>
+                  <span className="text-[10px] font-sans font-bold uppercase tracking-wider text-muted-foreground/90 block">Interests</span>
                   <button
                     type="button"
                     onClick={() => setShowProfileInterests(prev => !prev)}
@@ -646,7 +646,7 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
               </div>
 
           {/* PERSONAL RECOMMENDATIONS SECTION */}
-          <div className="bg-card/40 backdrop-blur-xl p-5 rounded-[28px] border border-border/60 shadow-xl space-y-4 mt-6">
+          <div className="bg-card p-5 rounded-3xl border border-border/60 shadow-xl space-y-4 mt-6">
             <div className="flex items-center justify-between pb-2 border-b border-border/30">
               <div className="flex items-center gap-1.5">
                 <MapPin size={18} className="text-primary" />
@@ -717,7 +717,7 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
 
           {/* ACCOUNT ACTIONS — sign out is non-destructive; deletion is
               explicit, typed, and clearly separated */}
-          <div className="mt-6 bg-card/40 backdrop-blur-md rounded-2xl border border-border/60 p-5 space-y-4">
+          <div className="mt-6 bg-card rounded-2xl border border-border/60 p-5 space-y-4">
             <h4 className="font-sans font-bold text-sm text-foreground">Account</h4>
 
             <div className="flex items-center justify-between gap-3">
@@ -754,7 +754,7 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
               {showChangePassword && (
                 <div className="bg-muted/30 border border-border/60 p-4 rounded-xl space-y-3 animate-fade-in">
                   <div className="space-y-1">
-                    <label htmlFor="current-password" className="text-[10px] font-sans font-extrabold text-muted-foreground block">Current Password</label>
+                    <label htmlFor="current-password" className="text-[10px] font-sans font-bold uppercase tracking-wider text-muted-foreground/90 block">Current Password</label>
                     <input
                       id="current-password"
                       type="password"
@@ -767,7 +767,7 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="space-y-1">
-                      <label htmlFor="new-password" className="text-[10px] font-sans font-extrabold text-muted-foreground block">New Password (Min 6 chars)</label>
+                      <label htmlFor="new-password" className="text-[10px] font-sans font-bold uppercase tracking-wider text-muted-foreground/90 block">New Password (Min 6 chars)</label>
                       <input
                         id="new-password"
                         type="password"
@@ -779,7 +779,7 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
                       />
                     </div>
                     <div className="space-y-1">
-                      <label htmlFor="confirm-new-password" className="text-[10px] font-sans font-extrabold text-muted-foreground block">Confirm New Password</label>
+                      <label htmlFor="confirm-new-password" className="text-[10px] font-sans font-bold uppercase tracking-wider text-muted-foreground/90 block">Confirm New Password</label>
                       <input
                         id="confirm-new-password"
                         type="password"
@@ -893,7 +893,7 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
           {/* EDIT SPOT MODAL OVERLAY */}
           {editingRec && (
             <div className="fixed inset-0 bg-stone-950/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in select-text">
-              <div className="bg-card rounded-[28px] border border-border/50 p-6 max-w-md w-full space-y-4 shadow-2xl relative">
+              <div className="bg-card rounded-3xl border border-border/50 p-6 max-w-md w-full space-y-4 shadow-2xl relative">
                 <h3 className="font-sans font-black text-sm text-foreground uppercase tracking-tight">
                   Edit Secret Spot
                 </h3>
@@ -997,7 +997,7 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
           {/* VERIFICATION PANEL */}
           <div
             ref={verificationRef}
-            className={`bg-card/40 backdrop-blur-xl p-5 rounded-[28px] border shadow-xl space-y-4 animate-fade-in transition-all duration-500 ${
+            className={`bg-card p-5 rounded-3xl border shadow-xl space-y-4 animate-fade-in transition-all duration-500 ${
               highlightVerification ? "border-primary ring-2 ring-ring" : "border-border/60"
             }`}
           >
@@ -1099,7 +1099,7 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
           </div>
 
           {/* COMMUNITY GUIDELINES & SAFETY CORNER */}
-          <div className="bg-slate-950 text-white p-5 rounded-[28px] border border-slate-900 shadow-xl space-y-3.5 animate-fade-in">
+          <div className="bg-slate-950 text-white p-5 rounded-3xl border border-slate-900 shadow-xl space-y-3.5 animate-fade-in">
             <div className="flex items-center gap-1.5 pb-2 border-b border-slate-800">
               <Globe size={18} className="text-rose-400" />
               <h3 className="font-sans font-black text-xs text-rose-400 uppercase tracking-wider">
@@ -1142,7 +1142,7 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
           aria-modal="true"
           aria-label="Edit your profile"
         >
-          <div className="bg-background w-full h-full md:h-auto md:max-h-[90vh] md:max-w-2xl md:rounded-[28px] md:border md:border-border/70 md:shadow-2xl flex flex-col overflow-hidden relative">
+          <div className="bg-background w-full h-full md:h-auto md:max-h-[90vh] md:max-w-2xl md:rounded-3xl md:border md:border-border/70 md:shadow-2xl flex flex-col overflow-hidden relative">
             {/* Header */}
             <div className="px-5 md:px-6 pt-[max(1rem,env(safe-area-inset-top))] pb-3.5 border-b border-border/40 flex items-center justify-between gap-3 shrink-0 bg-card/70">
               <div className="flex items-center gap-2">
@@ -1179,7 +1179,7 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Name */}
             <div className="space-y-1">
-              <span className="text-[10px] font-sans font-extrabold text-muted-foreground block">Your Name</span>
+              <span className="text-[10px] font-sans font-bold uppercase tracking-wider text-muted-foreground/90 block">Your Name</span>
               <input
                 type="text"
                 value={name}
@@ -1232,7 +1232,7 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
             {showNationalityDropdown && (
               <div className="absolute z-30 left-4 right-4 mt-1 bg-card border border-border rounded-2xl shadow-xl p-3.5 space-y-2 animate-fade-in">
                 <div className="flex items-center justify-between pb-1.5 border-b border-border/60">
-                  <span className="text-[10px] font-mono font-bold text-muted-foreground uppercase">Search Countries</span>
+                  <span className="eyebrow text-muted-foreground">Search Countries</span>
                   <button
                     type="button"
                     onClick={() => {
@@ -1295,7 +1295,7 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
           <div className="grid grid-cols-1 gap-4">
             {/* University */}
             <div className="space-y-1">
-              <span className="text-[10px] font-sans font-extrabold text-muted-foreground block">University in Madrid</span>
+              <span className="text-[10px] font-sans font-bold uppercase tracking-wider text-muted-foreground/90 block">University in Madrid</span>
               <UniversitySelect
                 value={university}
                 onChange={setUniversity}
@@ -1307,7 +1307,7 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
 
           {/* Friendship style */}
           <div className="space-y-1">
-            <span className="text-[10px] font-sans font-extrabold text-muted-foreground block">Friendship style you're looking for</span>
+            <span className="text-[10px] font-sans font-bold uppercase tracking-wider text-muted-foreground/90 block">Friendship style you're looking for</span>
             <input
               type="text"
               value={friendshipType}
@@ -1321,7 +1321,7 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* TikTok Handle */}
             <div className="space-y-1">
-              <span className="text-[10px] font-sans font-extrabold text-muted-foreground block">TikTok Handle (Optional) 🎵</span>
+              <span className="text-[10px] font-sans font-bold uppercase tracking-wider text-muted-foreground/90 block">TikTok Handle (Optional) 🎵</span>
               <div className="relative">
                 <span className="absolute left-3.5 top-2 text-xs text-muted-foreground font-bold">@</span>
                 <input
@@ -1336,7 +1336,7 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
 
             {/* Instagram Handle */}
             <div className="space-y-1">
-              <span className="text-[10px] font-sans font-extrabold text-muted-foreground block">Instagram Handle (Optional) 📸</span>
+              <span className="text-[10px] font-sans font-bold uppercase tracking-wider text-muted-foreground/90 block">Instagram Handle (Optional) 📸</span>
               <div className="relative">
                 <span className="absolute left-3.5 top-2 text-xs text-muted-foreground font-bold">@</span>
                 <input
@@ -1352,7 +1352,7 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
 
           {/* Bio */}
           <div className="space-y-1">
-            <span className="text-[10px] font-sans font-extrabold text-muted-foreground block">Introduce yourself! (Bio)</span>
+            <span className="text-[10px] font-sans font-bold uppercase tracking-wider text-muted-foreground/90 block">Introduce yourself! (Bio)</span>
             <textarea
               value={bio}
               onChange={(e) => setBio(e.target.value)}
@@ -1385,7 +1385,7 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
 
             {/* Activities checkboxes */}
             <div className="space-y-2">
-              <span className="text-[10px] font-mono font-extrabold uppercase text-muted-foreground tracking-widest block">
+              <span className="eyebrow text-muted-foreground block">
                 Activities & Hobbies
               </span>
               <div className="flex flex-wrap gap-1.5 select-none">
@@ -1411,7 +1411,7 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
 
             {/* Social Preferences */}
             <div className="space-y-2">
-              <span className="text-[10px] font-mono font-extrabold uppercase text-muted-foreground tracking-widest block">
+              <span className="eyebrow text-muted-foreground block">
                 Social Plans
               </span>
               <div className="flex flex-wrap gap-1.5 select-none">
@@ -1437,7 +1437,7 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
 
             {/* Music preferences */}
             <div className="space-y-2">
-              <span className="text-[10px] font-mono font-extrabold uppercase text-muted-foreground tracking-widest block">
+              <span className="eyebrow text-muted-foreground block">
                 Music Taste
               </span>
               <div className="flex flex-wrap gap-1.5 select-none">
@@ -1463,7 +1463,7 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
 
             {/* Lifestyle preferences */}
             <div className="space-y-2">
-              <span className="text-[10px] font-mono font-extrabold uppercase text-muted-foreground tracking-widest block">
+              <span className="eyebrow text-muted-foreground block">
                 Lifestyle & Energy
               </span>
               <div className="flex flex-wrap gap-1.5 select-none">
@@ -1489,7 +1489,7 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
 
             {/* Spending Style preferences (Radio) */}
             <div className="space-y-2 pt-1 border-t border-border/30">
-              <span className="text-[10px] font-mono font-extrabold uppercase text-muted-foreground tracking-widest block">
+              <span className="eyebrow text-muted-foreground block">
                 Spending Style Preference
               </span>
               <div className="flex flex-wrap gap-2 select-none pt-1">
@@ -1515,7 +1515,7 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
 
             {/* Animals — single choice, easy conversation starter */}
             <div className="space-y-2 pt-1 border-t border-border/30">
-              <span className="text-[10px] font-mono font-extrabold uppercase text-muted-foreground tracking-widest block">
+              <span className="eyebrow text-muted-foreground block">
                 Animals
               </span>
               <div className="flex flex-wrap gap-2 select-none pt-1">

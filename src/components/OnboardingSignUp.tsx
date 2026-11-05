@@ -260,16 +260,19 @@ export default function OnboardingSignUp({ onAuthSuccess, onGuestAccess }: Onboa
       </div>
 
       {showWelcome ? (
-        // WELCOME — identity plus the two actions, nothing else.
+        // WELCOME — identity plus the two actions, nothing else. The arch is
+        // NEST's signature frame: a little nook the brand lives in.
         <div className="flex-1 flex flex-col items-center justify-center text-center animate-fade-in select-none">
-          <img
-            src="/icons/nest-logo.png"
-            alt="NEST logo"
-            className="w-28 h-28 rounded-[32px] shadow-xl mb-6"
-          />
-          <h1 className="font-display font-semibold tracking-tight text-foreground text-5xl lowercase">nest</h1>
-          <span className="font-mono text-[10px] font-bold text-primary tracking-widest uppercase mt-1">Madrid</span>
-          <p className="text-sm text-muted-foreground font-sans mt-5 max-w-xs leading-relaxed">
+          <div className="arch w-32 h-36 bg-gradient-to-b from-accent/70 to-secondary/30 border border-border/60 shadow-pop flex items-end justify-center pb-4 mb-7">
+            <img
+              src="/icons/nest-logo.png"
+              alt="NEST logo"
+              className="w-16 h-16 rounded-[1.25rem] shadow-lg"
+            />
+          </div>
+          <h1 className="font-display font-semibold tracking-tight text-foreground text-5xl lowercase leading-none">nest</h1>
+          <span className="eyebrow mt-2">Madrid</span>
+          <p className="font-display italic text-lg text-muted-foreground mt-6 max-w-[19rem] leading-snug">
             A private club for international women studying in Madrid.
           </p>
 
@@ -277,21 +280,21 @@ export default function OnboardingSignUp({ onAuthSuccess, onGuestAccess }: Onboa
             <button
               type="button"
               onClick={() => { setView("signup"); setError(""); }}
-              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-sans text-sm font-black py-3.5 rounded-2xl transition shadow-pop cursor-pointer"
+              className="btn btn-primary btn-lg w-full"
             >
               Sign Up
             </button>
             <button
               type="button"
               onClick={() => { setView("login"); setError(""); }}
-              className="w-full bg-card/60 border border-border hover:bg-card text-foreground font-sans text-sm font-bold py-3.5 rounded-2xl transition cursor-pointer"
+              className="btn btn-quiet btn-lg w-full"
             >
               Log In
             </button>
             <button
               type="button"
               onClick={onGuestAccess}
-              className="w-full text-muted-foreground hover:text-primary font-sans text-xs font-bold py-2.5 transition cursor-pointer"
+              className="btn btn-ghost w-full text-xs"
             >
               Guest (Events Only) →
             </button>
@@ -316,7 +319,7 @@ export default function OnboardingSignUp({ onAuthSuccess, onGuestAccess }: Onboa
           </div>
 
           {/* Card container */}
-          <div className="max-w-md w-full mx-auto bg-card/40 backdrop-blur-xl rounded-[32px] border border-border/80 shadow-2xl overflow-hidden p-6 md:p-8 grow flex flex-col justify-between">
+          <div className="max-w-md w-full mx-auto bg-card rounded-[2rem] border border-border/80 shadow-2xl overflow-hidden p-6 md:p-8 grow flex flex-col justify-between">
 
             {recoveryView !== "none" ? (
               recoveryView === "reset" && resetToken ? (
@@ -329,7 +332,7 @@ export default function OnboardingSignUp({ onAuthSuccess, onGuestAccess }: Onboa
               <form onSubmit={handleLoginSubmit} className="space-y-6 flex-1 flex flex-col justify-between">
                 <div className="space-y-4">
                   <div>
-                    <h3 className="font-sans font-black text-foreground text-lg tracking-tight">Log In to Your NEST Account</h3>
+                    <h3 className="font-display text-2xl text-foreground">Log In to Your NEST Account</h3>
                     <p className="text-xs text-muted-foreground font-sans mt-0.5">Welcome back! Access your private student profile.</p>
                   </div>
 
@@ -341,7 +344,7 @@ export default function OnboardingSignUp({ onAuthSuccess, onGuestAccess }: Onboa
 
                   {/* Email */}
                   <div className="space-y-1">
-                    <label className="text-[10px] font-mono font-bold text-muted-foreground uppercase block">Personal Email</label>
+                    <label className="eyebrow text-muted-foreground block">Personal Email</label>
                     <div className="relative">
                       <Mail size={14} className="absolute left-3.5 top-3.5 text-muted-foreground" />
                       <input
@@ -350,14 +353,14 @@ export default function OnboardingSignUp({ onAuthSuccess, onGuestAccess }: Onboa
                         value={loginEmail}
                         onChange={(e) => setLoginEmail(e.target.value)}
                         placeholder="email@example.com"
-                        className="w-full bg-card/60 border border-border rounded-xl pl-10 pr-3.5 py-2.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring focus:bg-card"
+                        className="field pl-10 pr-3.5 py-2.5 text-xs"
                       />
                     </div>
                   </div>
 
                   {/* Password */}
                   <div className="space-y-1">
-                    <label className="text-[10px] font-mono font-bold text-muted-foreground uppercase block">Password</label>
+                    <label className="eyebrow text-muted-foreground block">Password</label>
                     <div className="relative">
                       <Lock size={14} className="absolute left-3.5 top-3.5 text-muted-foreground" />
                       <input
@@ -366,7 +369,7 @@ export default function OnboardingSignUp({ onAuthSuccess, onGuestAccess }: Onboa
                         value={loginPassword}
                         onChange={(e) => setLoginPassword(e.target.value)}
                         placeholder="••••••••"
-                        className="w-full bg-card/60 border border-border rounded-xl pl-10 pr-3.5 py-2.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring focus:bg-card"
+                        className="field pl-10 pr-3.5 py-2.5 text-xs"
                       />
                     </div>
                   </div>
@@ -376,7 +379,7 @@ export default function OnboardingSignUp({ onAuthSuccess, onGuestAccess }: Onboa
                   <button
                     type="submit"
                     disabled={loading}
-                    className="w-full bg-primary hover:bg-primary/90 disabled:bg-primary/40 disabled:shadow-none text-primary-foreground font-sans text-xs font-black py-3 rounded-xl transition shadow-pop flex items-center justify-center gap-1.5 cursor-pointer"
+                    className="btn btn-primary w-full"
                   >
                     {loading ? "Authenticating..." : "Log In to NEST"}
                     <ArrowRight size={13} />
@@ -442,12 +445,12 @@ export default function OnboardingSignUp({ onAuthSuccess, onGuestAccess }: Onboa
                   {step === 1 && (
                     <div className="space-y-4 animate-fade-in">
                       <div>
-                        <h3 className="font-sans font-black text-foreground text-lg tracking-tight">Create your account</h3>
+                        <h3 className="font-display text-2xl text-foreground">Create your account</h3>
                         <p className="text-xs text-muted-foreground font-sans mt-0.5">Just the basics — you can complete your profile later.</p>
                       </div>
 
                       <div className="space-y-1">
-                        <label htmlFor="signup-name" className="text-[10px] font-mono font-bold text-muted-foreground uppercase block">Name</label>
+                        <label htmlFor="signup-name" className="eyebrow text-muted-foreground block">Name</label>
                         <input
                           id="signup-name"
                           type="text"
@@ -460,7 +463,7 @@ export default function OnboardingSignUp({ onAuthSuccess, onGuestAccess }: Onboa
                       </div>
 
                       <div className="space-y-1">
-                        <label htmlFor="signup-email" className="text-[10px] font-mono font-bold text-muted-foreground uppercase block">Personal Email</label>
+                        <label htmlFor="signup-email" className="eyebrow text-muted-foreground block">Personal Email</label>
                         <input
                           id="signup-email"
                           type="email"
@@ -474,7 +477,7 @@ export default function OnboardingSignUp({ onAuthSuccess, onGuestAccess }: Onboa
                       </div>
 
                       <div className="space-y-1">
-                        <label htmlFor="signup-password" className="text-[10px] font-mono font-bold text-muted-foreground uppercase block">Create Password (Min 6 chars)</label>
+                        <label htmlFor="signup-password" className="eyebrow text-muted-foreground block">Create Password (Min 6 chars)</label>
                         <input
                           id="signup-password"
                           type="password"
@@ -491,12 +494,12 @@ export default function OnboardingSignUp({ onAuthSuccess, onGuestAccess }: Onboa
                   {step === 2 && (
                     <div className="space-y-4 animate-fade-in">
                       <div>
-                        <h3 className="font-sans font-black text-foreground text-lg tracking-tight">About you</h3>
+                        <h3 className="font-display text-2xl text-foreground">About you</h3>
                         <p className="text-xs text-muted-foreground font-sans mt-0.5">Your age and what you're currently doing.</p>
                       </div>
 
                       <div className="space-y-1">
-                        <label htmlFor="signup-age" className="text-[10px] font-mono font-bold text-muted-foreground uppercase block">Age</label>
+                        <label htmlFor="signup-age" className="eyebrow text-muted-foreground block">Age</label>
                         <input
                           id="signup-age"
                           type="number"
@@ -511,7 +514,7 @@ export default function OnboardingSignUp({ onAuthSuccess, onGuestAccess }: Onboa
                       </div>
 
                       <div className="space-y-1">
-                        <label className="text-[10px] font-mono font-bold text-muted-foreground uppercase block">What are you currently doing?</label>
+                        <label className="eyebrow text-muted-foreground block">What are you currently doing?</label>
                         <div className="grid grid-cols-2 gap-2">
                           <button
                             type="button"
@@ -547,7 +550,7 @@ export default function OnboardingSignUp({ onAuthSuccess, onGuestAccess }: Onboa
 
                       {occupation === "university" && (
                         <div className="space-y-1 animate-fade-in">
-                          <label className="text-[10px] font-mono font-bold text-muted-foreground uppercase block">Madrid University</label>
+                          <label className="eyebrow text-muted-foreground block">Madrid University</label>
                           <UniversitySelect value={university} onChange={setUniversity} />
                         </div>
                       )}
@@ -557,7 +560,7 @@ export default function OnboardingSignUp({ onAuthSuccess, onGuestAccess }: Onboa
                   {step === 3 && (
                     <div className="space-y-4 animate-fade-in">
                       <div>
-                        <h3 className="font-sans font-black text-foreground text-lg tracking-tight">Your interests</h3>
+                        <h3 className="font-display text-2xl text-foreground">Your interests</h3>
                         <p className="text-xs text-muted-foreground font-sans mt-0.5">Pick a few things you love — they power your matches.</p>
                       </div>
 
@@ -582,7 +585,7 @@ export default function OnboardingSignUp({ onAuthSuccess, onGuestAccess }: Onboa
 
                       {/* Animals — one pick, easy to answer */}
                       <div className="space-y-2 pt-2">
-                        <span className="text-[10px] font-mono font-bold text-muted-foreground uppercase block">
+                        <span className="eyebrow text-muted-foreground block">
                           Animals
                         </span>
                         <div className="flex flex-wrap gap-1.5">
@@ -610,7 +613,7 @@ export default function OnboardingSignUp({ onAuthSuccess, onGuestAccess }: Onboa
                   {step === 4 && (
                     <div className="space-y-4 animate-fade-in">
                       <div>
-                        <h3 className="font-sans font-black text-foreground text-lg tracking-tight">Set up your profile</h3>
+                        <h3 className="font-display text-2xl text-foreground">Set up your profile</h3>
                         <p className="text-xs text-muted-foreground font-sans mt-0.5">A photo, a few words, and where you're from — then you're in.</p>
                       </div>
 
@@ -624,7 +627,7 @@ export default function OnboardingSignUp({ onAuthSuccess, onGuestAccess }: Onboa
                       </div>
 
                       <div className="space-y-1">
-                        <label htmlFor="signup-bio" className="text-[10px] font-mono font-bold text-muted-foreground uppercase block">Short Student Bio (Mandatory)</label>
+                        <label htmlFor="signup-bio" className="eyebrow text-muted-foreground block">Short Student Bio (Mandatory)</label>
                         <textarea
                           id="signup-bio"
                           value={bio}
@@ -637,7 +640,7 @@ export default function OnboardingSignUp({ onAuthSuccess, onGuestAccess }: Onboa
 
                       {/* Nationalities Picker */}
                       <div className="space-y-1.5 relative">
-                        <label className="text-[10px] font-mono font-bold text-muted-foreground uppercase block">
+                        <label className="eyebrow text-muted-foreground block">
                           Nationalities 🗺️
                         </label>
 
@@ -670,7 +673,7 @@ export default function OnboardingSignUp({ onAuthSuccess, onGuestAccess }: Onboa
                         {showNationalityDropdown && (
                           <div className="absolute z-50 left-0 right-0 mt-1 bg-card border border-border/60 rounded-2xl shadow-xl p-3.5 space-y-2 animate-fade-in">
                             <div className="flex items-center justify-between pb-1.5 border-b border-border/60">
-                              <span className="text-[10px] font-mono font-bold text-muted-foreground uppercase">Search Countries</span>
+                              <span className="eyebrow text-muted-foreground">Search Countries</span>
                               <button
                                 type="button"
                                 onClick={() => {
@@ -771,7 +774,7 @@ export default function OnboardingSignUp({ onAuthSuccess, onGuestAccess }: Onboa
                       type="button"
                       onClick={handleSubmitSignUp}
                       disabled={loading}
-                      className="bg-primary hover:bg-primary/90 disabled:bg-primary/40 disabled:shadow-none text-primary-foreground font-sans text-xs font-black px-6 py-2.5 rounded-xl transition shadow-pop flex items-center gap-1.5 cursor-pointer"
+                      className="btn btn-primary"
                     >
                       <ShieldCheck size={14} />
                       <span>{loading ? "Registering account..." : "Complete Sign Up"}</span>

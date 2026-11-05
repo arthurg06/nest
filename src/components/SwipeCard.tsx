@@ -150,7 +150,7 @@ export default function SwipeCard({ profile, currentUser, onSwipeLeft, onSwipeRi
           }}
           exit={{ opacity: 0, scale: 0.9 }}
           transition={{ duration: 0.25, ease: "easeInOut" }}
-          className={`bg-card/40 backdrop-blur-xl rounded-[32px] border border-border/60 shadow-2xl overflow-hidden flex flex-col transition-[height] duration-300 ${
+          className={`bg-card rounded-[2rem] border border-border/60 shadow-pop-lg overflow-hidden flex flex-col transition-[height] duration-300 ${
             /* Mobile heights track the real viewport (capped) so the details
                area gets the room the fixed height used to waste; md+ keeps
                the previous desktop proportions. */
@@ -209,7 +209,7 @@ export default function SwipeCard({ profile, currentUser, onSwipeLeft, onSwipeRi
                   <ChevronRight size={18} />
                 </button>
                 <span
-                  className="absolute bottom-2 right-2.5 z-10 bg-slate-950/45 backdrop-blur-sm text-white font-mono text-[9px] font-bold px-2 py-0.5 rounded-full select-none"
+                  className="absolute bottom-2 right-2.5 z-10 bg-stone-950/45 backdrop-blur-sm text-white font-sans text-[9px] font-bold px-2 py-0.5 rounded-full select-none"
                   aria-hidden="true"
                 >
                   {photoIndex + 1} / {gallery.length}
@@ -236,11 +236,11 @@ export default function SwipeCard({ profile, currentUser, onSwipeLeft, onSwipeRi
               <VerifiedBadge profile={profile} />
 
               {/* Compatibility score — moved off the photo so it stays clear */}
-              <div className="ml-auto self-center flex flex-col items-center bg-card/90 text-foreground rounded-2xl px-3 py-1.5 border border-border/75 shadow-sm">
+              <div className="ml-auto self-center flex flex-col items-center bg-accent/50 text-foreground rounded-full px-3.5 py-1.5 border border-border/60">
                 <div className="font-sans font-black text-sm text-primary leading-tight">
                   {report ? `${report.score}%` : "—"}
                 </div>
-                <div className="font-mono text-[8px] uppercase tracking-widest text-muted-foreground leading-none">
+                <div className="font-sans text-[8px] font-bold uppercase tracking-widest text-muted-foreground leading-none">
                   Match
                 </div>
               </div>
@@ -287,10 +287,10 @@ export default function SwipeCard({ profile, currentUser, onSwipeLeft, onSwipeRi
           <div className="px-5 py-3 md:px-6 md:py-4">
             {/* Short Bio */}
             <div className="mb-4">
-              <span className="text-[10px] font-mono font-extrabold uppercase text-primary tracking-wider block mb-1">
+              <span className="eyebrow block mb-1">
                 Bio & Vibe
               </span>
-              <p className="text-xs text-foreground leading-relaxed font-sans italic">
+              <p className="text-[13px] text-foreground leading-relaxed font-display italic">
                 "{profile.bio}"
               </p>
             </div>
@@ -330,7 +330,7 @@ export default function SwipeCard({ profile, currentUser, onSwipeLeft, onSwipeRi
               <div className="space-y-4 pt-1 animate-fade-in">
                 {/* Friendship style */}
                 <div className="bg-card/30 rounded-xl p-2.5 border border-border/40">
-                  <span className="text-[9px] font-mono text-muted-foreground uppercase tracking-widest block">
+                  <span className="eyebrow text-muted-foreground block">
                     Friendship Goal
                   </span>
                   <span className="font-sans font-extrabold text-primary text-[12px] leading-tight block">
@@ -342,7 +342,7 @@ export default function SwipeCard({ profile, currentUser, onSwipeLeft, onSwipeRi
                 <div className="space-y-3.5">
                   {/* Activities */}
                   <div>
-                    <span className="text-[10px] font-mono font-extrabold uppercase text-muted-foreground tracking-widest block mb-2">
+                    <span className="eyebrow text-muted-foreground block mb-2">
                       Activities
                     </span>
                     <div className="flex flex-wrap gap-1.5">
@@ -366,7 +366,7 @@ export default function SwipeCard({ profile, currentUser, onSwipeLeft, onSwipeRi
 
                   {/* Social */}
                   <div>
-                    <span className="text-[10px] font-mono font-extrabold uppercase text-muted-foreground tracking-widest block mb-2">
+                    <span className="eyebrow text-muted-foreground block mb-2">
                       Social Plans
                     </span>
                     <div className="flex flex-wrap gap-1.5">
@@ -390,7 +390,7 @@ export default function SwipeCard({ profile, currentUser, onSwipeLeft, onSwipeRi
 
                   {/* Music */}
                   <div>
-                    <span className="text-[10px] font-mono font-extrabold uppercase text-muted-foreground tracking-widest block mb-2">
+                    <span className="eyebrow text-muted-foreground block mb-2">
                       Music Taste
                     </span>
                     <div className="flex flex-wrap gap-1.5">
@@ -414,7 +414,7 @@ export default function SwipeCard({ profile, currentUser, onSwipeLeft, onSwipeRi
 
                   {/* Lifestyle */}
                   <div>
-                    <span className="text-[10px] font-mono font-extrabold uppercase text-muted-foreground tracking-widest block mb-2">
+                    <span className="eyebrow text-muted-foreground block mb-2">
                       Lifestyle Vibe
                     </span>
                     <div className="flex flex-wrap gap-1.5">
@@ -438,7 +438,7 @@ export default function SwipeCard({ profile, currentUser, onSwipeLeft, onSwipeRi
 
                   {/* Spending Style */}
                   <div className="pt-2 border-t border-border/20">
-                    <span className="text-[9px] font-mono font-extrabold uppercase text-muted-foreground tracking-widest block">
+                    <span className="eyebrow text-muted-foreground block">
                       Spending Style
                     </span>
                     <span className={`text-xs font-sans font-bold inline-block px-3 py-1 rounded-xl mt-1 ${
@@ -454,7 +454,7 @@ export default function SwipeCard({ profile, currentUser, onSwipeLeft, onSwipeRi
                   {/* Animals */}
                   {profile.interests.animals && (
                     <div className="pt-2 border-t border-border/20">
-                      <span className="text-[10px] font-mono font-extrabold uppercase text-muted-foreground tracking-widest block">
+                      <span className="eyebrow text-muted-foreground block">
                         Animals
                       </span>
                       <span className={`text-xs font-sans font-bold inline-block px-3 py-1 rounded-xl mt-1 ${

@@ -66,8 +66,8 @@
   --success-muted: #e2f7eb;
   --success-border: #b5e6c9;
 
-  --font-sans: "Poppins", ui-sans-serif, system-ui, sans-serif;
-  --font-serif: "Playfair Display", "Georgia", serif;
+  --font-sans: "Hanken Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Fraunces", "Georgia", serif;
   --font-mono: "Space Mono", ui-monospace, SFMono-Regular, monospace;
 }
 
@@ -156,6 +156,13 @@
   --font-sans: var(--font-sans);
   --font-serif: var(--font-serif);
   --font-mono: var(--font-mono);
+
+  /* Weight discipline: the components lean on font-black for emphasis at
+     tiny sizes, which read shouty in the old geometric sans. Remapping the
+     top weights one step down softens the whole app at once — emphasis now
+     comes from hierarchy, not maximum boldness. */
+  --font-weight-black: 800;
+  --font-weight-extrabold: 700;
 
   /* Soft layered elevation for primary CTAs and hero cards (`shadow-pop`).
      Replaces the old hard-offset shadow: same usage, calmer voice. */
@@ -269,11 +276,148 @@
   animation: scaleUp 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-/* Editorial serif for headings — luxury voice (Playfair Display) */
+/* Editorial serif for headings — warm luxury voice (Fraunces).
+   The optical-size axis keeps it soft at hero sizes and crisp small. */
 .font-display {
   font-family: var(--font-serif);
   font-weight: 600;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.015em;
+  font-variation-settings: "opsz" 72;
+}
+
+/* ---------------------------------------------------------------------------
+   NEST component language. One shape vocabulary for the whole product:
+   actions are pills, inputs are rounded-2xl fields, cards are rounded-3xl,
+   sheets are rounded-[2rem]. These classes are the single source of truth
+   for buttons/fields/labels so sections stop reinventing them; Tailwind
+   utilities on an element still win when a variant genuinely differs.
+--------------------------------------------------------------------------- */
+@layer components {
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    border-radius: 9999px;
+    font-family: var(--font-sans);
+    font-weight: 700;
+    font-size: 0.8125rem;
+    line-height: 1;
+    padding: 0.72rem 1.35rem;
+    cursor: pointer;
+    white-space: nowrap;
+    transition:
+      color 0.15s ease,
+      background-color 0.15s ease,
+      border-color 0.15s ease,
+      box-shadow 0.2s ease,
+      opacity 0.15s ease,
+      transform 0.15s ease;
+  }
+  .btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+
+  .btn-primary {
+    background: var(--primary);
+    color: var(--primary-foreground);
+    box-shadow: var(--shadow-pop);
+  }
+  .btn-primary:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--primary) 90%, var(--foreground));
+    box-shadow: var(--shadow-pop-lg);
+  }
+
+  /* Espresso ink — the quiet, grounded counterpart to the rose primary. */
+  .btn-dark {
+    background: var(--color-stone-900);
+    color: #fff;
+  }
+  .btn-dark:hover:not(:disabled) {
+    background: var(--color-stone-800);
+  }
+
+  /* Bordered neutral on card surfaces. */
+  .btn-quiet {
+    background: var(--card);
+    color: var(--foreground);
+    border: 1px solid var(--border);
+  }
+  .btn-quiet:hover:not(:disabled) {
+    background: var(--muted);
+  }
+
+  /* Text-only action. */
+  .btn-ghost {
+    background: transparent;
+    color: var(--muted-foreground);
+    padding: 0.55rem 0.9rem;
+  }
+  .btn-ghost:hover:not(:disabled) {
+    color: var(--foreground);
+  }
+
+  .btn-sm {
+    font-size: 0.7rem;
+    padding: 0.5rem 0.95rem;
+  }
+  .btn-lg {
+    font-size: 0.9rem;
+    padding: 0.95rem 1.9rem;
+  }
+
+  /* Form fields — one voice for inputs, selects and textareas. */
+  .field {
+    width: 100%;
+    background: var(--card);
+    color: var(--foreground);
+    border: 1px solid var(--border);
+    border-radius: 1rem;
+    font-family: var(--font-sans);
+    font-size: 0.8125rem;
+    padding: 0.7rem 1rem;
+  }
+  .field::placeholder {
+    color: color-mix(in srgb, var(--muted-foreground) 70%, transparent);
+  }
+  .field:focus {
+    outline: none;
+    border-color: var(--ring);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 18%, transparent);
+  }
+
+  /* Tiny mono eyebrow — the NEST label signature. Use sparingly: section
+     openers and category markers, never running text or data. */
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 0.5625rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.22em;
+    color: var(--primary);
+  }
+
+  /* Soft tag chip (interests, filters, metadata). */
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    border-radius: 9999px;
+    background: color-mix(in srgb, var(--accent) 55%, transparent);
+    color: var(--accent-foreground);
+    border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    padding: 0.28rem 0.7rem;
+  }
+
+  /* The nest arch — NEST's signature frame for featured imagery and brand
+     moments: an arched niche, like a little window she looks out of. */
+  .arch {
+    border-radius: 999px 999px 1.5rem 1.5rem;
+    overflow: hidden;
+  }
 }
 
 html {
