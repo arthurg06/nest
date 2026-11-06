@@ -594,7 +594,7 @@ export default function App() {
         <img
           src="/icons/nest-logo.png"
           alt="NEST logo"
-          className="w-24 h-24 rounded-[28px] shadow-xl animate-pulse"
+          className="w-24 h-24 rounded-3xl shadow-xl animate-pulse"
         />
         <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
           Madrid Student Net

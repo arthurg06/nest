@@ -553,7 +553,7 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
                 <button
                   type="button"
                   onClick={startEditing}
-                  className="flex items-center gap-1.5 bg-primary text-primary-foreground font-sans text-[11px] font-black px-3.5 py-2 rounded-xl hover:bg-primary/90 transition shadow-sm cursor-pointer"
+                  className="btn btn-primary btn-sm"
                 >
                   <Edit size={12} />
                   <span>Edit Profile</span>
@@ -803,7 +803,7 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
                       type="button"
                       onClick={handleChangePassword}
                       disabled={isChangingPassword}
-                      className="bg-primary hover:bg-primary/90 disabled:bg-primary/40 text-primary-foreground px-4 py-2 rounded-lg text-[11px] font-black transition cursor-pointer"
+                      className="btn btn-primary btn-sm"
                     >
                       {isChangingPassword ? "Saving..." : "Save New Password"}
                     </button>
@@ -980,7 +980,7 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
                   <button
                     type="button"
                     onClick={handleSaveEdit}
-                    className="bg-primary text-primary-foreground font-sans text-xs font-black px-4 py-2 rounded-xl shadow-md hover:bg-primary/90 transition cursor-pointer"
+                    className="btn btn-primary btn-sm"
                   >
                     Save Changes
                   </button>

@@ -658,7 +658,7 @@ export default function Events({ events, onRsvp, isAdmin, guest = false, onAddEv
           aria-modal="true"
           aria-label="My Upcoming Events"
         >
-          <div className="bg-card w-full md:max-w-md max-h-[85vh] rounded-t-[32px] md:rounded-[32px] border-t md:border border-border/70 shadow-2xl flex flex-col overflow-hidden">
+          <div className="bg-card w-full md:max-w-md max-h-[85vh] rounded-t-[2rem] md:rounded-[2rem] border-t md:border border-border/70 shadow-2xl flex flex-col overflow-hidden">
             <div className="px-5 py-4 border-b border-border/40 flex items-center justify-between gap-3 shrink-0">
               <h3 className="font-sans font-black text-base text-foreground">My Upcoming Events</h3>
               <button
@@ -745,7 +745,7 @@ export default function Events({ events, onRsvp, isAdmin, guest = false, onAddEv
           aria-modal="true"
           aria-label="Cancel RSVP"
         >
-          <div className="bg-card rounded-[32px] border border-border max-w-sm w-full shadow-2xl p-6 pt-8 text-center space-y-3 animate-scale-up relative">
+          <div className="bg-card rounded-[2rem] border border-border max-w-sm w-full shadow-2xl p-6 pt-8 text-center space-y-3 animate-scale-up relative">
             <button
               onClick={() => { if (!cancelBusy) setCancelTarget(null); }}
               aria-label="Close"
@@ -754,7 +754,7 @@ export default function Events({ events, onRsvp, isAdmin, guest = false, onAddEv
               <X size={16} />
             </button>
             <span className="text-3xl block select-none">🥺</span>
-            <h3 className="font-sans font-black text-base text-foreground leading-snug">
+            <h3 className="font-display text-xl text-foreground leading-snug">
               Are you sure you want to cancel? This action cannot be undone for this event.
             </h3>
             {cancelError && (
@@ -787,7 +787,7 @@ export default function Events({ events, onRsvp, isAdmin, guest = false, onAddEv
           aria-modal="true"
           aria-label="RSVP revoked"
         >
-          <div className="bg-card rounded-[32px] border border-border max-w-sm w-full shadow-2xl p-6 pt-8 text-center space-y-3 animate-scale-up relative">
+          <div className="bg-card rounded-[2rem] border border-border max-w-sm w-full shadow-2xl p-6 pt-8 text-center space-y-3 animate-scale-up relative">
             <button
               onClick={() => setCancelRevoked(false)}
               aria-label="Close"
@@ -796,7 +796,7 @@ export default function Events({ events, onRsvp, isAdmin, guest = false, onAddEv
               <X size={16} />
             </button>
             <span className="text-3xl block select-none">🪺</span>
-            <h3 className="font-sans font-black text-base text-foreground leading-snug">RSVP revoked.</h3>
+            <h3 className="font-display text-xl text-foreground leading-snug">RSVP revoked.</h3>
             <p className="font-sans text-xs text-muted-foreground leading-relaxed">
               We're sad to see you go! Join us next time...
             </p>
@@ -823,7 +823,7 @@ export default function Events({ events, onRsvp, isAdmin, guest = false, onAddEv
             aria-modal="true"
             aria-label="Experience RSVP"
           >
-            <div className="bg-card rounded-[32px] border border-border max-w-sm w-full shadow-2xl p-6 pt-8 text-center space-y-3 animate-scale-up relative">
+            <div className="bg-card rounded-[2rem] border border-border max-w-sm w-full shadow-2xl p-6 pt-8 text-center space-y-3 animate-scale-up relative">
               <button
                 onClick={close}
                 aria-label="Close"
@@ -835,7 +835,7 @@ export default function Events({ events, onRsvp, isAdmin, guest = false, onAddEv
               {rsvpFlow.step === "number" && (
                 <>
                   <span className="text-3xl block select-none">🪺</span>
-                  <h3 className="font-sans font-black text-base text-foreground leading-snug">Confirm Your Spot</h3>
+                  <h3 className="font-display text-xl text-foreground leading-snug">Confirm Your Spot</h3>
                   <p className="font-sans text-xs text-muted-foreground leading-relaxed">
                     Enter your WhatsApp number so our NEST Team can contact you with your event confirmation.
                   </p>
@@ -890,7 +890,7 @@ export default function Events({ events, onRsvp, isAdmin, guest = false, onAddEv
               {rsvpFlow.step === "success" && (
                 <>
                   <span className="text-3xl block select-none">🎉</span>
-                  <h3 className="font-sans font-black text-base text-foreground leading-snug">
+                  <h3 className="font-display text-xl text-foreground leading-snug">
                     You're in! Our NEST Team will contact you with your confirmation and addtional information of the event VIA Whatsapp. See you soon!
                   </h3>
                   {guest && (
@@ -911,7 +911,7 @@ export default function Events({ events, onRsvp, isAdmin, guest = false, onAddEv
               {rsvpFlow.step === "full" && (
                 <>
                   <span className="text-3xl block select-none">⏳</span>
-                  <h3 className="font-sans font-black text-base text-foreground leading-snug">
+                  <h3 className="font-display text-xl text-foreground leading-snug">
                     Oops, too late! This event is full. Don't worry, NEST will have plenty more events. Keep an eye out for NEST Experiences!
                   </h3>
                   <button
@@ -926,7 +926,7 @@ export default function Events({ events, onRsvp, isAdmin, guest = false, onAddEv
               {rsvpFlow.step === "registered" && (
                 <>
                   <span className="text-3xl block select-none">✅</span>
-                  <h3 className="font-sans font-black text-base text-foreground leading-snug">RSVP Confirmed</h3>
+                  <h3 className="font-display text-xl text-foreground leading-snug">RSVP Confirmed</h3>
                   <p className="font-sans text-xs text-muted-foreground leading-relaxed">
                     You're registered{flowEvent ? ` for ${flowEvent.title}` : ""}. Our NEST Team will
                     contact you via WhatsApp with your confirmation.

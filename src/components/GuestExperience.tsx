@@ -164,7 +164,7 @@ export default function GuestExperience({ onExitToAuth }: GuestExperienceProps) 
           aria-modal="true"
           aria-label="Users only"
         >
-          <div className="bg-card rounded-[32px] border border-border max-w-sm w-full shadow-2xl p-6 pt-8 text-center space-y-3 animate-scale-up relative">
+          <div className="bg-card rounded-[2rem] border border-border max-w-sm w-full shadow-2xl p-6 pt-8 text-center space-y-3 animate-scale-up relative">
             <button
               onClick={() => setShowUsersOnly(false)}
               aria-label="Close"
@@ -173,7 +173,7 @@ export default function GuestExperience({ onExitToAuth }: GuestExperienceProps) 
               <X size={16} />
             </button>
             <span className="text-3xl block select-none">🪺</span>
-            <h3 className="font-sans font-black text-base text-foreground leading-snug">Oops!</h3>
+            <h3 className="font-display text-2xl text-foreground leading-snug">Oops!</h3>
             <p className="font-sans text-xs text-muted-foreground leading-relaxed">
               This feature is for users only. Become a user by creating a profile.
             </p>

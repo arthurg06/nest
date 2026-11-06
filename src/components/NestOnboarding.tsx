@@ -128,7 +128,7 @@ export default function NestOnboarding({ startAt, onFinished }: NestOnboardingPr
       aria-modal="true"
       aria-label={step === "install" ? "Add NEST to your Home Screen" : "NEST notifications"}
     >
-      <div className="bg-card w-full md:max-w-sm max-h-[92vh] rounded-t-[32px] md:rounded-[32px] border-t md:border border-border/70 shadow-2xl flex flex-col overflow-hidden animate-scale-up">
+      <div className="bg-card w-full md:max-w-sm max-h-[92vh] rounded-t-[2rem] md:rounded-[2rem] border-t md:border border-border/70 shadow-2xl flex flex-col overflow-hidden animate-scale-up">
         <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] space-y-4 text-center">
           {step === "install" ? (
             <>
