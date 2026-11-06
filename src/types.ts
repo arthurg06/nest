@@ -12,11 +12,17 @@ export type VerificationStatus = "unsubmitted" | "pending" | "approved" | "rejec
 export interface VerificationInfo {
   university?: string;
   universityEmail?: string;
+  /** The display name on her LinkedIn profile (working/intern/freelance). */
+  linkedinName?: string;
   userNote?: string;
   submittedAt?: string;
   reviewedAt?: string;
   rejectionReason?: string;
 }
+
+/** Registration category — decides her verification method, never editable
+    from the verification form itself. */
+export type Occupation = "student" | "working" | "intern" | "freelance";
 
 export interface UserProfile {
   id: string;
@@ -25,6 +31,7 @@ export interface UserProfile {
   age: number;
   nationality: string;
   university: string;
+  occupation?: Occupation;
   currentCity: string;
   languages: string[];
   personalityType?: string; // e.g. "ENFP", "INFJ"

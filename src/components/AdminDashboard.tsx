@@ -38,10 +38,13 @@ interface VerificationRequest {
   email?: string;
   accountCreatedAt?: string;
   accountStatus?: string;
+  /** Registration category — decides which details the member submitted. */
+  occupation?: "student" | "working" | "intern" | "freelance";
   verificationStatus: string;
   verification: {
     university?: string;
     universityEmail?: string;
+    linkedinName?: string;
     userNote?: string;
     submittedAt?: string;
     reviewedAt?: string;
@@ -752,11 +755,39 @@ export default function AdminDashboard({ onDeleteRecommendation }: AdminDashboar
                           <span className={`text-[9px] px-2 py-0.5 rounded-full font-sans font-extrabold uppercase border ${VERIFICATION_BADGE[v.verificationStatus] || VERIFICATION_BADGE.unsubmitted}`}>
                             {v.verificationStatus}
                           </span>
+                          {v.occupation && v.occupation !== "student" && (
+                            <span className="text-[9px] px-2 py-0.5 rounded-full font-sans font-extrabold uppercase border bg-sky-50 text-sky-700 border-sky-200/50">
+                              {v.occupation}
+                            </span>
+                          )}
                         </div>
                         <div className="text-[11px] text-muted-foreground mt-1.5 space-y-0.5">
                           <p><span className="font-bold">Account email:</span> <span className="font-mono">{v.email}</span></p>
-                          <p><span className="font-bold">University:</span> {v.verification.university || v.university || "—"}</p>
-                          <p><span className="font-bold">University email:</span> <span className="font-mono">{v.verification.universityEmail || "—"}</span></p>
+                          {v.occupation && v.occupation !== "student" ? (
+                            <p>
+                              <span className="font-bold">LinkedIn name:</span>{" "}
+                              {v.verification.linkedinName ? (
+                                <>
+                                  <span className="text-foreground font-semibold select-text">{v.verification.linkedinName}</span>{" "}
+                                  <a
+                                    href={`https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(v.verification.linkedinName)}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-primary font-bold hover:underline"
+                                  >
+                                    Search on LinkedIn ↗
+                                  </a>
+                                </>
+                              ) : (
+                                "—"
+                              )}
+                            </p>
+                          ) : (
+                            <>
+                              <p><span className="font-bold">University:</span> {v.verification.university || v.university || "—"}</p>
+                              <p><span className="font-bold">University email:</span> <span className="font-mono">{v.verification.universityEmail || "—"}</span></p>
+                            </>
+                          )}
                           {v.verification.userNote && (
                             <p className="text-muted-foreground italic">“{v.verification.userNote}”</p>
                           )}

@@ -482,6 +482,20 @@ app.post("/api/auth/signup", async (req, res) => {
       return res.status(400).json({ error: "Please select your university from the Madrid list" });
     }
 
+    // Registration category. It decides the verification method later, so it
+    // is validated here and never changeable by picking a different method.
+    // Older clients send no occupation: a university means she's a student.
+    const OCCUPATIONS = ["student", "working", "intern", "freelance"] as const;
+    const occupation: (typeof OCCUPATIONS)[number] =
+      (OCCUPATIONS as readonly string[]).includes(req.body.occupation)
+        ? req.body.occupation
+        : hasUniversity
+        ? "student"
+        : "working";
+    if (occupation === "student" && !universityName) {
+      return res.status(400).json({ error: "Please select your university from the Madrid list" });
+    }
+
     // Terms & Conditions must be actively accepted before an account exists.
     // The server records the version it currently serves — never a
     // client-supplied one — so a future update can ask for re-acceptance.
@@ -533,7 +547,8 @@ app.post("/api/auth/signup", async (req, res) => {
       name: name,
       age: Number(age) || 20,
       nationality: nationality || "",
-      university: universityName || "",
+      university: occupation === "student" ? universityName : "",
+      occupation,
       currentCity: currentCity || "Madrid",
       languages: languages || [],
       personalityType: personalityType || "",
@@ -963,21 +978,15 @@ app.post("/api/profiles/update", authenticate, async (req, res) => {
 // Submit student-verification details for manual admin review. Submitting
 // NEVER verifies the account by itself — an administrator approves or
 // rejects every request. Email domain is a supporting signal only.
+// The verification method is decided by the registration category stored on
+// the profile, never by what the request contains: students submit their
+// university details, everyone else (working/intern/freelance) submits the
+// name on her LinkedIn profile. Both paths end in the SAME pending state and
+// the SAME manual admin review — nothing here verifies an account by itself.
 app.post("/api/verification/submit", authenticate, async (req, res) => {
   try {
     const userId = (req as any).userId;
-    const { university, universityEmail, note } = req.body;
-
-    if (!university || typeof university !== "string" || !university.trim()) {
-      return res.status(400).json({ error: "University name is required" });
-    }
-    if (
-      !universityEmail ||
-      typeof universityEmail !== "string" ||
-      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(universityEmail.trim())
-    ) {
-      return res.status(400).json({ error: "A valid university email address is required" });
-    }
+    const { university, universityEmail, linkedinName, note } = req.body;
 
     const db = await dbManager.readDb();
     const profile = db.profiles.find(p => p.userId === userId);
@@ -992,19 +1001,54 @@ app.post("/api/verification/submit", authenticate, async (req, res) => {
       return res.status(400).json({ error: "Your verification is already under review" });
     }
 
+    const isStudent = (profile.occupation || (profile.university ? "student" : "working")) === "student";
+    const userNote = typeof note === "string" && note.trim() ? note.trim().slice(0, 500) : undefined;
+
+    if (isStudent) {
+      if (!university || typeof university !== "string" || !university.trim()) {
+        return res.status(400).json({ error: "University name is required" });
+      }
+      if (
+        !universityEmail ||
+        typeof universityEmail !== "string" ||
+        !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(universityEmail.trim())
+      ) {
+        return res.status(400).json({ error: "A valid university email address is required" });
+      }
+
+      profile.university = university.trim();
+      profile.verification = {
+        ...profile.verification,
+        university: university.trim(),
+        universityEmail: universityEmail.trim().toLowerCase(),
+        linkedinName: undefined,
+        userNote,
+        submittedAt: new Date().toISOString(),
+        reviewedAt: undefined,
+        reviewedById: undefined,
+        rejectionReason: undefined
+      };
+    } else {
+      const name = boundedText(linkedinName, 100);
+      if (!name || name.length < 2) {
+        return res.status(400).json({ error: "The name on your LinkedIn profile is required" });
+      }
+
+      profile.verification = {
+        ...profile.verification,
+        linkedinName: name,
+        university: undefined,
+        universityEmail: undefined,
+        userNote,
+        submittedAt: new Date().toISOString(),
+        reviewedAt: undefined,
+        reviewedById: undefined,
+        rejectionReason: undefined
+      };
+    }
+
     profile.verificationStatus = "pending";
     profile.isVerified = false;
-    profile.university = university.trim();
-    profile.verification = {
-      ...profile.verification,
-      university: university.trim(),
-      universityEmail: universityEmail.trim().toLowerCase(),
-      userNote: typeof note === "string" && note.trim() ? note.trim().slice(0, 500) : undefined,
-      submittedAt: new Date().toISOString(),
-      reviewedAt: undefined,
-      reviewedById: undefined,
-      rejectionReason: undefined
-    };
 
     await dbManager.writeDb(db);
     res.json({ success: true, profile: ownProfileView(profile) });
@@ -3341,6 +3385,7 @@ app.get("/api/admin/verifications", authenticateAdmin, async (req, res) => {
           age: p.age,
           photo: p.photo,
           university: p.university,
+          occupation: p.occupation || (p.university ? "student" : "working"),
           nationality: p.nationality,
           email: user?.email,
           accountCreatedAt: user?.createdAt,
@@ -3386,7 +3431,10 @@ app.post("/api/admin/verifications/:userId/approve", authenticateAdmin, async (r
     db.notifications.push({
       id: generateId(),
       userId,
-      text: "Your student verification has been approved. Welcome to the NEST community!",
+      text:
+        (profile.occupation || (profile.university ? "student" : "working")) === "student"
+          ? "Your student verification has been approved. Welcome to the NEST community!"
+          : "Your verification has been approved. Welcome to the NEST community!",
       timestamp: new Date().toISOString(),
       read: false,
       createdAt: new Date().toISOString()

@@ -65,9 +65,10 @@ export default function OnboardingSignUp({ onAuthSuccess, onGuestAccess }: Onboa
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [age, setAge] = useState("");
-  // "What are you currently doing?" — university members pick their campus,
-  // working members carry no university at all (and no job questions either).
-  const [occupation, setOccupation] = useState<"" | "university" | "working">("");
+  // "What are you currently doing?" — students pick their campus; working,
+  // intern and freelance members carry no university (and no job questions).
+  // The choice also decides her verification method later, so it is stored.
+  const [occupation, setOccupation] = useState<"" | "university" | "working" | "intern" | "freelance">("");
   const [university, setUniversity] = useState("");
   const [selectedActivities, setSelectedActivities] = useState<string[]>([]);
   const [animals, setAnimals] = useState("");
@@ -150,7 +151,7 @@ export default function OnboardingSignUp({ onAuthSuccess, onGuestAccess }: Onboa
       setStep(2);
     } else if (step === 2) {
       if (!age.trim() || Number(age) < 18 || Number(age) > 35) {
-        reportError("NEST is designed for university-aged students (18-35).");
+        reportError("NEST is for women aged 18-35.");
         return;
       }
       if (!occupation) {
@@ -180,7 +181,8 @@ export default function OnboardingSignUp({ onAuthSuccess, onGuestAccess }: Onboa
   const profileFields = () => ({
     name: name.trim(),
     age: Number(age) || 20,
-    university: occupation === "working" ? "" : university.trim(),
+    university: occupation === "university" ? university.trim() : "",
+    occupation: occupation === "university" ? "student" : occupation || "working",
     currentCity: "Madrid",
     nationality: selectedNationalities.join(", "),
     bio: bio.trim(),
@@ -272,8 +274,8 @@ export default function OnboardingSignUp({ onAuthSuccess, onGuestAccess }: Onboa
           </div>
           <h1 className="font-display font-semibold tracking-tight text-foreground text-5xl lowercase leading-none">nest</h1>
           <span className="eyebrow mt-2">Madrid</span>
-          <p className="font-display italic text-lg text-muted-foreground mt-6 max-w-[19rem] leading-snug">
-            A private club for international women studying in Madrid.
+          <p className="font-sans font-normal text-[15px] text-muted-foreground mt-6 max-w-[19rem] leading-relaxed tracking-wide">
+            A private club for international women living in Madrid.
           </p>
 
           <div className="w-full max-w-xs mt-10 space-y-3">
@@ -516,35 +518,31 @@ export default function OnboardingSignUp({ onAuthSuccess, onGuestAccess }: Onboa
                       <div className="space-y-1">
                         <label className="eyebrow text-muted-foreground block">What are you currently doing?</label>
                         <div className="grid grid-cols-2 gap-2">
-                          <button
-                            type="button"
-                            onClick={() => setOccupation("university")}
-                            aria-pressed={occupation === "university"}
-                            className={`rounded-xl px-3.5 py-3 text-sm font-bold transition border cursor-pointer ${
-                              occupation === "university"
-                                ? "bg-primary text-primary-foreground border-primary shadow-pop"
-                                : "bg-card/60 text-foreground border-border hover:bg-card"
-                            }`}
-                          >
-                            🎓 University
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setOccupation("working");
-                              // No university (and no job questions) for
-                              // working members — drop any earlier pick.
-                              setUniversity("");
-                            }}
-                            aria-pressed={occupation === "working"}
-                            className={`rounded-xl px-3.5 py-3 text-sm font-bold transition border cursor-pointer ${
-                              occupation === "working"
-                                ? "bg-primary text-primary-foreground border-primary shadow-pop"
-                                : "bg-card/60 text-foreground border-border hover:bg-card"
-                            }`}
-                          >
-                            💼 Working
-                          </button>
+                          {([
+                            { id: "university", label: "🎓 Student" },
+                            { id: "working", label: "💼 Working" },
+                            { id: "intern", label: "📋 Intern" },
+                            { id: "freelance", label: "🌱 Freelance" }
+                          ] as const).map(opt => (
+                            <button
+                              key={opt.id}
+                              type="button"
+                              onClick={() => {
+                                setOccupation(opt.id);
+                                // Only students pick a campus (and nobody gets
+                                // job questions) — drop any earlier pick.
+                                if (opt.id !== "university") setUniversity("");
+                              }}
+                              aria-pressed={occupation === opt.id}
+                              className={`rounded-xl px-3 py-3 text-sm font-bold transition border cursor-pointer ${
+                                occupation === opt.id
+                                  ? "bg-primary text-primary-foreground border-primary shadow-pop"
+                                  : "bg-card/60 text-foreground border-border hover:bg-card"
+                              }`}
+                            >
+                              {opt.label}
+                            </button>
+                          ))}
                         </div>
                       </div>
 

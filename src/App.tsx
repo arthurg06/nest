@@ -707,17 +707,19 @@ export default function App() {
                   <div className="flex-1 min-w-0">
                     <p className="font-sans font-bold text-xs text-foreground">
                       {currentUser.verificationStatus === "pending"
-                        ? "Your student verification is under review"
+                        ? "Your verification is under review"
                         : currentUser.verificationStatus === "rejected"
                         ? "Your verification wasn't approved"
-                        : "Get your Verified Student badge"}
+                        : currentUser.occupation === "student" || (!currentUser.occupation && currentUser.university)
+                        ? "Get your Verified Student badge"
+                        : "Get your Verified Member badge"}
                     </p>
                     <p className="text-[11px] text-muted-foreground mt-0.5 leading-normal">
                       {currentUser.verificationStatus === "pending"
                         ? "We'll let you know as soon as an admin has reviewed it."
                         : currentUser.verificationStatus === "rejected"
                         ? currentUser.verification?.rejectionReason || "Update your details and send it again."
-                        : "It takes a minute and shows others you're a real student here."}
+                        : "It takes a minute and shows others you're really part of the community."}
                     </p>
                   </div>
                   {currentUser.verificationStatus !== "pending" && (

@@ -59,9 +59,17 @@ export interface Interests {
 
 export type VerificationStatus = "unsubmitted" | "pending" | "approved" | "rejected";
 
+/** What a member does in Madrid, chosen once at sign-up. It decides her
+    verification method: students verify with university details, everyone
+    else with her LinkedIn profile name. Both go through the same manual
+    admin review — nothing verifies automatically. */
+export type Occupation = "student" | "working" | "intern" | "freelance";
+
 export interface VerificationInfo {
   university?: string;
   universityEmail?: string;
+  /** The display name on her LinkedIn profile (working/intern/freelance). */
+  linkedinName?: string;
   /** Free-text context provided by the member. */
   userNote?: string;
   submittedAt?: string;
@@ -81,6 +89,8 @@ export interface UserProfile {
   age: number;
   nationality: string; // comma-separated if multiple
   university: string;
+  /** Registration category; absent on pre-expansion rows (see migrateDb). */
+  occupation?: Occupation;
   currentCity: string;
   languages: string[]; // e.g., ["English (Native)", "Spanish (Conversational)"]
   personalityType: string;
@@ -413,6 +423,16 @@ function migrateDb(db: DbSchema): boolean {
   if (!Array.isArray(db.notificationJobs)) {
     db.notificationJobs = [];
     changed = true;
+  }
+
+  // The registration category arrived with the expansion beyond students.
+  // Earlier accounts chose only University vs Working, so the university
+  // field tells us which: a campus on file means she joined as a student.
+  for (const profile of db.profiles) {
+    if (!profile.occupation) {
+      profile.occupation = profile.university ? "student" : "working";
+      changed = true;
+    }
   }
 
   for (const user of db.users) {

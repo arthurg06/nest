@@ -244,8 +244,14 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
   // submitting places the account in review; only an admin approves it.
   const verificationStatus = currentUser.verificationStatus || (currentUser.isVerified ? "approved" : "unsubmitted");
   const isVerified = verificationStatus === "approved";
+  // The registration category decides the verification method — students
+  // submit university details, everyone else the name on her LinkedIn
+  // profile. The server enforces the same rule; this only picks the form.
+  const isStudentAccount =
+    (currentUser.occupation || (currentUser.university ? "student" : "working")) === "student";
   const [verUniversity, setVerUniversity] = useState(currentUser.verification?.university || currentUser.university || "");
   const [verEmail, setVerEmail] = useState(currentUser.verification?.universityEmail || "");
+  const [verLinkedin, setVerLinkedin] = useState(currentUser.verification?.linkedinName || "");
   const [verNote, setVerNote] = useState("");
   const [isSubmittingVerification, setIsSubmittingVerification] = useState(false);
 
@@ -459,8 +465,12 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
   // account by itself.
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!verUniversity.trim() || !verEmail.trim()) {
+    if (isStudentAccount && (!verUniversity.trim() || !verEmail.trim())) {
       showFeedback("Please provide your university and your university email address.", "error");
+      return;
+    }
+    if (!isStudentAccount && verLinkedin.trim().length < 2) {
+      showFeedback("Please enter the name shown on your LinkedIn profile.", "error");
       return;
     }
 
@@ -472,11 +482,15 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
           "Content-Type": "application/json",
           "Authorization": `Bearer ${localStorage.getItem("nest_token")}`
         },
-        body: JSON.stringify({
-          university: verUniversity.trim(),
-          universityEmail: verEmail.trim(),
-          note: verNote.trim() || undefined
-        })
+        body: JSON.stringify(
+          isStudentAccount
+            ? {
+                university: verUniversity.trim(),
+                universityEmail: verEmail.trim(),
+                note: verNote.trim() || undefined
+              }
+            : { linkedinName: verLinkedin.trim() }
+        )
       });
       const data = await res.json();
       if (!res.ok) {
@@ -1004,20 +1018,24 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
             <div className="flex items-center gap-1.5 pb-2 border-b border-border/30">
               <ShieldCheck size={18} className="text-amber-500 fill-amber-100" />
               <h3 className="font-sans font-black text-xs text-foreground uppercase tracking-wider">
-                Student Verification
+                {isStudentAccount ? "Student Verification" : "Member Verification"}
               </h3>
             </div>
 
             <p className="font-sans text-[11px] text-muted-foreground leading-relaxed">
-              Every member is reviewed by the NEST team before she can match. Submit your university details below.
+              {isStudentAccount
+                ? "Every member is reviewed by the NEST team before she can match. Submit your university details below."
+                : "Every member is reviewed by the NEST team before she can match. Share the name on your LinkedIn profile and we'll check it ourselves — nothing connects to your LinkedIn account."}
             </p>
 
             {isVerified ? (
               <div className="bg-success-muted text-success p-3.5 rounded-xl border border-success-border text-center space-y-1.5 select-none">
                 <ShieldCheck size={26} className="mx-auto" />
-                <h4 className="font-sans font-bold text-xs">Verified Student</h4>
+                <h4 className="font-sans font-bold text-xs">{isStudentAccount ? "Verified Student" : "Verified Member"}</h4>
                 <p className="font-sans text-[11px] leading-normal">
-                  Your student status has been approved. You have full access to matching.
+                  {isStudentAccount
+                    ? "Your student status has been approved. You have full access to matching."
+                    : "Your profile has been approved. You have full access to matching."}
                 </p>
               </div>
             ) : verificationStatus === "pending" ? (
@@ -1037,44 +1055,63 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
                   </div>
                 )}
 
-                <div className="space-y-1">
-                  <span className="text-[10px] font-sans font-bold text-muted-foreground block">University</span>
-                  <input
-                    type="text"
-                    placeholder="e.g. IE University"
-                    value={verUniversity}
-                    onChange={(e) => setVerUniversity(e.target.value)}
-                    className="w-full bg-card/40 border border-border/50 rounded-lg p-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-                  />
-                </div>
+                {isStudentAccount ? (
+                  <>
+                    <div className="space-y-1">
+                      <span className="text-[10px] font-sans font-bold text-muted-foreground block">University</span>
+                      <input
+                        type="text"
+                        placeholder="e.g. IE University"
+                        value={verUniversity}
+                        onChange={(e) => setVerUniversity(e.target.value)}
+                        className="w-full bg-card/40 border border-border/50 rounded-lg p-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                      />
+                    </div>
 
-                <div className="space-y-1">
-                  <span className="text-[10px] font-sans font-bold text-muted-foreground flex items-center gap-1">
-                    <Mail size={12} />
-                    <span>University email</span>
-                  </span>
-                  <input
-                    type="email"
-                    placeholder="e.g. name@student.ie.edu"
-                    value={verEmail}
-                    onChange={(e) => setVerEmail(e.target.value)}
-                    className="w-full bg-card/40 border border-border/50 rounded-lg p-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-                  />
-                  <p className="text-[10px] text-muted-foreground leading-normal">
-                    Used only to verify your student status. This won't change your NEST login email.
-                  </p>
-                </div>
+                    <div className="space-y-1">
+                      <span className="text-[10px] font-sans font-bold text-muted-foreground flex items-center gap-1">
+                        <Mail size={12} />
+                        <span>University email</span>
+                      </span>
+                      <input
+                        type="email"
+                        placeholder="e.g. name@student.ie.edu"
+                        value={verEmail}
+                        onChange={(e) => setVerEmail(e.target.value)}
+                        className="w-full bg-card/40 border border-border/50 rounded-lg p-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                      />
+                      <p className="text-[10px] text-muted-foreground leading-normal">
+                        Used only to verify your student status. This won't change your NEST login email.
+                      </p>
+                    </div>
 
-                <div className="space-y-1">
-                  <span className="text-[10px] font-sans font-bold text-muted-foreground block">Anything else we should know? (optional)</span>
-                  <textarea
-                    rows={2}
-                    placeholder="e.g. Exchange student, arriving in September"
-                    value={verNote}
-                    onChange={(e) => setVerNote(e.target.value)}
-                    className="w-full bg-card/40 border border-border/50 rounded-lg p-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-none"
-                  />
-                </div>
+                    <div className="space-y-1">
+                      <span className="text-[10px] font-sans font-bold text-muted-foreground block">Anything else we should know? (optional)</span>
+                      <textarea
+                        rows={2}
+                        placeholder="e.g. Exchange student, arriving in September"
+                        value={verNote}
+                        onChange={(e) => setVerNote(e.target.value)}
+                        className="w-full bg-card/40 border border-border/50 rounded-lg p-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-none"
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-sans font-bold text-muted-foreground block">Name on your LinkedIn profile</span>
+                    <input
+                      type="text"
+                      placeholder="e.g. María García López"
+                      value={verLinkedin}
+                      onChange={(e) => setVerLinkedin(e.target.value)}
+                      className="w-full bg-card/40 border border-border/50 rounded-lg p-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                    />
+                    <p className="text-[10px] text-muted-foreground leading-normal">
+                      Exactly as it appears on LinkedIn, so our team can find you. We never ask you to
+                      connect or sign in to LinkedIn.
+                    </p>
+                  </div>
+                )}
 
                 <button
                   type="submit"
