@@ -688,15 +688,15 @@ export default function App() {
         <div className={`flex-1 min-h-0 ${activeTab === "chat" ? "overflow-hidden" : "overflow-y-auto -mx-1 px-1"}`}>
           {activeTab === "swipe" && (
             <div className="space-y-6">
-              {/* Discover intro — deliberately quiet so the cards stay the
-                  hero: a light serif word and one warm line, nothing more.
-                  Fraunces at 500 (not the display 600) keeps it delicate. */}
-              <div className="text-center max-w-sm mx-auto space-y-1.5 pt-3 pb-1 select-none">
-                <h2 className="font-serif font-medium text-2xl md:text-[1.75rem] text-foreground tracking-tight leading-none">
-                  Discover
+              {/* The NEST slogan, word for word, set quietly so the cards
+                  stay the hero: Fraunces at 500 (not the display 600), small
+                  sizes, the second line a soft rose whisper. */}
+              <div className="text-center max-w-sm mx-auto space-y-1 pt-3 pb-1 select-none">
+                <h2 className="font-serif font-medium text-2xl md:text-[1.75rem] text-foreground tracking-tight leading-snug">
+                  Find your people,
                 </h2>
-                <p className="font-sans text-xs text-muted-foreground">
-                  Say <em className="font-serif italic text-primary">hola</em> to someone new.
+                <p className="font-serif font-medium italic text-lg text-primary/80 leading-none">
+                  find your nest.
                 </p>
               </div>
 
