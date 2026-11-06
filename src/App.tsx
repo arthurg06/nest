@@ -688,13 +688,16 @@ export default function App() {
         <div className={`flex-1 min-h-0 ${activeTab === "chat" ? "overflow-hidden" : "overflow-y-auto -mx-1 px-1"}`}>
           {activeTab === "swipe" && (
             <div className="space-y-6">
-              {/* Swipe Deck Header and Intro — one brand sentence carried
-                  across the hierarchy, not repeated by it. */}
-              <div className="text-center max-w-sm mx-auto space-y-1 pt-1">
-                <h2 className="font-display text-[2rem] md:text-4xl text-foreground leading-tight">
-                  Find your <em className="italic text-primary">people</em>,
+              {/* Discover intro — deliberately quiet so the cards stay the
+                  hero: a light serif word and one warm line, nothing more.
+                  Fraunces at 500 (not the display 600) keeps it delicate. */}
+              <div className="text-center max-w-sm mx-auto space-y-1.5 pt-3 pb-1 select-none">
+                <h2 className="font-serif font-medium text-2xl md:text-[1.75rem] text-foreground tracking-tight leading-none">
+                  Discover
                 </h2>
-                <p className="font-display text-base text-muted-foreground italic">find your nest.</p>
+                <p className="font-sans text-xs text-muted-foreground">
+                  Say <em className="font-serif italic text-primary">hola</em> to someone new.
+                </p>
               </div>
 
               {/* Verification nudge — informative, never a wall: members can
