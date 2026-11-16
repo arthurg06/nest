@@ -144,6 +144,14 @@ function imagesSafeToDelete(db: DbSchema, candidates: (string | undefined)[], ow
   return candidates.filter((url): url is string => Boolean(url) && !referencedElsewhere.has(url!));
 }
 
+// Member lists are shown newest account first (product decision,
+// 2026-11-16), keyed on the account creation timestamp. Records that predate
+// the field sort last; ties keep insertion order (Array sort is stable).
+function accountCreatedMs(user: User | undefined, fallback?: string): number {
+  const ms = new Date(user?.createdAt || fallback || "").getTime();
+  return Number.isNaN(ms) ? 0 : ms;
+}
+
 // Server-side Premium entitlement — driven by Stripe webhook state, a
 // still-valid paid period, or an explicit manual grant made by an admin.
 // Never by client-side flags. When payments land, a real Stripe status
@@ -1089,6 +1097,13 @@ app.get("/api/profiles", authenticate, async (req, res) => {
       p.userId !== userId &&
       activeUserIds.has(p.userId) &&
       !swipedUserIds.includes(p.userId)
+    );
+
+    // Newest members first. `filter` returned a copy, so sorting in place
+    // never reorders the stored snapshot.
+    const usersById = new Map(db.users.map(u => [u.id, u]));
+    discoverableProfiles.sort(
+      (a, b) => accountCreatedMs(usersById.get(b.userId), b.createdAt) - accountCreatedMs(usersById.get(a.userId), a.createdAt)
     );
 
     res.json(discoverableProfiles.map(publicProfileView));
@@ -2986,8 +3001,9 @@ app.delete("/api/users/me", authenticate, async (req, res) => {
 app.get("/api/admin/users", authenticateAdmin, async (req, res) => {
   try {
     const db = await dbManager.readDb();
-    // Return users merged with their profiles
-    const usersWithProfiles = db.users.map(u => {
+    // Return users merged with their profiles, newest account first (a copy
+    // is sorted so the stored snapshot keeps its order).
+    const usersWithProfiles = [...db.users].sort((a, b) => accountCreatedMs(b) - accountCreatedMs(a)).map(u => {
       const profile = db.profiles.find(p => p.userId === u.id);
       return {
         id: u.id,
