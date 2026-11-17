@@ -69,6 +69,12 @@
   --font-sans: "Hanken Grotesk", ui-sans-serif, system-ui, sans-serif;
   --font-serif: "Fraunces", "Georgia", serif;
   --font-mono: "Space Mono", ui-monospace, SFMono-Regular, monospace;
+  /* Member bios only: a modern, readable sans in place of the serif italic
+     (product decision, 2026-11-17). Upright, regular weight, no decorative
+     styling. The stack ends in the system emoji faces so emojis and scripts
+     outside the webfont's Latin coverage still render. */
+  --font-bio: "Plus Jakarta Sans", "Hanken Grotesk", ui-sans-serif, system-ui, sans-serif,
+    "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji";
 }
 
 .dark {
@@ -156,6 +162,7 @@
   --font-sans: var(--font-sans);
   --font-serif: var(--font-serif);
   --font-mono: var(--font-mono);
+  --font-bio: var(--font-bio);
 
   /* Weight discipline: the components lean on font-black for emphasis at
      tiny sizes, which read shouty in the old geometric sans. Remapping the

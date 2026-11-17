@@ -290,7 +290,7 @@ export default function SwipeCard({ profile, currentUser, onSwipeLeft, onSwipeRi
               <span className="eyebrow block mb-1">
                 Bio & Vibe
               </span>
-              <p className="text-[13px] text-foreground leading-relaxed font-display italic">
+              <p className="text-[13px] text-foreground leading-relaxed font-bio">
                 "{profile.bio}"
               </p>
             </div>

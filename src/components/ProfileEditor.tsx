@@ -622,7 +622,7 @@ export default function ProfileEditor({ currentUser, onSaveProfile, onDeleteReco
 
               <div>
                 <span className="text-[10px] font-sans font-bold uppercase tracking-wider text-muted-foreground/90 block">Bio</span>
-                <p className="text-[13px] font-display italic text-foreground leading-relaxed mt-1">{currentUser.bio ? `"${currentUser.bio}"` : "—"}</p>
+                <p className="text-[13px] font-bio text-foreground leading-relaxed mt-1">{currentUser.bio ? `"${currentUser.bio}"` : "—"}</p>
               </div>
 
               <div>
